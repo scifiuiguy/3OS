@@ -91,6 +91,49 @@ Emulating the 2D File Explorer's view shifts, 3OS can instantly re-compute the s
 * **Semantic Masking:** For walls and ceilings, users can unlock constraints to place items "over-the-horizon" (e.g., a weather widget on a balcony). The OS cleanly cuts the rendering mesh at the wall boundary plane, creating a crisp, non-clipping partition illusion.3OS has parameterized input enabling other service-layer systems of the HMD to provide planar definitions of such boundaries if desired.
 
 ---
+## Structural Outline
+```
+3os-core/
+├── include/
+│   ├── openxr/                     # OpenXR header dependencies
+│   ├── core/
+│   │   ├── interaction_facade.hpp  # Input Action Facade (Hover, Select, Group)
+│   │   ├── topology.hpp            # World Proxy Half-Dome & Double-Proxy grids
+│   │   ├── kinematics.hpp          # Telekinetic Velocity Engine (Zero-fatigue curves)
+│   │   └── enclosure.hpp           # Semantic Mesh Occlusion & Floor Constraints
+│   ├── storage/
+│   │   ├── file_bridge.hpp         # Legacy FS Sync (Directories -> Volumetric Elements)
+│   │   └── volumetric_glyph.hpp    # Translates extensions into low-poly prismatic poly-poly meshes
+│   ├── text/
+│   │   ├── text_io_router.hpp      # Multi-modal input hub (External, Virtual, Volumetric)
+│   │   └── text_label.hpp          # Lightweight 3D text primitives for Box/Object annotations
+│   ├── ai/
+│   │   └── agent_service_layer.hpp # Verbal Trigger Registry for host OEM AI integration
+│   └── interop/
+│       └── threeos_marshaller.hpp  # Flattened extern "C" bindings for P/Invoke & Dynamic Loading
+├── src/
+│   ├── interaction_facade.cpp
+│   ├── topology.cpp
+│   ├── kinematics.cpp
+│   ├── enclosure.cpp
+│   ├── storage/
+│   │   ├── file_bridge.cpp         # Target directory crawler & delta-tracking engine
+│   │   └── volumetric_glyph.cpp    # Procedural mesh compiler for text/data/box primitives
+│   ├── text/
+│   │   ├── text_io_router.cpp      # Prioritization router for physical vs. fallback input
+│   │   └── text_label.cpp          # Transient floating text box CRUD lifecycle logic
+│   ├── ai/
+│   │   └── agent_service_layer.cpp # Binds semantic string hashes directly to 3OS system states
+│   └── threeos_marshaller.cpp       # Core DLL/SO export implementations
+├── shaders/
+│   └── SemanticWallMask.hlsl       # Vertex/Pixel shader logic for wall clipping
+├── .github/
+│   └── workflows/
+│       └── build-binaries.yml      # CI/CD cross-compilation pipeline (.dll and .so)
+├── CMakeLists.txt
+└── README.md
+
+```
 
 ## 🚀 Getting Started
 
