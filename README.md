@@ -1,6 +1,6 @@
 # 3OS: Volumetric Operating System Architecture
 
-3OS (pronounced **"three-oh-ess"**) is a first-principles, voxel-first operating system for spatial computing. Its target hardware is HMDs and holographic displays. It rejects the "flatland" bias of legacy WIMP (Windows, Icons, Menus, Pointer) and multi-touch paradigms that have been a crutch in modern XR for far too long. 
+3OS (pronounced **"three-oh-ess"**) is a first-principles, voxel-first operating system for spatial computing. Its target hardware is HMDs and holographic displays. It rejects the "flatland" bias of legacy WIMP (Windows, Icons, Menus, and Pointers) and multi-touch paradigms that have been a crutch in modern XR for far too long. 
 
 The WIMP paradigm is a backwards compatibility tool in XR. It should not be front-and-center in any spatial computing OS. A VR or AR HMD that uses WIMP as its default metaphor set is like Windows 95 launching into a command line with no desktop, no Start button, and no File Explorer. We are asking developers to build the next-big-thing killer app using stone tools.
 
