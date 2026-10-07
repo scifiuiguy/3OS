@@ -3,17 +3,18 @@
 This roadmap moves **3OS_Core** from an empty repo to a production-grade, hardware-native volumetric OS module. Phases are dependency-ordered. Contiguous semver tracks real deliverables (no fake version gaps).
 
 ```text
-[0.0 Scaffold] → [0.1 ABI + stubs] → [0.2 Topology + portals] → [0.3 Kinematics + floor]
-        → [0.4 Storage + text] → [0.5 Layouts + anchors + frustum] → [0.6 Enclosure + AI hooks]
-        → [1.0 Native OpenXR]
-                 └─► [Separate track] 3OS_Unity (after OpenXR core ships)
+Core  0.0 → 0.1 (small ABI freeze) → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 → 1.0 (native OpenXR parity)
+                │                     │     │     │     │     │     │
+Unity 0.0 → 0.1 (thin Quest harness) → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 → 1.0 (UPM polish)
 ```
 
-### Companion repo (separate track)
+### Companion repo (parallel track)
 
-**[3OS_Unity](https://github.com/scifiuiguy/3OS_Unity)** is a **separate repository** with its own development track. It is a UPM package that P/Invokes the native `3os_kernel` binaries produced by this repo (`Native~/` submodule + `Plugins/` DLLs/SOs). It is **not implemented yet**. Implement it **after** the OpenXR/native core path is in place (post–Phase 1.0), not as a mid-pipeline dependency for verifying topology/kinematics.
+**[3OS_Unity](https://github.com/scifiuiguy/3OS_Unity)** is a **separate repository** walked **in lockstep** with these phases. Full paired milestones, Quest gates, and Unity tasks live in that repo’s [`IMPLEMENTATION_PLAN.md`](https://github.com/scifiuiguy/3OS_Unity/blob/main/IMPLEMENTATION_PLAN.md) (local checkout: `3OS_Unity/IMPLEMENTATION_PLAN.md`, gitignored here).
 
-Until then, verify core behavior with **headless C++ tests** and a thin pose-injection harness inside this repo.
+- **Core** proves correctness with headless C++ tests (and later its own native OpenXR path at 1.0).
+- **Unity** is the Quest 2 / Editor verification host from **0.1 onward** (thin harness on the frozen ABI) — not deferred until core 1.0.
+- After each shared version, both the core tests **and** the Unity Quest gate should pass before calling the phase done (unless waived).
 
 ---
 
@@ -49,7 +50,7 @@ Until then, verify core behavior with **headless C++ tests** and a thin pose-inj
 ---
 
 ### 🕸 Phase 0.2: Topology, Proxies & Portals (v0.2.0)
-**Goal:** World Proxy Half-Dome, Double-Proxy Voxel Lattice, and Voodoo portal teleportation — with **headless tests**, not engine wrappers.
+**Goal:** World Proxy Half-Dome, Double-Proxy Voxel Lattice, and Voodoo portal teleportation. Prove with **headless tests** here; prove on Quest via the paired **Unity 0.2** gate.
 
 - [ ] **Task 2.1: Multiscale coordinate workspace (`src/topology.cpp`)**
   - [ ] Voxel indexing for discrete ~1-inch spatial blocks (`std::array<int, 3>` or equivalent).
@@ -145,16 +146,14 @@ Until then, verify core behavior with **headless C++ tests** and a thin pose-inj
 
 ---
 
-### 🎮 Separate track: 3OS_Unity (after Phase 1.0)
+### 🎮 Parallel track: 3OS_Unity (see that repo’s plan)
 
-Tracked in **[scifiuiguy/3OS_Unity](https://github.com/scifiuiguy/3OS_Unity)**, not in this repo’s critical path for Phases 0.0–1.0.
+Do not duplicate the full Unity checklist here. Use **[3OS_Unity/IMPLEMENTATION_PLAN.md](https://github.com/scifiuiguy/3OS_Unity/blob/main/IMPLEMENTATION_PLAN.md)** for UPM tasks and Quest gates. Summary:
 
-From its README (outline only today): UPM package with `ThreeOSBridge` / `ThreeOSInputRouter` / `ThreeOSMovable`, `InteropStructs.cs` mirroring native layouts, prebuilt `Plugins/` binaries, `Native~/` submodule to this core, URP semantic mask shader, and `Samples~/` demo scene.
+| After core… | Unity must… |
+| --- | --- |
+| **0.1** ABI freeze | Thin harness: bridge, input router, plugin load/ping on Quest |
+| **0.2–0.6** | Matching visuals/UX for proxies, telekinesis, glyphs, layouts, mask |
+| **1.0** | UPM polish + full demo acceptance; core native OpenXR is parity, not a blocker |
 
-- [ ] **Task U.1:** Fill in real Git URL / `package.json` (README placeholders are incomplete).
-- [ ] **Task U.2:** Submodule or CI copy of `3os-core`; build/copy `3os_kernel.dll` / `lib3os_kernel.so`.
-- [ ] **Task U.3:** Implement P/Invoke bridge + input router + movable component against the frozen ABI from Phase 0.1+.
-- [ ] **Task U.4:** Port/adapt semantic wall mask as `UnitySemanticMask.shader`.
-- [ ] **Task U.5:** Ship `WorldProxyDome` / `DoubleProxyLattice` prefabs and Quest-oriented demo scene.
-
-Unreal (if pursued) follows the same pattern: separate repo, same native ABI, after OpenXR core is stable.
+Unreal (if pursued) can mirror the same paired-version pattern against the same ABI.
