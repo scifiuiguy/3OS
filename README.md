@@ -5,7 +5,7 @@ Johnny Mnemonic showed a 3D VR internet in 1995:
   <img src="https://img.youtube.com/vi/SoxGazX_kkw/hqdefault.jpg" alt="Whoa." />
 </a>
 
-This movie was were shy of the mark to say the least, but they both hint at a 1990s sense of optimism toward 3D computer interfaces eventually becoming better, faster, and more efficient than 2D desktop equivalents. Obviously that didn't happen. YET. What happened to that optimism though?
+This movie was shy of the mark to say the least, but they both hint at a 1990s sense of optimism toward 3D computer interfaces eventually becoming better, faster, and more efficient than 2D desktop equivalents. Obviously that didn't happen. YET. What happened to that optimism though?
 
 Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop PCs? Or did we simply stop investing in the VR industry for a decade after the dot-com bust, allowing mountains of incredible university research to collect dust in SIGCHI archives, never to be drawn upon again even after the industry was resurrected by Oculus?
 
