@@ -43,17 +43,23 @@ These companies understand that touchscreens are more of an entertainment consum
 
 **Multi-touch interfaces...**
 
-1) ...are physically smaller. Shrinking the number of available interacative fragments reduces multitasking capability expnentially, hence why iOS requires developers to severely limit the number of user choices per screen controller.
+1) ...are physically smaller. Shrinking the number of available interacative fragments reduces multitasking capability exponentially, hence why iOS requires developers to severely limit the number of user choices per screen controller.
 
 2) ...cannot compete with desktop interfaces due to mouse/keyboard blowing multi-touch out of the water on raw data throughput.
 
-3) ...mobile operating systems (especially iOS) actively discourage manual raw data management by obfuscating direct data access.
+3) ...mobile operating systems (especially iOS) actively discourage manual raw data management by obfuscating direct data access, implying that some OS makers do not want the developer community thinking of touchscreens as capable of cannibalizing desktop/laptop sales. 
 
-It follows that if you INCREASE the number of interactive fragments (or voxels), multitasking capability should explode exponentially beyond the capability of desktop interfaces. XR developers want every XR OS to be perceived as useful in enterprise for greater adoption, yet the boot interface of EVERY XR OS is obviously patterned after Apple and Android, an incredible oversight that conveys to every enterprise user that "this is a a platform that can't do the things your desktop PC can do." WindowsMR by Microsoft was a notable exception that clearly recognized this problem, yet failed to recognize that the crux of the problem is WIMP itself.
+It follows, though, that if you INCREASE the number of interactive fragments (or voxels) instead of decreasing it, multitasking capability should explode exponentially beyond the capability of desktop interfaces. Many enterprise workers under the simple virtue of multi-screen setups, but that scratches the surface compared to XR. 
 
-True to form, if you try to do nearly any run-of-the-mill office PC tasks on any XR OS, common interfaces make it so God-awfully slow that no enterprise company would EVER consider porting their desktop features into XR in the 2020s.
+XR developers want every XR OS to be perceived as useful in enterprise for greater adoption, yet the boot interface of EVERY XR OS is obviously patterned after Apple and Android, an incredible oversight that implies "this is a a platform that can't do the things your desktop PC can do." WindowsMR by Microsoft was a notable exception aesthetics-wise. Microsoft clearly recognized this problem, yet they failed to recognize that the crux of the problem is WIMP itself.
 
-This must change. XR has greater enterprise potential than desktop computers. Raw throughput capability will one day be proven to exceed that of desktop computers as soon as the RIGHT OS interface enables it. AI voice-based interfaces are part of that story, but we can't always speak our work into a computer. Sometimes, work needs to be more private, even between colleagues in a shared office. We can't adopt XR in the office, let alone perform work on the go, if the interaction model slows us to a crawl in those moments. Thus, XR must present users an interface that is faster than desktop WITH OR WITHOUT an AI assistant.
+If you try to complete nearly any run-of-the-mill office PC tasks on any XR OS, common interfaces make progress so God-awfully slow that no enterprise company would ever consider porting their desktop features into XR in the 2020s.
+
+XR has greater enterprise potential than desktop computers. Raw throughput capability will one day be proven to exceed that of desktop computers as soon as the right OS interface enables it. AI voice-based interfaces are part of that story, but we can't always speak our work into a computer. Sometimes, work needs to be more private, even among colleagues in a shared office. We can't adopt XR in the office if the interaction model slows us to a crawl in these moments. Thus, XR must present an interface that is faster than desktop WITH OR WITHOUT an AI assistant.
+
+---
+
+## The Solution
 
 The "right" XR interface must solve the two glaring challenges that keep XR interfaces slow:
 
@@ -67,7 +73,7 @@ Solve these two problems, and enterprise adoption of XR can begin.
 
 ---
 
-## 🏛️ Core Philosophy & The First Principles
+## 🏛️ 3OS Core Philosophy
 
 1. **Voxels, Not Surfaces:** The fundamental building block of UI/UX in 3OS is a discrete coordinate volume (optimized at $\approx 1\text{ in}^3$ for reliable human motor capability), not a pixel fragment or a flat projection plane. 
 
