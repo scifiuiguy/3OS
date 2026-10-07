@@ -1,10 +1,14 @@
 # 3OS: A Volumetric Operating System Interface
 
 Hollywod depicted a futuristic "Unix system" in Jurassic Park in 1994:
-[![It's a Unix system](https://img.youtube.com/vi/dFUlAQZB9Ng/hqdefault.jpg)](https://www.youtube.com/watch?v=dFUlAQZB9Ng)
+<a href="https://www.youtube.com/watch?v=dFUlAQZB9Ng" target="_blank" rel="noopener noreferrer">
+  <img src="https://img.youtube.com/vi/dFUlAQZB9Ng/hqdefault.jpg" alt="It's a Unix system" />
+</a>
 
-Johnny Mnemonic shows a 3D VR internet in 1995:
-[![Whoa.](https://img.youtube.com/vi/SoxGazX_kkw/hqdefault.jpg)](https://www.youtube.com/watch?v=SoxGazX_kkw)
+Johnny Mnemonic showed a 3D VR internet in 1995:
+<a href="https://www.youtube.com/watch?v=SoxGazX_kkw" target="_blank" rel="noopener noreferrer">
+  <img src="https://img.youtube.com/vi/SoxGazX_kkw/hqdefault.jpg" alt="Whoa." />
+</a>
 
 Both of these movies were shy of the mark to say the least, but they both hint at a 1990s sense of optimism toward 3D computer interfaces eventually becoming better, faster, and more efficient than 2D desktop equivalents. Obviously that didn't happen. YET. What happened to that optimism though?
 
