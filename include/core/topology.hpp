@@ -9,8 +9,8 @@
 
 namespace threeos {
 
-/// ~1 inch voxel edge length in meters (OpenXR / SI).
-constexpr float kDefaultVoxelSizeMeters = 0.0254f;
+/// ~3 inch voxel edge length in meters (OpenXR / SI); Trivariate high-throughput default.
+constexpr float kDefaultVoxelSizeMeters = 0.0762f;
 
 /// Far-world meters represented by one meter in a near-field proxy (e.g. 100 => 1:100).
 constexpr float kDefaultWorldToProxyScale = 100.f;

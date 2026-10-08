@@ -4,7 +4,7 @@
 
 namespace threeos {
 
-/// Discrete ~1-inch voxel index in the allocentric field grid.
+/// Discrete ~3-inch voxel index in the allocentric field grid.
 struct VoxelCoord {
   int32_t x = 0;
   int32_t y = 0;

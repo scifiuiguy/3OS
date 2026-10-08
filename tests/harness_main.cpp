@@ -61,20 +61,20 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  // --- Voxel indexing (~1 inch) ---
-  ThreeOS_Vec3 world{0.03f, 0.0f, -0.03f};
+  // --- Voxel indexing (~3 inch = 0.0762 m) ---
+  ThreeOS_Vec3 world{0.10f, 0.0f, -0.10f};
   ThreeOS_VoxelCoord vc{};
   if (threeos_topology_world_to_voxel(&world, &vc) != 0) {
     std::fprintf(stderr, "FAIL world_to_voxel: %s\n", threeos_last_error());
     ok = false;
   } else {
+    // floor(0.10/0.0762) = 1; floor(-0.10/0.0762) = -2
     if (vc.x != 1) {
       std::fprintf(stderr, "FAIL voxel.x: got %d expected 1\n", vc.x);
       ok = false;
     } else {
       std::printf("OK   voxel.x = %d\n", vc.x);
     }
-    // z = floor(-0.03/0.0254) = floor(-1.18) = -2
     if (vc.z != -2) {
       std::fprintf(stderr, "FAIL voxel.z: got %d expected -2\n", vc.z);
       ok = false;
@@ -88,7 +88,7 @@ int main() {
     std::fprintf(stderr, "FAIL voxel_to_world\n");
     ok = false;
   } else {
-    ok = expect_near("voxel0.center.x", back.x, 0.0127f, 1e-4f) && ok;
+    ok = expect_near("voxel0.center.x", back.x, 0.0381f, 1e-4f) && ok;
   }
 
   // Configurable scale (not hardcoded 1:100 only)

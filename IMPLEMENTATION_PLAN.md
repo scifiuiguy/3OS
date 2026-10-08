@@ -53,7 +53,7 @@ Unity 0.0 → 0.1 (thin Quest harness) → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 �
 **Goal:** World Proxy Half-Dome, Double-Proxy Voxel Lattice, and Voodoo portal teleportation. Prove with **headless tests** here; prove on Quest via the paired **Unity 0.2** gate.
 
 - [x] **Task 2.1: Multiscale coordinate workspace (`src/topology.cpp`)**
-  - [x] Voxel indexing for discrete ~1-inch spatial blocks (`std::array<int, 3>` or equivalent).
+  - [x] Voxel indexing for discrete ~3-inch spatial blocks (`std::array<int, 3>` or equivalent).
   - [x] Scale-down remapping into a near-field **World Proxy Half-Dome**. Keep scale **configurable** (do not hardcode `1:100` as the only ratio).
   - [x] Matrix remapping that projects a far-field cluster into a near-field **Double-Proxy Voxel Lattice**.
 - [x] **Task 2.2: Voodoo portal teleportation**
