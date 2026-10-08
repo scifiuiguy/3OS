@@ -1,6 +1,7 @@
 #include "interop/threeos_marshaller.hpp"
 
 #include "core/interaction_facade.hpp"
+#include "core/kinematics.hpp"
 #include "core/topology.hpp"
 
 #include <cstring>
@@ -11,15 +12,16 @@
 namespace {
 
 constexpr uint32_t kMajor = 0;
-constexpr uint32_t kMinor = 2;
+constexpr uint32_t kMinor = 3;
 constexpr uint32_t kPatch = 0;
-constexpr uint32_t kAbiVersion = 2;
+constexpr uint32_t kAbiVersion = 3;
 
 std::mutex g_mu;
 bool g_initialized = false;
 std::string g_last_error;
 threeos::InteractionFacade g_facade;
 threeos::TopologyWorkspace g_topology;
+threeos::KinematicsEngine g_kinematics;
 uint64_t g_tick_count = 0;
 std::optional<threeos::Pose> g_pending_portal_pose;
 uint64_t g_pending_portal_entity = 0;
@@ -72,6 +74,8 @@ static_assert(sizeof(ThreeOS_InteropInputFrame) == 192, "InteropInputFrame froze
 static_assert(sizeof(ThreeOS_InteropTransformDelta) == 48, "InteropTransformDelta frozen size");
 static_assert(sizeof(ThreeOS_DomeState) == 48, "DomeState size");
 static_assert(sizeof(ThreeOS_DoubleProxyState) == 64, "DoubleProxyState size");
+static_assert(sizeof(ThreeOS_KineticState) == 48, "KineticState size");
+static_assert(sizeof(ThreeOS_StickDebug) == 64, "StickDebug size");
 
 extern "C" THREEOS_API uint32_t threeos_version(void) {
   return (kMajor << 16) | (kMinor << 8) | kPatch;
@@ -95,12 +99,21 @@ extern "C" THREEOS_API uint32_t threeos_sizeof_double_proxy_state(void) {
   return static_cast<uint32_t>(sizeof(ThreeOS_DoubleProxyState));
 }
 
+extern "C" THREEOS_API uint32_t threeos_sizeof_stick_debug(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_StickDebug));
+}
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_kinetic_state(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_KineticState));
+}
+
 extern "C" THREEOS_API int32_t threeos_init(void) {
   std::lock_guard<std::mutex> lock(g_mu);
   g_initialized = true;
   g_tick_count = 0;
   g_facade.set_state(threeos::InteractionState::Idle);
   g_topology = threeos::TopologyWorkspace{};
+  g_kinematics = threeos::KinematicsEngine{};
   g_pending_portal_pose.reset();
   g_pending_portal_entity = 0;
   set_error("");
@@ -110,6 +123,7 @@ extern "C" THREEOS_API int32_t threeos_init(void) {
 extern "C" THREEOS_API void threeos_shutdown(void) {
   std::lock_guard<std::mutex> lock(g_mu);
   g_initialized = false;
+  g_kinematics.clear();
   g_pending_portal_pose.reset();
   set_error("");
 }
@@ -127,21 +141,42 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
   }
 
   ++g_tick_count;
-  if ((frame->button_flags & THREEOS_BTN_RIGHT_SELECT) != 0 ||
-      (frame->button_flags & THREEOS_BTN_LEFT_SELECT) != 0) {
+  if (g_kinematics.state().phase == threeos::KineticPhase::Possessed) {
+    g_facade.set_state(threeos::InteractionState::Possessed);
+  } else if ((frame->button_flags & THREEOS_BTN_RIGHT_SELECT) != 0 ||
+             (frame->button_flags & THREEOS_BTN_LEFT_SELECT) != 0) {
     g_facade.set_state(threeos::InteractionState::Hovering);
   } else {
     g_facade.set_state(threeos::InteractionState::Idle);
   }
+
+  const bool right =
+      (frame->tracking_flags & THREEOS_TRACK_RIGHT_AIM) != 0;
+  const bool left = (frame->tracking_flags & THREEOS_TRACK_LEFT_AIM) != 0;
+  const bool head_valid = (frame->tracking_flags & THREEOS_TRACK_HEAD) != 0;
+  const threeos::Pose hand = right ? from_c(frame->right_aim)
+                                   : (left ? from_c(frame->left_aim) : threeos::Pose{});
+  const bool hand_valid = right || left;
+  const bool kin_moved =
+      g_kinematics.tick(hand, from_c(frame->head), head_valid, frame->time_seconds, hand_valid);
+  const float floor_contact_y =
+      g_kinematics.params().floor_y + g_kinematics.params().object_radius;
 
   if (out_delta != nullptr) {
     std::memset(out_delta, 0, sizeof(*out_delta));
     if (g_pending_portal_pose.has_value()) {
       out_delta->entity_id = g_pending_portal_entity;
       out_delta->pose = to_c(*g_pending_portal_pose);
-      out_delta->flags = 1u;  // portal applied
+      out_delta->flags = THREEOS_XFORM_PORTAL;
       g_pending_portal_pose.reset();
       g_pending_portal_entity = 0;
+    } else if (kin_moved && g_kinematics.state().entity_id != 0) {
+      out_delta->entity_id = g_kinematics.state().entity_id;
+      out_delta->pose = to_c(g_kinematics.state().pose);
+      out_delta->flags = THREEOS_XFORM_KINEMATIC;
+      if (g_kinematics.state().pose.position.y <= floor_contact_y + 1e-4f) {
+        out_delta->flags |= THREEOS_XFORM_FLOOR_CLAMP;
+      }
     } else {
       out_delta->entity_id = 0;
       out_delta->pose = frame->head;
@@ -431,6 +466,114 @@ extern "C" THREEOS_API int32_t threeos_topology_voxel_to_world(ThreeOS_VoxelCoor
   }
   *out_world =
       to_c(g_topology.voxel_center_to_world(threeos::VoxelCoord{voxel.x, voxel.y, voxel.z}));
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_kinematics_set_params(float gain, float deadzone_m,
+                                                            float friction, float floor_y) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!(gain > 0.f) || !(deadzone_m >= 0.f) || !(friction >= 0.f)) {
+    set_error("invalid kinematics params");
+    return -2;
+  }
+  auto p = g_kinematics.params();
+  p.gain = gain;
+  p.deadzone_m = deadzone_m;
+  p.friction = friction;
+  p.floor_y = floor_y;
+  g_kinematics.set_params(p);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_kinematics_possess(uint64_t entity_id,
+                                                         const ThreeOS_Pose* object_pose) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (entity_id == 0 || object_pose == nullptr) {
+    set_error("bad possess args");
+    return -2;
+  }
+  g_kinematics.possess(entity_id, from_c(*object_pose));
+  g_facade.set_state(threeos::InteractionState::Possessed);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_kinematics_release(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  g_kinematics.release();
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_kinematics_get_state(ThreeOS_KineticState* out_state) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_state == nullptr) {
+    set_error("null out_state");
+    return -2;
+  }
+  std::memset(out_state, 0, sizeof(*out_state));
+  const auto& s = g_kinematics.state();
+  out_state->entity_id = s.entity_id;
+  out_state->phase = static_cast<uint32_t>(s.phase);
+  out_state->vel_x = s.velocity.x;
+  out_state->vel_y = s.velocity.y;
+  out_state->vel_z = s.velocity.z;
+  out_state->floor_y = g_kinematics.params().floor_y;
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_kinematics_get_stick_debug(ThreeOS_StickDebug* out_debug) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_debug == nullptr) {
+    set_error("null out_debug");
+    return -2;
+  }
+  std::memset(out_debug, 0, sizeof(*out_debug));
+  const auto& d = g_kinematics.stick_debug();
+  out_debug->active = d.active ? 1u : 0u;
+  out_debug->in_deadzone = d.in_deadzone ? 1u : 0u;
+  out_debug->magnitude = d.magnitude;
+  out_debug->stick = to_c(d.stick);
+  out_debug->ray_origin = to_c(d.ray_origin);
+  out_debug->ray_tip = to_c(d.ray_tip);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_kinematics_set_object_pose(const ThreeOS_Pose* object_pose) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (object_pose == nullptr) {
+    set_error("null pose");
+    return -2;
+  }
+  g_kinematics.set_pose(from_c(*object_pose));
   set_error("");
   return 0;
 }

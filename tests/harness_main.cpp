@@ -43,13 +43,15 @@ int main() {
   const uint32_t patch = version & 0xFFu;
   std::printf("threeos_version => %u.%u.%u (0x%08X)\n", major, minor, patch, version);
   ok = expect_eq("major", major, 0) && ok;
-  ok = expect_eq("minor", minor, 2) && ok;
+  ok = expect_eq("minor", minor, 3) && ok;
   ok = expect_eq("patch", patch, 0) && ok;
-  ok = expect_eq("abi_version", threeos_abi_version(), 2) && ok;
+  ok = expect_eq("abi_version", threeos_abi_version(), 3) && ok;
   ok = expect_eq("sizeof_input_frame", threeos_sizeof_input_frame(), 192) && ok;
   ok = expect_eq("sizeof_transform_delta", threeos_sizeof_transform_delta(), 48) && ok;
   ok = expect_eq("sizeof_dome_state", threeos_sizeof_dome_state(), 48) && ok;
   ok = expect_eq("sizeof_double_proxy_state", threeos_sizeof_double_proxy_state(), 64) && ok;
+  ok = expect_eq("sizeof_kinetic_state", threeos_sizeof_kinetic_state(), 48) && ok;
+  ok = expect_eq("sizeof_stick_debug", threeos_sizeof_stick_debug(), 64) && ok;
 
   if (threeos_tick(nullptr, nullptr) != -1) {
     std::fprintf(stderr, "FAIL tick before init should return -1\n");
@@ -220,6 +222,157 @@ int main() {
     std::printf("OK   tick entity_id=%llu flags=0x%X\n",
                 static_cast<unsigned long long>(delta.entity_id), delta.flags);
   }
+
+  // --- Kinematics: grab-anchored stick / deadzone / coast / floor clamp ---
+  // gain=10 (1/s), deadzone=1cm, friction=4
+  if (threeos_kinematics_set_params(10.f, 0.01f, 4.f, 0.f) != 0) {
+    std::fprintf(stderr, "FAIL kinematics_set_params: %s\n", threeos_last_error());
+    ok = false;
+  }
+
+  ThreeOS_Pose obj = identity_pose_at(0.f, 1.0f, -1.f);
+  const uint64_t entity = 1001;
+  if (threeos_kinematics_possess(entity, &obj) != 0) {
+    std::fprintf(stderr, "FAIL possess: %s\n", threeos_last_error());
+    ok = false;
+  }
+
+  ThreeOS_KineticState ks{};
+  threeos_kinematics_get_state(&ks);
+  ok = expect_eq("kinetic.phase.possessed", ks.phase, 1) && ok;
+
+  ThreeOS_InteropInputFrame kf{};
+  kf.tracking_flags = THREEOS_TRACK_RIGHT_AIM;
+  // Freeze start_hand
+  kf.right_aim = identity_pose_at(0.f, 1.0f, -0.5f);
+  kf.time_seconds = 1.0;
+  threeos_tick(&kf, &delta);
+
+  // Inside 1cm deadzone: no drive
+  kf.frame_index = 2;
+  kf.time_seconds += 1.0 / 72.0;
+  kf.right_aim = identity_pose_at(0.005f, 1.0f, -0.5f);
+  threeos_tick(&kf, &delta);
+  threeos_kinematics_get_state(&ks);
+  if (std::fabs(ks.vel_x) > 1e-3f) {
+    std::fprintf(stderr, "FAIL deadzone leaked vel_x=%f\n", ks.vel_x);
+    ok = false;
+  } else {
+    std::printf("OK   deadzone vel_x≈%f\n", ks.vel_x);
+  }
+  const float x_after_deadzone = delta.pose.position.x;
+
+  // Stick 5cm to +X → v = 10 * 0.05 = 0.5 m/s; object advances from current pose
+  kf.frame_index = 3;
+  kf.time_seconds += 1.0 / 72.0;
+  kf.right_aim = identity_pose_at(0.05f, 1.0f, -0.5f);
+  threeos_tick(&kf, &delta);
+  if (delta.entity_id != entity || (delta.flags & THREEOS_XFORM_KINEMATIC) == 0) {
+    std::fprintf(stderr, "FAIL kinematic delta missing\n");
+    ok = false;
+  } else if (delta.pose.position.x <= x_after_deadzone) {
+    std::fprintf(stderr, "FAIL expected +X glide from current, x=%f\n", delta.pose.position.x);
+    ok = false;
+  } else {
+    std::printf("OK   stick glide x=%f (from %f)\n", delta.pose.position.x, x_after_deadzone);
+  }
+  threeos_kinematics_get_state(&ks);
+  ok = expect_near("stick.vel_x", ks.vel_x, 0.5f, 1e-3f) && ok;
+
+  // Stick debug ray: origin = start_hand + flat_forward*(-Z)*2", tip = origin + stick
+  ThreeOS_StickDebug sd{};
+  if (threeos_kinematics_get_stick_debug(&sd) != 0 || sd.active == 0) {
+    std::fprintf(stderr, "FAIL stick_debug inactive\n");
+    ok = false;
+  } else {
+    const float off = 2.f * 0.0254f;
+    ok = expect_near("stick_debug.mag", sd.magnitude, 0.05f, 1e-4f) && ok;
+    ok = expect_near("stick_debug.stick_x", sd.stick.x, 0.05f, 1e-4f) && ok;
+    // identity head → flat forward (0,0,-1); start_hand at (0,1,-0.5)
+    ok = expect_near("stick_debug.origin_z", sd.ray_origin.z, -0.5f - off, 1e-4f) && ok;
+    ok = expect_near("stick_debug.tip_x", sd.ray_tip.x, 0.05f, 1e-4f) && ok;
+    ok = expect_eq("stick_debug.in_deadzone", sd.in_deadzone, 0) && ok;
+  }
+
+  // Return hand to start → dampen toward halt
+  for (int i = 0; i < 40; ++i) {
+    kf.frame_index++;
+    kf.time_seconds += 1.0 / 72.0;
+    kf.right_aim = identity_pose_at(0.f, 1.0f, -0.5f);
+    threeos_tick(&kf, &delta);
+  }
+  threeos_kinematics_get_state(&ks);
+  if (std::fabs(ks.vel_x) > 0.05f) {
+    std::fprintf(stderr, "FAIL return-to-origin did not dampen vel_x=%f\n", ks.vel_x);
+    ok = false;
+  } else {
+    std::printf("OK   return-to-origin dampened vel_x≈%f\n", ks.vel_x);
+  }
+  const float x_before_reverse = delta.pose.position.x;
+
+  // Reverse stick to -X from current object pose (must not snap to possess start)
+  kf.frame_index++;
+  kf.time_seconds += 1.0 / 72.0;
+  kf.right_aim = identity_pose_at(-0.05f, 1.0f, -0.5f);
+  threeos_tick(&kf, &delta);
+  if (delta.pose.position.x >= x_before_reverse) {
+    std::fprintf(stderr, "FAIL reverse should continue from current x (%f -> %f)\n",
+                 x_before_reverse, delta.pose.position.x);
+    ok = false;
+  } else if (std::fabs(delta.pose.position.x - obj.position.x) < 1e-4f) {
+    std::fprintf(stderr, "FAIL snapped back to possess start\n");
+    ok = false;
+  } else {
+    std::printf("OK   reverse from current x=%f (possess start was %f)\n", delta.pose.position.x,
+                obj.position.x);
+  }
+
+  // ~1 ft stick → high speed (~3 m/s at gain 10)
+  kf.frame_index++;
+  kf.time_seconds += 1.0 / 72.0;
+  kf.right_aim = identity_pose_at(0.30f, 1.0f, -0.5f);
+  threeos_tick(&kf, &delta);
+  threeos_kinematics_get_state(&ks);
+  ok = expect_near("one_foot.vel_x", ks.vel_x, 3.0f, 1e-3f) && ok;
+
+  // Release → coast with friction decay
+  threeos_kinematics_release();
+  threeos_kinematics_get_state(&ks);
+  ok = expect_eq("kinetic.phase.coasting", ks.phase, 2) && ok;
+  float prev_speed = std::sqrt(ks.vel_x * ks.vel_x + ks.vel_y * ks.vel_y + ks.vel_z * ks.vel_z);
+  for (int i = 0; i < 30; ++i) {
+    kf.frame_index = static_cast<uint64_t>(100 + i);
+    kf.time_seconds += 1.0 / 72.0;
+    threeos_tick(&kf, &delta);
+  }
+  threeos_kinematics_get_state(&ks);
+  const float speed = std::sqrt(ks.vel_x * ks.vel_x + ks.vel_y * ks.vel_y + ks.vel_z * ks.vel_z);
+  if (!(speed < prev_speed) && ks.phase != 0) {
+    std::fprintf(stderr, "FAIL friction did not reduce speed (%f -> %f)\n", prev_speed, speed);
+    ok = false;
+  } else {
+    std::printf("OK   friction settle speed %f -> %f phase=%u\n", prev_speed, speed, ks.phase);
+  }
+
+  // Floor clamp: stick downward through y=0
+  obj = identity_pose_at(0.f, 0.5f, -1.f);
+  threeos_kinematics_possess(entity, &obj);
+  kf.right_aim = identity_pose_at(0.f, 0.5f, -0.5f);
+  kf.time_seconds += 1.0 / 72.0;
+  threeos_tick(&kf, &delta);  // freeze start
+  for (int i = 0; i < 20; ++i) {
+    kf.frame_index++;
+    kf.time_seconds += 1.0 / 72.0;
+    kf.right_aim = identity_pose_at(0.f, 0.5f - 0.25f, -0.5f);  // 25cm down stick
+    threeos_tick(&kf, &delta);
+  }
+  if (delta.pose.position.y < 0.074f) {
+    std::fprintf(stderr, "FAIL floor clamp: y=%f below radius\n", delta.pose.position.y);
+    ok = false;
+  } else {
+    std::printf("OK   floor clamp y=%f flags=0x%X\n", delta.pose.position.y, delta.flags);
+  }
+  ok = ((delta.flags & THREEOS_XFORM_FLOOR_CLAMP) != 0) && ok;
 
   threeos_shutdown();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

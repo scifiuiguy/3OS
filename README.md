@@ -13,13 +13,13 @@ Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop P
 
 ## What is 3OS?
 
-3OS (pronounced **"three-oh-ess"**) is a voxel-first operating system interface that attempts to take us back to our roots by drawing upon incredible 90s research to theorize a methodology that could make XR faster than desktop PCs for productivity tasks. Target hardware is HMDs, holographic displays, and any future hardware that enables stereoscopic depth visibility. 3OS rejects the "flatland" bias of legacy WIMP (Windows, Icons, Menus, and Pointers) and multi-touch paradigms that have been a crutch in modern XR for far too long.
+3OS (pronounced **"three-oh-ess"**) is a voxel-first operating system interface that attempts to take us back to our roots by drawing upon incredible 90s research (not Hollywood but actual excellent-yet-rarely-utilized university work - see the Prior Art section) to implement an interface that could make XR faster than desktop PCs for productivity tasks. Target hardware is HMDs, holographic displays, and any future hardware that enables stereoscopic depth visibility. 3OS rejects the "flatland" bias of legacy WIMP (Windows, Icons, Menus, and Pointers) and multi-touch paradigms that have been a crutch in modern XR for far too long. 3OS aims to knock the dust off of the works of HCI giants whose contributions got buried by the mobile era.
 
 ---
 
 ## WIMP is wimpy
 
-The WIMP paradigm is a backwards compatibility tool in XR. It should not be front-and-center in any spatial computing OS. A VR or MR HMD that uses WIMP as its default metaphor set is like Windows 95 launching into a command line with no Desktop, no Start button, and no File Explorer, except at least the command line still brought extra speed for power users. WIMP interfaces do the opposite in XR, yet they're the ONLY OS interface in 2026, rather than a background legacy interface. We cannot expect enterprise software suite companies to consider porting their robust systems into XR using stone tools.
+The WIMP paradigm is a backwards compatibility tool in XR. It should not be front-and-center in any spatial computing OS. A VR or MR HMD that uses WIMP as its default metaphor set is like Windows 95 launching into a command line with no Desktop, no Start button, and no File Explorer, except at least the command line still brought extra speed for power users. WIMP interfaces do the opposite in XR, yet they're the ONLY OS interface in 2026, rather than a background legacy option. We cannot expect enterprise software suite companies to consider porting their robust systems into XR using stone tools.
 
 ## 3OS Basics
 
@@ -65,11 +65,11 @@ The "right" XR interface must solve the three glaring challenges that keep XR in
 
 **1) No Near-Field/Far-Field Parity:** The user has instant intuitive access to the near field, but extremely slow/cumbersome (if any) access to the far field. Since the far field is more than 90% of the whole field, the total productivity canvas in XR ends up smaller with lower throughput than its desktop equivalent. A 2D desktop screen has hundreds of pixel fragment zones in which to place colocated buttons, text labels, images, etc. with rapid access to every one of them at once.
 
-XR has millions of interaction zones in each frustum which would enable multi-tasking that blows desktop interfaces out of the water, but most of these zones are unreachable without silly raycast fishing reel actions, an impossible wrench in the gears for throughput. Imagine requiring 30 seconds to click an icon in Windows. Furthermore, we can't easily see how ridiculously slow our XR interfaces are because this throughput drag is hidden by #2.
+XR has millions of interaction zones in each frustum which would enable adjacency efficiency and multi-tasking that blows desktop interfaces out of the water, but most of these zones are unreachable without silly raycast fishing reel actions, an impossible wrench in the gears for throughput. Imagine requiring 30 seconds to click an icon in Windows. Furthermore, we can't easily see how ridiculously slow our XR interfaces are because this throughput drag is hidden by #2.
 
-**2) WIMP Insufficiency:** The crutch of WIMP denies the use of the depth vector in concert with common 2D table layouts (i.e. WIMP makes 3D matrix and cluster layouts impossible), which occludes the vast potential utility of the XR field almost entirely, which in turn masks the throughput jank of the default raycasting interaction model. Raycasting successfully hides how terribly slow it is by forcing us to drive our Ferrari at 5mph as though that's how fast all racecars drive. A model that enables hands or cursors to hover in any subdivision of the field volume with equivalent effort must replace the legacy model.
+**2) WIMP Insufficiency:** The crutch of WIMP denies the use of the depth vector in concert with common 2D table layouts (i.e. WIMP makes 3D matrix and cluster layouts impossible), which occludes the vast potential utility of the XR field almost entirely, which in turn masks the throughput jank of the default raycasting interaction model. Raycasting successfully hides how terribly slow it is by forcing us to drive our Ferrari at 5mph as though that's how fast all racecars drive. A model that can enable hands or cursors to hover in any subdivision of the field volume with equivalent effort must replace the legacy model.
 
-**3) Perspective vs. Isometric Spatial awareness:** We see in perspective, but perspective can warp our mind's eye of Euclidean space. Our very short arms define the near field where perspective causes almost unnoticeable size warping, thus our mind's eye for hand coordination is formed isometrically. We think of 3D space the way it actually is... true width, depth, and height have an equal relationship, not a scalar one. We know the object moving away is not actually shrinking, but if we need to use a magical interface to reach out and touch that object, we should not expect our hands to easily convert to angular space where farther objects require scaled hand motions, e.g. the requirements of raycasting. To access the far field with equivalent efficacy as the near field, we need to use an isometric interaction model, one that treats hand motion in the near field identically to the far field.
+**3) Perspective vs. Isometric Spatial awareness:** We see in perspective, but perspective can warp our mind's eye of Euclidean space. Our very short arms define the near field where perspective causes almost unnoticeable size warping, thus our mind's eye for hand coordination is formed isometrically. We think of 3D space the way it actually is... true width, depth, and height have an equal relationship, not a scalar one. We know the object moving away is not actually shrinking, but if we need to use a magical interface to reach out and touch that object, we should not expect our hands to easily convert to angular space where farther objects require scaled hand motions, e.g. the requirements of raycasting. To access the far field with equivalent efficacy to the near field, we need to use an isometric interaction model, one that treats hand motion in the near field identically to the far field.
 
 Solve these problems, and enterprise adoption of XR can begin.
 
@@ -91,11 +91,17 @@ These two methods follow 80/20 Pareto distribution, where most objects occupying
 
 ## Ergonomics Determine Interactivity Resolution
 
-The Trivariate Target paper by Grossman and Balakrishnan was instrumental in determining how large the voxels should be for fast-moving hands in a voxel-based OS. The default assumption in 3OS is that hands will be moving rapidly at various moments within the bounding box of a given voodoo volume. The constraint of elbow position for gorilla arm prevention requires a specific bounding box size for that volume. That size is determined by beginning with the hands as close to complete rest as possible while still being visible to the HMD for tracking, which places them at the height of the navel, 12 inches forward from the body with elbows completely at rest in their neutral hanging position beside the body.
+**The limits of the body determine ideal interaction volume bounds:** 
 
-With palms up or down, the hands define the bottom plane of the ideal voodoo volume bounding box in this navel-level position. The center of the bounding box is approximately 12 inches forward of the navel, allowing the user to place fingertips in the center of the box's bottom plane simply by touching their fingertips together with both hands. 3OS may use IPD and/or user height to estimate the ideal offset of the voodoo volume's center anchor. A height of approximately 12-18 inches above that center point constitutes the total height of the voodoo volume bounding box because lifting fingers above that height immediately overtaxes the coracobrachialis muscle, which connects the collar bone to the bicep bone. This muscle can handle hours of flex below the height of eye-level fingertips, which gives us approximately ~18 inches max for the voodoo volume height. The box may have a small offset away from the body defined by 3OS near-field point cursor parameters. For instance, if the near-field cursor offset in front of the hand is 3", then the voodoo volume should also be offset forward of the navel by three more inches.
+The Trivariate Target paper by Grossman and Balakrishnan was instrumental in determining how large the voxels should be for fast-moving hands in a voxel-based OS. The default assumption in 3OS is that hands will be moving rapidly at various moments within the bounding box of a given voodoo volume. The constraint of elbow position for "gorilla arm" prevention requires a specific bounding box size for that volume. That size is determined by beginning with the hands as close to complete rest as possible while still being visible to the HMD for tracking, which places them at the height of the navel, 12 inches forward from the body with elbows completely at rest in their neutral hanging position beside the body.
 
-See [spatial_os_trivariate_validation.md](spatial_os_trivariate_validation.md) for proof that 3" voxel size is ideal for any spatial computing OS in which users want to move hands voxel-to-voxel without overshoot, yielding an ideal 3×3×6 matrix as our default voxel volume. Objects can certainly be bigger and smaller than this resolution, but the underlying default size of objects and spaces between objects if grid-snapping is ever in use will follow this format, and developers of 3OS apps must note that if they want to unlock the fastest possible user hand motion, they must build elements no smaller than this approximate target. 3OS parameterizes all of these default assumptions.
+**Derived Interaction Volume Parameters (Body Anchor/Height/Offset):**
+
+With palms up or down, the hands define the bottom plane of the ideal voodoo volume bounding box in this navel-level position. The center of the bounding box is approximately 12 inches forward of the navel, allowing the user to place fingertips in the center of the box's bottom plane simply by touching their fingertips together with both hands. This is not a gesture to instantiate the box. It's merely an imaginary reference to show approximately where the box anchor lives if the user instantiates it direction forward of the stomach. The user can instantiate multiple voodoo volumes side-by-side. 3OS may use IPD and/or user height to estimate the ideal offset of the voodoo volume's center anchor. A height of approximately 12-18 inches above that center point constitutes the total height of the voodoo volume bounding box because lifting fingers above that height immediately overtaxes the coracobrachialis muscle, which connects the collar bone to the bicep bone. This muscle can handle hours of flex below the height of eye-level fingertips, which gives us approximately ~18 inches max for the voodoo volume height. The box may have a small offset away from the body defined by 3OS near-field point cursor parameters. For instance, if the near-field cursor offset in front of the hand is 3", then the voodoo volume should also be offset forward of the navel by three more inches.
+
+**Research-backed Voxel Size:**
+
+See [spatial_os_trivariate_validation.md](spatial_os_trivariate_validation.md) for proof that 3" voxel size is ideal for any spatial computing OS in which users want to move hands voxel-to-voxel without overshoot, yielding an ideal 3×3×5 matrix as our default voodoo volume. Objects can certainly be bigger and smaller than this resolution, but the underlying default size of objects and spaces between objects if grid-snapping is ever in use will follow this format, and developers of 3OS apps must note that if they want to unlock the fastest possible user hand motion, they should build elements no smaller than this approximate target. 3OS parameterizes all of these default assumptions.
 
 ---
 
@@ -109,18 +115,34 @@ To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR s
 ```
 
 ### State 1: Macro-Targeting (The World-in-Miniature Proxy)
-* **The Problem:** Humans cannot easily gaze at or raycast an empty voxel in which to instantiate or manage far field elements. A single stationary gaze vector penetrates thousands of voxels simultaneously. The ability to choose any one voxel in the entire field must be rapid and intuitive.
-* **The Solution:** Via gesture or button press, the user instantiates a localized, downscaled translucent **World Proxy Half-Dome** within comfortable, nearly-at-rest reach. 
+* **The Problem:** 
+
+  Humans cannot easily gaze at or raycast an empty voxel in which to instantiate or manage far field elements. A single stationary gaze vector penetrates thousands of voxels simultaneously. The ability to choose any one voxel in the entire field must be rapid and intuitive.
+* **The Solution:** 
+  
+  Via gesture or button press, the user instantiates a localized, downscaled translucent **World Proxy Half-Dome** within comfortable, nearly-at-rest reach. 
 
 ### State 2: Micro-Resolution (The Double-Proxy Voxel Lattice)
-* **The Mechanism:** The moment a coarse region is selected in the World Proxy Half-Dome, that specific slice of space instantly blooms into a **Double-Proxy Voxel Grid** directly in front of the user's primary workspace. The chunk of empty space is proxied to the user. Simultaneously, the user's hand or cursor is proxied out into that chunk in the far field.
-* **Lattice Visualization:** The hidden coordinate structure of that far field volume is rendered locally as a subtle, wireframe volumetric lattice.
-* **Decoupled Selection:** The user drives a point cursor offset by a few inches away from the driving hand to prevent that hand from occluding the proxy. The user is free to gaze at the actual fragment in the far field, using the peripheral proxy as a remote control device, or if the fragment is too far away for good visual fidelity, the user can look primarily at the proxy instead. Cursor hover and selection can initiate CRUD actions, especially CREATE functions if the current proxy contains empty voxel space. Menu options e.g. Create New Box (3D equivalent of a folder) or Create New Object (3D equivalent of a file) are typically presented in matrix layout as long as there are more than four options.
+* **The Mechanism:** 
+
+  The moment a coarse region is selected in the World Proxy Half-Dome, that specific slice of space instantly blooms into a **Double-Proxy Voxel Grid** directly in front of the user's primary workspace. The chunk of empty space is proxied to the user. Simultaneously, the user's hand or cursor is proxied out into that chunk in the far field.
+* **Lattice Visualization:** 
+
+  The hidden coordinate structure of that far field volume is rendered locally as a subtle, wireframe volumetric lattice.
+* **Decoupled Selection:** 
+
+  The user drives a point cursor offset by a few inches away from the driving hand to prevent that hand from occluding the proxy. The user is free to gaze at the actual fragment in the far field, using the peripheral proxy as a remote control device, or if the fragment is too far away for good visual fidelity, the user can look primarily at the proxy instead. Cursor hover and selection can initiate CRUD actions, especially CREATE functions if the current proxy contains empty voxel space. Menu options e.g. Create New Box (3D equivalent of a folder) or Create New Object (3D equivalent of a file) are typically presented in matrix layout as long as there are more than four options.
 
 ### State 3: Possession & Transformation (Jean Grey Engine)
-* **The Mechanism:** An already created object can be hovered by sending a point cursor inside its volume rather than raycasting onto its surface. Once selected, the user has the option to use the proxy (a voodoo doll) as a transformation remote control for **Velocity-Based translation and/or rotation**.
-* **Kinetic Economy:** Tiny, low-fatigue wrist gestures generate acceleration and velocity vectors that scale proportionally, gliding objects effortlessly across the field.
-* **Momentum & Friction:** The system incorporates virtual inertia. Releasing an asset with momentum allows it to slide naturally through the voxels and settle based on an OS-level spatial friction coefficient.
+* **The Mechanism:** 
+
+  An already created object can be hovered by sending a point cursor inside its volume rather than raycasting onto its surface. Once hovered, the user can select it with a gesture, usually index pinch. Once selected, the user has the option to use the proxy (a voodoo doll) as a transformation remote control for **Velocity-Based translation and/or rotation**.
+* **Kinetic Economy:** 
+
+  Tiny, low-fatigue wrist gestures generate acceleration and velocity vectors that scale proportionally, gliding objects effortlessly across the field.
+* **Momentum & Friction:** 
+
+  The system incorporates virtual inertia. Releasing an asset with momentum allows it to slide naturally through the voxels and settle based on an OS-level spatial friction coefficient.
 
 ---
 
@@ -182,16 +204,19 @@ Boxes in 3OS are the 3D equivalent of folders in legacy platforms. They can expa
 * **Agent-Generated:** All objects default to a custom 3D layout generated by an AI assistant per user instructions, including advanced filtering, combinations of clusters and matrices of multi-condition criteria, etc.
 
 
-### 3) 3D Buttons
+### 3) Voodoo Volumes
+  These are the workhorse of 3OS, merging the near and far field via non-Euclidean portals. To engage one, the user can manifest a World Proxy Half Dome which represents a miniature model of the entire field. While holding the gesture, the user drags a point cursor through the interior of the Half Dome, and a far-field voodoo volume instantiates and moves in concert around the actual field. By releasing this same gesture that opened the Half Dome, the user chooses where to drop the far field voodoo volume. Upon placing it, a near-field voodoo volume immediate replaces the half dome, opening the other end of the portal. Now any contents or empty space in that part of the far field are suddenly in hand's reach in the near field. Any objects or boxes encapsulated by the voodoo volume now show a ghostly copy of themselves easily within the user's reach. Likewise, the user can place a point cursor or hand into the vooodoo volume and a ghostly copy of their cursor or hand will appear out on the other end of the portal in the far field. The user is welcome to gaze at either the near-field voodoo volume or the far-field voodoo volume. The voodoo volume's bounding box can be pinched/stretched to scale the far-field bounding box while the near field bounding box remains the same ergonomically-perfect size. If an object in the volume is dragged in real far-field space, the far field bounding box will scale up to keep it in scope. Meanwhile, the bounding box of the near field volume will remain the same size, causing its inner contents to appear to scale down. The bounding box can also be single-hand dragged for velocity-based translation of the far-field bounding box. And finally, the voodoo volume will have an button at its top back right corner to collapse the portal.
+
+### 4) 3D Buttons
   In 3OS, buttons are typically depicted as translucent cubes or other simple volumetric prisms, often with smoothed edges. Text labels may hover near, above, below, or inside the geometry, typically shaded over the top of their geo to enable clear legibility even if geo occludes any part of the text. Buttons in 3OS are volumetric, meaning cursors don't hover ONTO them; they hover INTO them. If touched directly by virtual hands, the button surface has no physics properties. The hand travels through it as though it is a ghost. We call it a button to avoid confusion around functionality. It is an event trigger handler just like any other button, but it does not reside on a surface, nor is it to be pressed. It floats in mid air, needing no flat panel to rest upon. A cursor enters into it from any vector and triggers a hover-state glow effect or other visual cue. During hover, the user performs a gesture, usually index-to-thumb pinch, to activate the button.
 
-### 4) Matrices
+### 5) Matrices
   Elements in legacy UI lay out on X and Y dimensions in table form. In a voxel-based OS, utilizing even one more interactive plane ahead of or behind the first plane unlocks more grid positions with less travel distance. For instance, a 4x4 or 2x8 table of elements in a 2D UI is much better laid out as a 2x2x2 matrix in 3OS. A minimum adjacency analysis on any collection of items will show matrices are ergonomically better and faster than tables.
 
-### 5) Clusters
+### 6) Clusters
   Similar to matrices, but spatial positioning is more loose in that the objects need not align on any kind of local Euclidean grid. Instead, they operate on a set of min-max adjacency parameters from their nearest neighbors, usually grouped in close proximity due to some shared attribute.
 
-### 6) Spherical Multi-Choice Nodes
+### 7) Spherical Multi-Choice Nodes
   A 3D-ified radio button element. 3OS supports easy creation of these spherical interfaces which are similar to desktop radio button lists in that alternate choices (A or B or C etc.) are arranged near each other, but in 3OS they can occupy uniform angular space around a center point. They may render as segments of a sphere, or each as 3D buttons floating in a formation. The cursor's vector relative to the center point changes hover state enabling highlight of one of the elements in that collection. This interface style is the highest-performance voxel-based multiple-choice option because it eliminates any possibility of overshoot errors. The multi-choice node may have an extra core node at its center which could be an extra multi-choice option or a neutral "none" option, and it may also have an out-of-bounds limit radius encapsulating the group.
 
 
@@ -275,7 +300,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 ### 6. The Poros Framework — 2021
 *   **Citation:** Pohl, H., Lilija, K., McIntosh, J., & Hornbæk, K. (2021). "Poros: Configurable Proxies for Distant Interactions in VR." *Proceedings of the 2021 CHI Conference on Human Factors in Computing Systems (CHI '21)*, Article 357, 1–13.
-*   **Significance to 3OS:** The direct conceptual and geometric peer to 3OS. This paper broke the legacy "Flatland" window paradigm by showing that users can select arbitrary volumetric bounding regions in the far field and mirror them as non-Euclidean near-field workspace portals. 3OS adapts this concept for bimanual selection frustums that are cubic instead of spherical, plus 3OS combines world-in-miniature with these portals for  more rapid cross-proxy multi-portal manipulation primarily intended as a 3D corollary to a 2D desktop File Explorer.
+*   **Significance to 3OS:** The direct conceptual and geometric peer to 3OS. This paper broke the legacy "Flatland" window paradigm by showing that users can select arbitrary volumetric bounding regions in the far field and mirror them as non-Euclidean near-field workspace portals. 3OS adapts this concept for bimanual selection frustums that are cubic instead of spherical. The most salient difference between Poros and 3OS is that Poros still used raycasting to generate portals, whereas 3OS engages world-in-miniature as the creation model for portals, yielding rapid cross-proxy multi-portal manipulation intended as a competitive 3D corollary to a 2D desktop File Explorer.
 
 ### 7. Reality Proxy — 2025
 *   **Citation:** Al-Sadoun, A., et al. (2025). "Reality Proxy: Fluid Interactions with Real-World Objects in MR." *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.
@@ -312,6 +337,6 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-The shared library target is `3os_kernel` (`3os_kernel.dll` / `lib3os_kernel.so`). The console harness prints `threeos_version` (currently `0.2.0`) and checks the frozen ABI (`InteropInputFrame` = 192 bytes). Host ABI headers: `include/interop/threeos_abi.h`. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md); Unity Quest verification lives in [3OS_Unity](https://github.com/scifiuiguy/3OS_Unity).
+The shared library target is `3os_kernel` (`3os_kernel.dll` / `lib3os_kernel.so`). The console harness prints `threeos_version` (currently `0.3.0`) and checks the frozen ABI (`InteropInputFrame` = 192 bytes). Host ABI headers: `include/interop/threeos_abi.h`. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md); Unity Quest verification lives in [3OS_Unity](https://github.com/scifiuiguy/3OS_Unity).
 
 *This project is dedicated to breaking the flatland illusion. Welcome to true volumetric computing.*

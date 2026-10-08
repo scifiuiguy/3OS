@@ -68,14 +68,14 @@ Unity 0.0 → 0.1 (thin Quest harness) → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 �
 ### ⚡ Phase 0.3: Kinematics + Minimal Floor Clamp (v0.3.0)
 **Goal:** Velocity telekinesis with inertia/friction, plus a **minimal enclosure** so demos do not sink objects through the floor.
 
-- [ ] **Task 3.1: Kinetic control system (`src/kinematics.cpp`)**
-  - [ ] Document the control law before coding: hand delta → acceleration/velocity, gain, deadzone, release → friction settle (the README’s rate-control story, not incomplete one-liners).
-  - [ ] Rate-based tracking (not 1:1 position). Sample hand/frame deltas to drive proportional velocity.
-  - [ ] Virtual inertia on release with an OS-level spatial friction coefficient.
-- [ ] **Task 3.2: Minimal floor clamp (subset of enclosure)**
-  - [ ] Clamp vertical motion when an object intersects the floor height profile (\(V_y = 0\) / snap) so Phase 0.3 demos stay usable.
-- [ ] **Task 3.3: Headless kinematics verification**
-  - [ ] Unit tests for gain/deadzone/friction settle and floor clamp with injected pose streams.
+- [x] **Task 3.1: Kinetic control system (`src/kinematics.cpp`)**
+  - [x] Document the control law before coding: hand delta → acceleration/velocity, gain, deadzone, release → friction settle (the README’s rate-control story, not incomplete one-liners).
+  - [x] Rate-based tracking (not 1:1 position). Sample hand/frame deltas to drive proportional velocity.
+  - [x] Virtual inertia on release with an OS-level spatial friction coefficient.
+- [x] **Task 3.2: Minimal floor clamp (subset of enclosure)**
+  - [x] Clamp vertical motion when an object intersects the floor height profile (\(V_y = 0\) / snap) so Phase 0.3 demos stay usable.
+- [x] **Task 3.3: Headless kinematics verification**
+  - [x] Unit tests for gain/deadzone/friction settle and floor clamp with injected pose streams.
 
 ---
 
@@ -143,6 +143,16 @@ Unity 0.0 → 0.1 (thin Quest harness) → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 �
   - [ ] Wall masking does not clip through partition planes incorrectly.
   - [ ] Storage glyphs + rename via host text injection.
   - [ ] Layout mode toggle and at least one anchor-mode switch work in-session.
+
+---
+
+### 📝 Post-1.0: Parking lot (ideas without tasks yet)
+
+Capture design notes and UX instincts that are not ready for checklist tasks. No sequencing — promote into a real phase when fleshed out. Mirror host-facing notes in Unity’s Post-1.0 section when relevant.
+
+**Notes**
+
+- **Selection-gated telekinesis.** Possession/drive should follow selection state, not grip lifetime alone: deselection disables telekinesis; while selected, grip can re-drive immediately even after far-field throws (rest grip without losing the object). Complements later voodoo volumes without requiring voodoo for every long move. *(See Unity Post-1.0; felt on Quest 0.3.)*
 
 ---
 
