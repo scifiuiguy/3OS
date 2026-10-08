@@ -247,11 +247,14 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 ## 🚀 Getting Started
 
 ```bash
-# Clone the 3OS Volumetric Kernel Architecture
-git clone https://github.com/your-repo/3OS.git
+git clone https://github.com/scifiuiguy/3OS.git
+cd 3OS
 
-# Navigate to the core velocity mapping and proxy pipeline engine
-cd 3OS/core/kinematics
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
 ```
+
+The shared library target is `3os_kernel` (`3os_kernel.dll` / `lib3os_kernel.so`). The console harness prints `threeos_version` (currently `0.1.0`) and checks the frozen ABI (`InteropInputFrame` = 192 bytes). Host ABI headers: `include/interop/threeos_abi.h`. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md); Unity Quest verification lives in [3OS_Unity](https://github.com/scifiuiguy/3OS_Unity).
 
 *This project is dedicated to breaking the flatland illusion. Welcome to true volumetric computing.*

@@ -1,2 +1,47 @@
+# Local machine attributes for agent context (not shared)
+GLOBAL_ATTRIBUTES.md
+
 # Companion SDK — separate repo, local reference only
 3OS_Unity/
+
+# Local Unity Editor host project (created via Unity CLI; not part of core)
+3OS_Unity_Sample_Project/
+unity-create-sample.log
+unity-phase00-bootstrap.log
+unity-*.log
+# Accidental APK drops at repo root (canonical out dir is Sample_Project/Builds/Android/)
+*.apk
+
+# Build trees
+build/
+out/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+install_manifest.txt
+CTestTestfile.cmake
+Testing/
+
+# Compiled artifacts
+*.obj
+*.o
+*.a
+*.lib
+*.dll
+*.exp
+*.pdb
+*.ilk
+*.so
+*.dylib
+*.exe
+
+# IDE / OS
+.vs/
+.vscode/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+build-android-arm64/

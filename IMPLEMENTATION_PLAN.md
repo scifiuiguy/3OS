@@ -21,47 +21,47 @@ Unity 0.0 → 0.1 (thin Quest harness) → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 �
 ### ⚙️ Phase 0.0: Repo Scaffold
 **Goal:** Make the tree buildable before any domain logic.
 
-- [ ] **Task 0.1: Skeleton & build system**
-  - [ ] Create the folder layout from the README (`include/`, `src/`, `shaders/`, `.github/workflows/`).
-  - [ ] Add `CMakeLists.txt` that builds a shared library (`3os_kernel`) and a console test target.
-  - [ ] Add MIT `LICENSE`, `.gitignore`, and a CI stub that compiles on Windows (and Linux if available).
-- [ ] **Task 0.2: Hello export**
-  - [ ] Export one `extern "C"` symbol (e.g. `threeos_version`) and call it from the console harness.
+- [x] **Task 0.1: Skeleton & build system**
+  - [x] Create the folder layout from the README (`include/`, `src/`, `shaders/`, `.github/workflows/`).
+  - [x] Add `CMakeLists.txt` that builds a shared library (`3os_kernel`) and a console test target.
+  - [x] Add MIT `LICENSE`, `.gitignore`, and a CI stub that compiles on Windows (and Linux if available).
+- [x] **Task 0.2: Hello export**
+  - [x] Export one `extern "C"` symbol (e.g. `threeos_version`) and call it from the console harness.
 
 ---
 
 ### 🧱 Phase 0.1: Core Types, Blittable ABI, Stub Facade (v0.1.0)
 **Goal:** Define the domain model and the memory-safe plain-C ABI that Unity/Unreal/OpenXR hosts will call. Keep the facade as a stub until topology/kinematics exist.
 
-- [ ] **Task 1.1: Core types first (`include/core/`)**
-  - [ ] Define first-class types: `VoxelCoord`, `Pose`, `Box`, `Object`, `InteractionState`, and anchor/layout enums as needed by later phases.
-  - [ ] Prefer explicit padding + `static_assert` on `sizeof` / `offsetof` over blanket `#pragma pack(1)` unless a host ABI proves packing is required.
-- [ ] **Task 1.2: Design blittable interop layouts (`include/interop/`)**
-  - [ ] Implement binary-safe C structures (`InteropInputFrame`, `InteropTransformDelta`, etc.) with fixed-width primitives.
-  - [ ] Document ownership, lifetime, and units (meters vs inches, Left-handed vs OpenXR conventions).
-- [ ] **Task 1.3: Stub system orchestrator (`src/interaction_facade.cpp`)**
-  - [ ] Sketch `InteractionState` (`Idle`, `Hovering`, `Possessed`, `Transforming`) and callback slots (`OnObjectSelect`, `OnObjectHoverEnter`, `OnMultiSelectTriggered`) without full proxy logic yet.
-- [ ] **Task 1.4: Flatten native export layers (`src/threeos_marshaller.cpp`)**
-  - [ ] Wrap exports in `extern "C"` with platform macros (`__declspec(dllexport)` / visibility attributes).
-- [ ] **Task 1.5: Local test harness**
-  - [ ] Console pipeline passes mock frames across the C marshalling layer.
-  - [ ] Assert layout/size metrics; no silent padding surprises.
+- [x] **Task 1.1: Core types first (`include/core/`)**
+  - [x] Define first-class types: `VoxelCoord`, `Pose`, `Box`, `Object`, `InteractionState`, and anchor/layout enums as needed by later phases.
+  - [x] Prefer explicit padding + `static_assert` on `sizeof` / `offsetof` over blanket `#pragma pack(1)` unless a host ABI proves packing is required.
+- [x] **Task 1.2: Design blittable interop layouts (`include/interop/`)**
+  - [x] Implement binary-safe C structures (`InteropInputFrame`, `InteropTransformDelta`, etc.) with fixed-width primitives.
+  - [x] Document ownership, lifetime, and units (meters vs inches, Left-handed vs OpenXR conventions).
+- [x] **Task 1.3: Stub system orchestrator (`src/interaction_facade.cpp`)**
+  - [x] Sketch `InteractionState` (`Idle`, `Hovering`, `Possessed`, `Transforming`) and callback slots (`OnObjectSelect`, `OnObjectHoverEnter`, `OnMultiSelectTriggered`) without full proxy logic yet.
+- [x] **Task 1.4: Flatten native export layers (`src/threeos_marshaller.cpp`)**
+  - [x] Wrap exports in `extern "C"` with platform macros (`__declspec(dllexport)` / visibility attributes).
+- [x] **Task 1.5: Local test harness**
+  - [x] Console pipeline passes mock frames across the C marshalling layer.
+  - [x] Assert layout/size metrics; no silent padding surprises.
 
 ---
 
 ### 🕸 Phase 0.2: Topology, Proxies & Portals (v0.2.0)
 **Goal:** World Proxy Half-Dome, Double-Proxy Voxel Lattice, and Voodoo portal teleportation. Prove with **headless tests** here; prove on Quest via the paired **Unity 0.2** gate.
 
-- [ ] **Task 2.1: Multiscale coordinate workspace (`src/topology.cpp`)**
-  - [ ] Voxel indexing for discrete ~1-inch spatial blocks (`std::array<int, 3>` or equivalent).
-  - [ ] Scale-down remapping into a near-field **World Proxy Half-Dome**. Keep scale **configurable** (do not hardcode `1:100` as the only ratio).
-  - [ ] Matrix remapping that projects a far-field cluster into a near-field **Double-Proxy Voxel Lattice**.
-- [ ] **Task 2.2: Voodoo portal teleportation**
-  - [ ] Near ↔ far drag through an open double-proxy (Poros-style non-Euclidean remapping).
-  - [ ] Cross-proxy drag when multiple double-proxies are open (A → B teleport).
-  - [ ] World Proxy Half-Dome as global drop target for far-field placement.
-- [ ] **Task 2.3: Headless topology verification**
-  - [ ] Unit tests for voxel index math, proxy remaps, and portal teleport transforms (fake poses in, expected poses out).
+- [x] **Task 2.1: Multiscale coordinate workspace (`src/topology.cpp`)**
+  - [x] Voxel indexing for discrete ~1-inch spatial blocks (`std::array<int, 3>` or equivalent).
+  - [x] Scale-down remapping into a near-field **World Proxy Half-Dome**. Keep scale **configurable** (do not hardcode `1:100` as the only ratio).
+  - [x] Matrix remapping that projects a far-field cluster into a near-field **Double-Proxy Voxel Lattice**.
+- [x] **Task 2.2: Voodoo portal teleportation**
+  - [x] Near ↔ far drag through an open double-proxy (Poros-style non-Euclidean remapping).
+  - [x] Cross-proxy drag when multiple double-proxies are open (A → B teleport).
+  - [x] World Proxy Half-Dome as global drop target for far-field placement.
+- [x] **Task 2.3: Headless topology verification**
+  - [x] Unit tests for voxel index math, proxy remaps, and portal teleport transforms (fake poses in, expected poses out).
 
 ---
 
