@@ -148,8 +148,12 @@ While dragging an Object glyph near a Box within snap distance (**0.2 m**): snap
   - [x] Assert `.3glyph` metadata maps `.glb` content to the glTF pack (distinct from Box packs).
   - [x] Insert flow + event/ack as in 4.4/4.5; selection set/get/clear + clear-on-insert.
   - [ ] *(Rename via host text is **not** a 0.4 gate — deferred to Phase 1.0 with the text router.)*
+- [x] **Task 4.8: Box expand / collapse layout**
+  - [x] Shared `field_spacing_m` (default 0.22 m) for demo + expand matrices.
+  - [x] `expand_box` / `collapse_box` (+ parent/in_field helpers): cubic matrix above parent; uniform cell-hash encroachment (no octree); children stay independent world poses.
+  - [x] Harness: expand places children above box without overlapping a blocker; collapse clears `in_field` / expanded flag.
 
-**Headless / Quest gate (0.4):** Harness green for glyphs, cubic layout, snap-insert, selection ABI. Quest APK demonstrates host listing + matrix field + cut write-through + selection highlight / far possess (device smoke on latest APK).
+**Headless / Quest gate (0.4):** Harness green for glyphs, cubic layout, snap-insert, selection ABI, box expand/collapse. Quest APK demonstrates host listing + matrix field + cut write-through + selection highlight / far possess + Box double-tap expand / X close (device smoke on latest APK).
 
 ---
 
@@ -217,6 +221,7 @@ Capture design notes and UX instincts that are not ready for checklist tasks. No
 
 - *(Selection-gated telekinesis promoted into Phase 0.4 Task 4.6.)*
 - [ ] **Glyph pack GUI (artist tool):** Simple desktop/Editor UI to generate `.3glyph` files (pick GLB, edit `THREEOS_glyph` fields, inject metadata) for artists who do not want to run `tools/inject_3glyph.py` from the CLI. Wraps the existing injector; does not embed host shaders in the pack.
+- [ ] **Global field spacing + glyph scale:** Runtime `threeos_storage_get/set_field_spacing(float meters)` (clamped); Unity inspector/settings drive both kernel spacing and host `GlyphSizeM` (keep ~2.2× ratio or one master “field cell size”); optionally re-layout in-field matrices and rescale glyph roots so the whole field can be resized without hunting magic numbers. Kernel already shares `Workspace::kDefaultFieldSpacingM` / `field_spacing_m_` for demo + box-expand layout.
 
 ---
 

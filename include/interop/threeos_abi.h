@@ -177,7 +177,7 @@ typedef struct ThreeOS_DoubleProxyState {
 typedef struct ThreeOS_WorkspaceItem {
   uint64_t entity_id;
   uint32_t kind;  /* 0 Object, 1 Box */
-  uint32_t flags; /* bit0 in_field, bit1 insert_pending */
+  uint32_t flags; /* bit0 in_field, bit1 insert_pending, bit2 box_expanded */
   ThreeOS_Pose pose;
   uint32_t child_count;
   uint32_t box_visual; /* 0 n/a, 1 closed, 2 open */
@@ -311,6 +311,20 @@ THREEOS_API int32_t threeos_storage_try_commit_insert(void);
 THREEOS_API int32_t threeos_storage_poll_event(ThreeOS_StorageEvent* out_event);
 THREEOS_API int32_t threeos_storage_ack_event(int32_t success);
 THREEOS_API int32_t threeos_storage_set_box_open(uint64_t box_id, int32_t open);
+
+/** Parent an entry under a box (parent_box_id=0 → root). */
+THREEOS_API int32_t threeos_storage_set_parent_box(uint64_t entity_id, uint64_t parent_box_id);
+THREEOS_API int32_t threeos_storage_set_in_field(uint64_t entity_id, int32_t in_field);
+/** Read parent_box (0 = root). Returns 0 on success. */
+THREEOS_API int32_t threeos_storage_get_parent_box(uint64_t entity_id, uint64_t* out_parent_box_id);
+
+/**
+ * Expand box contents into the field: children with parent_box==box_id become
+ * in_field and are laid out in a cubic matrix above the box (collision-aware).
+ */
+THREEOS_API int32_t threeos_storage_expand_box(uint64_t box_id);
+/** Collapse expanded children (in_field=false) and close box visual. */
+THREEOS_API int32_t threeos_storage_collapse_box(uint64_t box_id);
 
 /** Install a .3glyph / GLB pack containing THREEOS_glyph metadata. */
 THREEOS_API int32_t threeos_glyph_install_pack(const uint8_t* bytes, uint32_t byte_count);

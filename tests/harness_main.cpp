@@ -1,5 +1,6 @@
 #include "interop/threeos_abi.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -593,6 +594,122 @@ int main() {
     ok = false;
   } else {
     std::printf("OK   selection cleared on insert\n");
+  }
+
+  // Expand / collapse: children above box; lift when default layer is occupied.
+  {
+    threeos_storage_clear();
+    uint64_t parent = 0;
+    uint64_t child_a = 0;
+    uint64_t child_b = 0;
+    uint64_t blocker = 0;
+    ThreeOS_Pose head = identity_pose_at(0.f, 1.5f, 0.f);
+    if (threeos_storage_add_box("Parent", "Parent", 0, &parent) != 0 ||
+        threeos_storage_add_object("a.txt", "Parent/a.txt", &child_a) != 0 ||
+        threeos_storage_add_object("b.txt", "Parent/b.txt", &child_b) != 0 ||
+        threeos_storage_add_object("blocker.glb", "blocker.glb", &blocker) != 0 ||
+        threeos_storage_set_parent_box(child_a, parent) != 0 ||
+        threeos_storage_set_parent_box(child_b, parent) != 0 ||
+        threeos_storage_set_in_field(child_a, 0) != 0 ||
+        threeos_storage_set_in_field(child_b, 0) != 0 ||
+        threeos_storage_layout_demo(&head) != 0) {
+      std::fprintf(stderr, "FAIL expand seed: %s\n", threeos_last_error());
+      ok = false;
+    } else {
+      ThreeOS_WorkspaceItem parent_item{};
+      for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+        ThreeOS_WorkspaceItem it{};
+        threeos_storage_get_item(i, &it);
+        if (it.entity_id == parent) {
+          parent_item = it;
+          break;
+        }
+      }
+
+      // Occupy the default expand cell (one spacing above parent) to force a lift.
+      ThreeOS_Pose blocked = parent_item.pose;
+      blocked.position.y += 0.22f;
+      threeos_kinematics_possess(blocker, &blocked);
+      {
+        ThreeOS_InteropInputFrame bf{};
+        bf.tracking_flags = THREEOS_TRACK_RIGHT_AIM | THREEOS_TRACK_HEAD;
+        bf.right_aim = blocked;
+        bf.head = head;
+        bf.time_seconds = 40.0;
+        threeos_tick(&bf, &delta);
+        threeos_kinematics_set_object_pose(&blocked);
+        bf.frame_index++;
+        bf.time_seconds += 1.0 / 72.0;
+        bf.right_aim = blocked;
+        threeos_tick(&bf, &delta);
+      }
+      threeos_kinematics_release();
+
+      if (threeos_storage_expand_box(parent) != 0) {
+        std::fprintf(stderr, "FAIL expand_box: %s\n", threeos_last_error());
+        ok = false;
+      } else {
+        float child_min_y = 1e9f;
+        float closest_blocker = 1e9f;
+        bool children_in_field = true;
+        bool parent_expanded = false;
+        for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+          ThreeOS_WorkspaceItem it{};
+          threeos_storage_get_item(i, &it);
+          if (it.entity_id == parent) {
+            parent_expanded = (it.flags & 4u) != 0;
+          }
+          if (it.entity_id == child_a || it.entity_id == child_b) {
+            if ((it.flags & 1u) == 0) {
+              children_in_field = false;
+            }
+            child_min_y = std::min(child_min_y, it.pose.position.y);
+            const float dx = it.pose.position.x - blocked.position.x;
+            const float dy = it.pose.position.y - blocked.position.y;
+            const float dz = it.pose.position.z - blocked.position.z;
+            closest_blocker = std::min(closest_blocker, std::sqrt(dx * dx + dy * dy + dz * dz));
+          }
+        }
+
+        if (!children_in_field || !parent_expanded) {
+          std::fprintf(stderr, "FAIL expand flags in_field/expanded\n");
+          ok = false;
+        } else if (child_min_y < parent_item.pose.position.y + 0.15f) {
+          std::fprintf(stderr, "FAIL expand not above parent (ymin=%f parent=%f)\n",
+                       child_min_y, parent_item.pose.position.y);
+          ok = false;
+        } else if (closest_blocker < 0.11f) {
+          std::fprintf(stderr, "FAIL expand overlapped blocker (d=%f)\n", closest_blocker);
+          ok = false;
+        } else {
+          std::printf("OK   expand above parent, avoided blocker (d=%f)\n", closest_blocker);
+        }
+
+        if (threeos_storage_collapse_box(parent) != 0) {
+          std::fprintf(stderr, "FAIL collapse_box: %s\n", threeos_last_error());
+          ok = false;
+        } else {
+          bool any_child_field = false;
+          parent_expanded = false;
+          for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+            ThreeOS_WorkspaceItem it{};
+            threeos_storage_get_item(i, &it);
+            if ((it.entity_id == child_a || it.entity_id == child_b) && (it.flags & 1u) != 0) {
+              any_child_field = true;
+            }
+            if (it.entity_id == parent && (it.flags & 4u) != 0) {
+              parent_expanded = true;
+            }
+          }
+          if (any_child_field || parent_expanded) {
+            std::fprintf(stderr, "FAIL collapse left children/parent expanded\n");
+            ok = false;
+          } else {
+            std::printf("OK   collapse clears in_field + expanded\n");
+          }
+        }
+      }
+    }
   }
 
   threeos_shutdown();

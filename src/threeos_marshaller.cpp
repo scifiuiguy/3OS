@@ -733,11 +733,14 @@ void fill_workspace_item(const threeos::WorkspaceEntry& e, ThreeOS_WorkspaceItem
   if (g_workspace.snap().pending && g_workspace.snap().object_id == e.id) {
     out->flags |= 2u;
   }
+  if (e.kind == threeos::StorageKind::Box && e.expanded) {
+    out->flags |= 4u;
+  }
   out->pose = to_c(e.pose);
   out->child_count = e.child_count;
   out->box_visual = 0;
   if (e.kind == threeos::StorageKind::Box) {
-    out->box_visual = (e.glyph_id == "box_open") ? 2u : 1u;
+    out->box_visual = (e.expanded || e.glyph_id == "box_open") ? 2u : 1u;
   }
   copy_cstr(out->name, sizeof(out->name), e.name);
   if (e.kind == threeos::StorageKind::Box) {
@@ -934,6 +937,88 @@ extern "C" THREEOS_API int32_t threeos_storage_set_box_open(uint64_t box_id, int
     return -1;
   }
   g_workspace.set_box_visual_open(box_id, open != 0);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_set_parent_box(uint64_t entity_id,
+                                                              uint64_t parent_box_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!g_workspace.set_parent_box(entity_id, parent_box_id)) {
+    set_error("set_parent_box failed");
+    return -2;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_set_in_field(uint64_t entity_id, int32_t in_field) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!g_workspace.set_in_field(entity_id, in_field != 0)) {
+    set_error("set_in_field failed");
+    return -2;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_get_parent_box(uint64_t entity_id,
+                                                             uint64_t* out_parent_box_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_parent_box_id == nullptr) {
+    set_error("null out_parent_box_id");
+    return -2;
+  }
+  const auto* e = g_workspace.find(entity_id);
+  if (e == nullptr) {
+    set_error("unknown entity");
+    return -3;
+  }
+  *out_parent_box_id = e->parent_box;
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_expand_box(uint64_t box_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  std::string err;
+  if (!g_workspace.layout_box_expand(box_id, &err)) {
+    set_error(err.c_str());
+    return -2;
+  }
+  g_workspace.resolve_glyphs();
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_collapse_box(uint64_t box_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  std::string err;
+  if (!g_workspace.collapse_box(box_id, &err)) {
+    set_error(err.c_str());
+    return -2;
+  }
+  g_workspace.resolve_glyphs();
   set_error("");
   return 0;
 }

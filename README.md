@@ -5,9 +5,9 @@ Johnny Mnemonic showed a 3D VR internet in 1995:
   <img src="mnemonic.jpeg" alt="Johnny Mnemonic — 3D VR internet (1995)" />
 </a>
 
-This movie was shy of the mark to say the least, but it hinted at a 1990s sense of optimism toward 3D computer interfaces eventually becoming better, faster, and more efficient than 2D desktop equivalents. Obviously that didn't happen. YET. What happened to that optimism though?
+This movie was shy of the mark, but it hinted at a 1990s sense of optimism toward 3D computer interfaces eventually becoming better, faster, and more efficient than 2D desktop equivalents. Obviously that didn't happen. YET. What happened to that optimism though?
 
-Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop PCs? Or did we simply stop investing in the VR industry for a decade after the dot-com bust, allowing mountains of incredible university research to collect dust in SIGCHI archives, never to be drawn upon again even after the industry was resurrected by Oculus?
+Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop PCs? Or did we simply stop investing in the VR industry for a decade after the dot-com bust, allowing mountains of incredible university research to collect dust in SIGCHI archives, never to be drawn upon again by modern industry titans?
 
 ---
 
@@ -23,7 +23,7 @@ The WIMP paradigm is a backwards compatibility tool in XR. It should not be fron
 
 ## 3OS Basics
 
-Instead of forcing users to aim virtual laser pointers at floating 2D windows, 3OS treats the entire environment as a high-capacity voxel field where the parameterized resolution defaults to a 3-inch voxel, the approximate size that satisfies high selection accuracy at rapid speed with 6DOF 10-finger hand motion (see the Trivariate validation below). The goal is to provide users a voxel grid representing all the subdivisions of 3D space in which they can hover, select, or otherwise interact with any voxel in under 0.25 seconds regardless of their body's distance away from that voxel. This is an impossible feat in all current spatial computing operating systems because of the assumption that OS interfaces must be WIMP.
+Instead of forcing users to aim virtual laser pointers at floating 2D windows, 3OS treats the entire environment as a high-capacity voxel field where the parameterized resolution defaults to a 3-inch voxel, the approximate size that satisfies high selection accuracy at rapid speed with 6DOF 10-finger hand motion (see the Trivariate validation below). The goal is to provide users a voxel grid representing all the subdivisions of 3D space in which they can hover, select, or otherwise interact with any voxel in under 0.25 seconds regardless of their body's distance away from that voxel. This is an impossible feat in all current spatial computing operating systems because of the false assumption that OS interfaces must use WIMP.
 
 At 3 inch voxel resolution and a default 50-foot radius from head pose to the grid's outer shell, the grid contains on the order of ~150 million voxels if the user is standing in a wide open field. Theoretically, it could be larger as some viewers have accurate parallax stereo vision up to several hundred feet, but 3-inch objects side-by-side shrink into uselessness via perspective long before that distance, thus 50ft is a decent parameterized ballpark limit.
 
@@ -45,13 +45,13 @@ These companies understand that touchscreens are more of an entertainment consum
 
 1) ...are physically smaller. Shrinking the number of available interactive fragments reduces multitasking capability exponentially, hence why iOS requires developers to severely limit the number of user choices per screen controller.
 
-2) ...cannot compete with desktop interfaces due to mouse/keyboard blowing multi-touch out of the water on raw data throughput.
+2) ...cannot compete with desktop interfaces due to mouse/keyboard blowing multi-touch out of the water on throughput.
 
 3) ...actively discourage manual raw data management by obfuscating direct data access, implying that some OS makers do not want the developer community thinking of touchscreens as capable of cannibalizing desktop/laptop sales through competitive levels of productivity. 
 
-It follows, though, that if you INCREASE the number of interactive fragments (or voxels) instead of decreasing it, shortened total adjacency and multitasking capability should explode exponentially beyond the capability of the best desktop interfaces. Enterprise workers understand the simple virtue of multi-screen setups, but their value scratches the throughput surface of multiple screens times multiple layers of depth.
+It follows, though, that if you INCREASE the number of interactive fragments (or voxels) instead of decreasing it, shortened total adjacency and multitasking capability should explode exponentially beyond the capability of the best desktop interfaces. Enterprise workers understand the simple virtue of multi-screen setups, but their value barely scratches the throughput surface of multiple screens times multiple layers of depth, IF we use those layers.
 
-XR developers want an XR OS to be perceived as useful in enterprise for greater adoption, yet the boot interface of EVERY XR OS is obviously patterned after Apple and Android, an oversight that implies "this is a platform that can't do the things your desktop PC can do." WindowsMR by Microsoft was a notable exception aesthetics-wise. Microsoft clearly recognized the problem, yet they failed to hone in on the crux of the problem: WIMP itself.
+Why then is the boot interface of EVERY XR OS patterned after Apple and Android? It implies "this is a platform that can't do the things your desktop PC can do." WindowsMR by Microsoft was a notable exception aesthetics-wise. Microsoft clearly recognized the problem, yet they failed to hone in on its linchpin: WIMP itself.
 
 If you try to complete nearly any run-of-the-mill office PC tasks on any XR OS, common features make progress so God-awfully slow that no enterprise company would ever consider porting their desktop feature sets into XR in the 2020s.
 
@@ -302,7 +302,7 @@ Emulating the 2D File Explorer's view shifts, 3OS can instantly re-compute the s
 
 Piles of incredible Human-Computer Interaction (HCI) literature have been left to languish by the modern spatial computing industry. In 2026, the following papers do not currently influence OS interfaces running on Meta Quest, Meta VR Glasses, Apple Vision Pro, Snap Specs, XReal Aura, Vive, Pico, Playstation VR, Lynx, Varjo, Bigscreen, or Steam Frame. They should.
 
-By grounding **3OS** in this seminal research, we bridge the historic gap between the late-1990s proprioceptive research labs and modern non-Euclidean spatial interaction theories to break the productivity chains of WIMP. These papers hold the secrets to unlocking rapid productivity in XR by revealing that, despite raycast having double the throughput of isometric virtual hands (point cursors), raycast is unsuitable for rapid serial and/or parallel bimanual interactions. Point cursors, on the other hand, are stellar at utilizing two-handed speed boosts, which more than covers the throughput gap even before completely unlocking the far field, allowing point cursors to leave raycast in the dust.
+By grounding **3OS** in this seminal research, we bridge the historic gap between the late-1990s proprioceptive research labs and modern non-Euclidean spatial interaction theories to break the productivity chains of WIMP. Despite raycast having double the throughput of isometric virtual hands (point cursors), it is unsuitable for rapid serial and/or parallel two-handed interactions. Point cursors, on the other hand, are stellar at utilizing two-handed speed boosts, which more than covers the throughput gap even before completely unlocking the far field, allowing point cursors to leave raycast in the dust.
 
 ---
 
@@ -337,6 +337,10 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 ### 7. Reality Proxy — 2025
 *   **Citation:** Al-Sadoun, A., et al. (2025). "Reality Proxy: Fluid Interactions with Real-World Objects in MR." *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.
 *   **Significance to 3OS:** Evaluated and validated that using spatial computer vision and semantic machine intelligence are crucial for streamlining the associations between world mesh geo and virtual content that fully utilizes the context of that geo.
+
+### 8. Fitts' Law + XR Review of 122 studies  — 2025
+*   **Citation:** Amini, M., Stuertzlinger, W., Teather, R.J., & Batmaz, A.U. "A Systematic Review of Fitt's Law in 3D Extended Reality" *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.
+*   **Significance to 3OS:** Identified that only 36% of XR HCI studies of the past several decades (44 total) that focused on throughput performance had targeted virtual hand (point cursor) interaction models, whereas more than 50% targeted raycast techniques. The other 14% were eye tracking studies.
 
 ---
 

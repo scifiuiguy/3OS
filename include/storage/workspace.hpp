@@ -26,9 +26,11 @@ struct WorkspaceEntry {
   std::string relative_path;
   uint32_t child_count = 0;
   Pose pose{};
-  bool in_field = true;  // false once inserted into a box (demo field)
+  bool in_field = true;  // false once inserted / collapsed out of the field
   EntityId parent_box = 0;
   std::string glyph_id;
+  /// Box-only: contents currently expanded into the field.
+  bool expanded = false;
 };
 
 struct SnapState {
@@ -47,22 +49,40 @@ struct StorageEvent {
   bool awaiting_ack = false;
 };
 
-/// Near-field demo workspace: host-fed listing, glyph resolve, snap-insert.
+/// Near-field demo workspace: host-fed listing, glyph resolve, snap-insert, box expand.
 class Workspace {
  public:
   static constexpr float kSnapDistanceM = 0.2f;
   static constexpr float kHoldAboveBoxM = 0.14f;
+  static constexpr float kDefaultFieldSpacingM = 0.22f;
+  static constexpr int kMaxExpandLiftCells = 32;
 
   void clear();
   void set_glyph_registry(GlyphRegistry* registry) { registry_ = registry; }
+
+  float field_spacing_m() const { return field_spacing_m_; }
+  void set_field_spacing_m(float m) {
+    field_spacing_m_ = m > 0.01f ? m : kDefaultFieldSpacingM;
+  }
 
   EntityId add_object(const std::string& name, const std::string& relative_path);
   EntityId add_box(const std::string& name, const std::string& relative_path,
                    uint32_t child_count);
 
+  /// Parent under a box (0 = root). Does not change in_field.
+  bool set_parent_box(EntityId id, EntityId parent_box_id);
+  bool set_in_field(EntityId id, bool in_field);
+
   /// Place root-field items in a cubic matrix 1 m in front of `head` (OpenXR).
   /// Side length = ceil(cbrt(n)) so 1–8 → 2³, 9–27 → 3³, etc. (n==1 → 1³).
   void layout_demo_field(const Pose& head);
+
+  /// Show children of `box_id` in a cubic matrix above the box (collision-aware).
+  /// Children are entries with parent_box == box_id; they are set in_field=true.
+  bool layout_box_expand(EntityId box_id, std::string* err);
+
+  /// Hide expanded children (in_field=false); close box visual.
+  bool collapse_box(EntityId box_id, std::string* err);
 
   /// Resolve glyph_ids from registry (extensions / box state).
   void resolve_glyphs();
@@ -100,6 +120,7 @@ class Workspace {
  private:
   EntityId next_id_ = 2000;
   EntityId selected_id_ = 0;
+  float field_spacing_m_ = kDefaultFieldSpacingM;
   std::vector<WorkspaceEntry> entries_;
   GlyphRegistry* registry_ = nullptr;
   SnapState snap_{};
@@ -109,6 +130,7 @@ class Workspace {
   bool have_rollback_ = false;
   EntityId rollback_object_ = 0;
   EntityId rollback_box_ = 0;
+  EntityId rollback_prev_parent_ = 0;
 };
 
 }  // namespace threeos
