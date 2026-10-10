@@ -12,6 +12,9 @@ unity-*.log
 # Accidental APK drops at repo root (canonical out dir is Sample_Project/Builds/Android/)
 *.apk
 
+# Local Blender authoring (meshes / .blend / export WIP — not versioned)
+Blender/
+
 # Build trees
 build/
 out/

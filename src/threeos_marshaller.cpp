@@ -3,7 +3,10 @@
 #include "core/interaction_facade.hpp"
 #include "core/kinematics.hpp"
 #include "core/topology.hpp"
+#include "storage/glyph_registry.hpp"
+#include "storage/workspace.hpp"
 
+#include <cstdio>
 #include <cstring>
 #include <mutex>
 #include <optional>
@@ -12,9 +15,9 @@
 namespace {
 
 constexpr uint32_t kMajor = 0;
-constexpr uint32_t kMinor = 3;
+constexpr uint32_t kMinor = 4;
 constexpr uint32_t kPatch = 0;
-constexpr uint32_t kAbiVersion = 3;
+constexpr uint32_t kAbiVersion = 4;
 
 std::mutex g_mu;
 bool g_initialized = false;
@@ -22,6 +25,8 @@ std::string g_last_error;
 threeos::InteractionFacade g_facade;
 threeos::TopologyWorkspace g_topology;
 threeos::KinematicsEngine g_kinematics;
+threeos::GlyphRegistry g_glyphs;
+threeos::Workspace g_workspace;
 uint64_t g_tick_count = 0;
 std::optional<threeos::Pose> g_pending_portal_pose;
 uint64_t g_pending_portal_entity = 0;
@@ -76,6 +81,9 @@ static_assert(sizeof(ThreeOS_DomeState) == 48, "DomeState size");
 static_assert(sizeof(ThreeOS_DoubleProxyState) == 64, "DoubleProxyState size");
 static_assert(sizeof(ThreeOS_KineticState) == 48, "KineticState size");
 static_assert(sizeof(ThreeOS_StickDebug) == 64, "StickDebug size");
+static_assert(sizeof(ThreeOS_WorkspaceItem) == 200, "WorkspaceItem size");
+static_assert(sizeof(ThreeOS_SnapState) == 64, "SnapState size");
+static_assert(sizeof(ThreeOS_StorageEvent) == 344, "StorageEvent size");
 
 extern "C" THREEOS_API uint32_t threeos_version(void) {
   return (kMajor << 16) | (kMinor << 8) | kPatch;
@@ -107,6 +115,18 @@ extern "C" THREEOS_API uint32_t threeos_sizeof_kinetic_state(void) {
   return static_cast<uint32_t>(sizeof(ThreeOS_KineticState));
 }
 
+extern "C" THREEOS_API uint32_t threeos_sizeof_workspace_item(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_WorkspaceItem));
+}
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_snap_state(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_SnapState));
+}
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_storage_event(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_StorageEvent));
+}
+
 extern "C" THREEOS_API int32_t threeos_init(void) {
   std::lock_guard<std::mutex> lock(g_mu);
   g_initialized = true;
@@ -114,6 +134,9 @@ extern "C" THREEOS_API int32_t threeos_init(void) {
   g_facade.set_state(threeos::InteractionState::Idle);
   g_topology = threeos::TopologyWorkspace{};
   g_kinematics = threeos::KinematicsEngine{};
+  g_glyphs.clear();
+  g_workspace.clear();
+  g_workspace.set_glyph_registry(&g_glyphs);
   g_pending_portal_pose.reset();
   g_pending_portal_entity = 0;
   set_error("");
@@ -124,6 +147,8 @@ extern "C" THREEOS_API void threeos_shutdown(void) {
   std::lock_guard<std::mutex> lock(g_mu);
   g_initialized = false;
   g_kinematics.clear();
+  g_workspace.clear();
+  g_glyphs.clear();
   g_pending_portal_pose.reset();
   set_error("");
 }
@@ -157,10 +182,34 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
   const threeos::Pose hand = right ? from_c(frame->right_aim)
                                    : (left ? from_c(frame->left_aim) : threeos::Pose{});
   const bool hand_valid = right || left;
-  const bool kin_moved =
+  bool kin_moved =
       g_kinematics.tick(hand, from_c(frame->head), head_valid, frame->time_seconds, hand_valid);
   const float floor_contact_y =
       g_kinematics.params().floor_y + g_kinematics.params().object_radius;
+
+  // Box snap while possessing a workspace Object.
+  if (g_kinematics.state().phase == threeos::KineticPhase::Possessed &&
+      g_kinematics.state().entity_id != 0) {
+    const bool snap_edge =
+        g_workspace.update_snap(g_kinematics.state().entity_id, g_kinematics.state().pose);
+    if (snap_edge && hand_valid) {
+      g_kinematics.reanchor_hand(hand);
+    }
+    if (g_workspace.snap().pending) {
+      g_kinematics.set_pose(g_workspace.snap().hold_pose);
+      g_kinematics.zero_velocity();
+      kin_moved = true;
+    }
+  }
+
+  // Keep workspace pose in sync for possess + coast so host Sync cannot snap to a stale layout pose.
+  if (g_kinematics.state().entity_id != 0 &&
+      (g_kinematics.state().phase == threeos::KineticPhase::Possessed ||
+       g_kinematics.state().phase == threeos::KineticPhase::Coasting || kin_moved)) {
+    if (auto* we = g_workspace.find_mut(g_kinematics.state().entity_id)) {
+      we->pose = g_kinematics.state().pose;
+    }
+  }
 
   if (out_delta != nullptr) {
     std::memset(out_delta, 0, sizeof(*out_delta));
@@ -514,6 +563,21 @@ extern "C" THREEOS_API int32_t threeos_kinematics_release(void) {
     set_error("not initialized");
     return -1;
   }
+  // Drop-into-box: releasing while snapped commits insert (no coast).
+  if (g_workspace.snap().pending) {
+    std::string err;
+    if (!g_workspace.commit_insert(&err)) {
+      set_error(err.c_str());
+      // Keep pose parked on the hold; do not coast away from the snap.
+      // Host should poll/ack any prior FS event, then retry commit.
+      g_kinematics.zero_velocity();
+      g_kinematics.clear();
+      return -3;
+    }
+    g_kinematics.clear();
+    set_error("");
+    return 0;
+  }
   g_kinematics.release();
   set_error("");
   return 0;
@@ -574,6 +638,251 @@ extern "C" THREEOS_API int32_t threeos_kinematics_set_object_pose(const ThreeOS_
     return -2;
   }
   g_kinematics.set_pose(from_c(*object_pose));
+  set_error("");
+  return 0;
+}
+
+namespace {
+
+void copy_cstr(char* dst, size_t dst_len, const std::string& src) {
+  if (dst == nullptr || dst_len == 0) {
+    return;
+  }
+  std::snprintf(dst, dst_len, "%s", src.c_str());
+}
+
+void fill_workspace_item(const threeos::WorkspaceEntry& e, ThreeOS_WorkspaceItem* out) {
+  std::memset(out, 0, sizeof(*out));
+  out->entity_id = e.id;
+  out->kind = static_cast<uint32_t>(e.kind);
+  out->flags = 0;
+  if (e.in_field) {
+    out->flags |= 1u;
+  }
+  if (g_workspace.snap().pending && g_workspace.snap().object_id == e.id) {
+    out->flags |= 2u;
+  }
+  out->pose = to_c(e.pose);
+  out->child_count = e.child_count;
+  out->box_visual = 0;
+  if (e.kind == threeos::StorageKind::Box) {
+    out->box_visual = (e.glyph_id == "box_open") ? 2u : 1u;
+  }
+  copy_cstr(out->name, sizeof(out->name), e.name);
+  if (e.kind == threeos::StorageKind::Box) {
+    char sec[32];
+    if (e.child_count == 1) {
+      std::snprintf(sec, sizeof(sec), "1 object");
+    } else {
+      std::snprintf(sec, sizeof(sec), "%u objects", e.child_count);
+    }
+    copy_cstr(out->secondary_label, sizeof(out->secondary_label), sec);
+  }
+  copy_cstr(out->glyph_id, sizeof(out->glyph_id), e.glyph_id);
+  out->tint_r = 1.f;
+  out->tint_g = 1.f;
+  out->tint_b = 1.f;
+  out->tint_a = 0.55f;
+  if (const auto* g = g_glyphs.find_by_id(e.glyph_id)) {
+    out->tint_r = g->tint_rgba[0];
+    out->tint_g = g->tint_rgba[1];
+    out->tint_b = g->tint_rgba[2];
+    out->tint_a = g->tint_rgba[3];
+  }
+}
+
+}  // namespace
+
+extern "C" THREEOS_API void threeos_storage_clear(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return;
+  }
+  g_workspace.clear();
+  g_workspace.set_glyph_registry(&g_glyphs);
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_add_object(const char* name, const char* relative_path,
+                                                         uint64_t* out_entity_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (name == nullptr || relative_path == nullptr) {
+    set_error("null name/path");
+    return -2;
+  }
+  const auto id = g_workspace.add_object(name, relative_path);
+  g_workspace.resolve_glyphs();
+  if (out_entity_id) {
+    *out_entity_id = id;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_add_box(const char* name, const char* relative_path,
+                                                      uint32_t child_count, uint64_t* out_entity_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (name == nullptr || relative_path == nullptr) {
+    set_error("null name/path");
+    return -2;
+  }
+  const auto id = g_workspace.add_box(name, relative_path, child_count);
+  g_workspace.resolve_glyphs();
+  if (out_entity_id) {
+    *out_entity_id = id;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_layout_demo(const ThreeOS_Pose* head_pose) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  threeos::Pose head{};
+  head.position = threeos::Vec3{0.f, 1.5f, 0.f};
+  head.orientation = threeos::Quat{0.f, 0.f, 0.f, 1.f};
+  if (head_pose != nullptr) {
+    head = from_c(*head_pose);
+  }
+  g_workspace.layout_demo_field(head);
+  g_workspace.resolve_glyphs();
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API uint32_t threeos_storage_item_count(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return static_cast<uint32_t>(g_workspace.entries().size());
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_get_item(uint32_t index,
+                                                       ThreeOS_WorkspaceItem* out_item) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_item == nullptr) {
+    set_error("null out_item");
+    return -2;
+  }
+  if (index >= g_workspace.entries().size()) {
+    set_error("index out of range");
+    return -3;
+  }
+  fill_workspace_item(g_workspace.entries()[index], out_item);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_get_snap(ThreeOS_SnapState* out_snap) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_snap == nullptr) {
+    set_error("null out_snap");
+    return -2;
+  }
+  std::memset(out_snap, 0, sizeof(*out_snap));
+  const auto& s = g_workspace.snap();
+  out_snap->pending = s.pending ? 1u : 0u;
+  out_snap->object_id = s.object_id;
+  out_snap->box_id = s.box_id;
+  out_snap->hold_pose = to_c(s.hold_pose);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_try_commit_insert(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  std::string err;
+  if (!g_workspace.commit_insert(&err)) {
+    set_error(err.c_str());
+    return -2;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_poll_event(ThreeOS_StorageEvent* out_event) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_event == nullptr) {
+    set_error("null out_event");
+    return -2;
+  }
+  std::memset(out_event, 0, sizeof(*out_event));
+  const auto& e = g_workspace.pending_event();
+  out_event->type = static_cast<uint32_t>(e.type);
+  out_event->awaiting_ack = e.awaiting_ack ? 1u : 0u;
+  out_event->object_id = e.object_id;
+  out_event->box_id = e.box_id;
+  copy_cstr(out_event->source_rel, sizeof(out_event->source_rel), e.source_rel);
+  copy_cstr(out_event->dest_rel, sizeof(out_event->dest_rel), e.dest_rel);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_ack_event(int32_t success) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  g_workspace.ack_event(success != 0);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_set_box_open(uint64_t box_id, int32_t open) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  g_workspace.set_box_visual_open(box_id, open != 0);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_glyph_install_pack(const uint8_t* bytes, uint32_t byte_count) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (bytes == nullptr || byte_count == 0) {
+    set_error("empty pack");
+    return -2;
+  }
+  std::string err;
+  if (!g_glyphs.install_pack(bytes, byte_count, &err)) {
+    set_error(err.c_str());
+    return -3;
+  }
+  g_workspace.resolve_glyphs();
   set_error("");
   return 0;
 }

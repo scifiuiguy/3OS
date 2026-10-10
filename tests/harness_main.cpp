@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 namespace {
 
@@ -43,15 +44,18 @@ int main() {
   const uint32_t patch = version & 0xFFu;
   std::printf("threeos_version => %u.%u.%u (0x%08X)\n", major, minor, patch, version);
   ok = expect_eq("major", major, 0) && ok;
-  ok = expect_eq("minor", minor, 3) && ok;
+  ok = expect_eq("minor", minor, 4) && ok;
   ok = expect_eq("patch", patch, 0) && ok;
-  ok = expect_eq("abi_version", threeos_abi_version(), 3) && ok;
+  ok = expect_eq("abi_version", threeos_abi_version(), 4) && ok;
   ok = expect_eq("sizeof_input_frame", threeos_sizeof_input_frame(), 192) && ok;
   ok = expect_eq("sizeof_transform_delta", threeos_sizeof_transform_delta(), 48) && ok;
   ok = expect_eq("sizeof_dome_state", threeos_sizeof_dome_state(), 48) && ok;
   ok = expect_eq("sizeof_double_proxy_state", threeos_sizeof_double_proxy_state(), 64) && ok;
   ok = expect_eq("sizeof_kinetic_state", threeos_sizeof_kinetic_state(), 48) && ok;
   ok = expect_eq("sizeof_stick_debug", threeos_sizeof_stick_debug(), 64) && ok;
+  ok = expect_eq("sizeof_workspace_item", threeos_sizeof_workspace_item(), 200) && ok;
+  ok = expect_eq("sizeof_snap_state", threeos_sizeof_snap_state(), 64) && ok;
+  ok = expect_eq("sizeof_storage_event", threeos_sizeof_storage_event(), 344) && ok;
 
   if (threeos_tick(nullptr, nullptr) != -1) {
     std::fprintf(stderr, "FAIL tick before init should return -1\n");
@@ -373,6 +377,131 @@ int main() {
     std::printf("OK   floor clamp y=%f flags=0x%X\n", delta.pose.position.y, delta.flags);
   }
   ok = ((delta.flags & THREEOS_XFORM_FLOOR_CLAMP) != 0) && ok;
+
+  // --- Storage / glyphs 0.4 ---
+  auto load_pack = [&](const char* path) -> bool {
+    FILE* f = nullptr;
+#if defined(_MSC_VER)
+    if (fopen_s(&f, path, "rb") != 0 || f == nullptr) {
+      std::fprintf(stderr, "FAIL open pack %s\n", path);
+      return false;
+    }
+#else
+    f = std::fopen(path, "rb");
+    if (f == nullptr) {
+      std::fprintf(stderr, "FAIL open pack %s\n", path);
+      return false;
+    }
+#endif
+    std::fseek(f, 0, SEEK_END);
+    const long sz = std::ftell(f);
+    std::fseek(f, 0, SEEK_SET);
+    std::vector<uint8_t> buf(static_cast<size_t>(sz));
+    if (std::fread(buf.data(), 1, buf.size(), f) != buf.size()) {
+      std::fclose(f);
+      std::fprintf(stderr, "FAIL read pack %s\n", path);
+      return false;
+    }
+    std::fclose(f);
+    if (threeos_glyph_install_pack(buf.data(), static_cast<uint32_t>(buf.size())) != 0) {
+      std::fprintf(stderr, "FAIL install pack %s: %s\n", path, threeos_last_error());
+      return false;
+    }
+    std::printf("OK   installed pack %s\n", path);
+    return true;
+  };
+
+  threeos_storage_clear();
+  ok = load_pack("assets/glyphs/gltf_mark.3glyph") && ok;
+  ok = load_pack("assets/glyphs/box.3glyph") && ok;
+  ok = load_pack("assets/glyphs/box_open.3glyph") && ok;
+
+  uint64_t obj_id = 0;
+  uint64_t box_id = 0;
+  ThreeOS_Pose layout_head = identity_pose_at(0.f, 1.5f, 0.f);
+  if (threeos_storage_add_object("simple.glb", "simple.glb", &obj_id) != 0 ||
+      threeos_storage_add_box("Test1", "Test1", 0, &box_id) != 0 ||
+      threeos_storage_layout_demo(&layout_head) != 0) {
+    std::fprintf(stderr, "FAIL storage seed: %s\n", threeos_last_error());
+    ok = false;
+  }
+  ok = expect_eq("storage.count", threeos_storage_item_count(), 2) && ok;
+
+  ThreeOS_WorkspaceItem item{};
+  // 2 items → 2×2×2 matrix centered 1 m ahead of head (OpenXR -Z).
+  // Slot (0,0,0) is at local -extent on each axis; forward*(-extent) pushes +Z toward head.
+  threeos_storage_get_item(0, &item);
+  ok = expect_near("layout.obj.z", item.pose.position.z, -1.f + 0.11f, 0.08f) && ok;
+  threeos_storage_get_item(0, &item);
+  if (std::strcmp(item.glyph_id, "gltf_mark") != 0) {
+    std::fprintf(stderr, "FAIL object glyph_id=%s expected gltf_mark\n", item.glyph_id);
+    ok = false;
+  } else {
+    std::printf("OK   object glyph_id=%s tint_a=%f\n", item.glyph_id, item.tint_a);
+  }
+  threeos_storage_get_item(1, &item);
+  if (std::strcmp(item.name, "Test1") != 0 || std::strcmp(item.secondary_label, "0 objects") != 0) {
+    std::fprintf(stderr, "FAIL box labels name=%s sec=%s\n", item.name, item.secondary_label);
+    ok = false;
+  } else {
+    std::printf("OK   box label Test1 / 0 objects glyph=%s\n", item.glyph_id);
+  }
+
+  // Snap: possess object, move near box
+  ThreeOS_Pose obj_pose = identity_pose_at(item.pose.position.x, item.pose.position.y,
+                                           item.pose.position.z);
+  threeos_storage_get_item(0, &item);
+  obj_pose = item.pose;
+  threeos_kinematics_possess(obj_id, &obj_pose);
+  ThreeOS_InteropInputFrame sf{};
+  sf.tracking_flags = THREEOS_TRACK_RIGHT_AIM | THREEOS_TRACK_HEAD;
+  sf.right_aim = obj_pose;
+  sf.head = identity_pose_at(0.f, 1.5f, 0.f);
+  sf.time_seconds = 10.0;
+  threeos_tick(&sf, &delta);  // freeze start
+
+  threeos_storage_get_item(1, &item);
+  const ThreeOS_Pose box_pose = item.pose;
+  // Drive toward box over several frames
+  for (int i = 0; i < 20; ++i) {
+    sf.frame_index++;
+    sf.time_seconds += 1.0 / 72.0;
+    const float t = (i + 1) / 20.f;
+    sf.right_aim.position.x = obj_pose.position.x + (box_pose.position.x - obj_pose.position.x) * t;
+    sf.right_aim.position.y = obj_pose.position.y + (box_pose.position.y - obj_pose.position.y) * t;
+    sf.right_aim.position.z = obj_pose.position.z + (box_pose.position.z - obj_pose.position.z) * t;
+    threeos_tick(&sf, &delta);
+  }
+  ThreeOS_SnapState snap{};
+  threeos_storage_get_snap(&snap);
+  if (snap.pending == 0) {
+    std::fprintf(stderr, "FAIL expected snap pending near box\n");
+    ok = false;
+  } else {
+    std::printf("OK   snap pending object=%llu box=%llu\n",
+                static_cast<unsigned long long>(snap.object_id),
+                static_cast<unsigned long long>(snap.box_id));
+  }
+
+  // Release while snapped → FS event
+  threeos_kinematics_release();
+  ThreeOS_StorageEvent ev{};
+  threeos_storage_poll_event(&ev);
+  if (ev.type != 1 || ev.awaiting_ack == 0) {
+    std::fprintf(stderr, "FAIL expected ObjectMovedIntoBox event\n");
+    ok = false;
+  } else {
+    std::printf("OK   storage event %s -> %s\n", ev.source_rel, ev.dest_rel);
+  }
+  threeos_storage_ack_event(1);
+  threeos_storage_get_item(1, &item);
+  ok = expect_eq("box.child_count", item.child_count, 1) && ok;
+  if (std::strcmp(item.secondary_label, "1 object") != 0) {
+    std::fprintf(stderr, "FAIL secondary=%s\n", item.secondary_label);
+    ok = false;
+  } else {
+    std::printf("OK   box secondary=%s\n", item.secondary_label);
+  }
 
   threeos_shutdown();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

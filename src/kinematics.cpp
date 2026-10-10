@@ -58,6 +58,12 @@ void KinematicsEngine::clear() {
   have_prev_time_ = false;
 }
 
+void KinematicsEngine::reanchor_hand(const Pose& hand_pose) {
+  start_hand_ = hand_pose;
+  have_start_hand_ = true;
+  state_.velocity = {};
+}
+
 void KinematicsEngine::apply_floor_clamp() {
   const float min_y = params_.floor_y + params_.object_radius;
   if (state_.pose.position.y < min_y) {

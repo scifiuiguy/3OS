@@ -80,18 +80,69 @@ Unity 0.0 → 0.1 (thin Quest harness) → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 �
 ---
 
 ### 📂 Phase 0.4: Storage Glyphs & Text Labels (v0.4.0)
-**Goal:** Map legacy FS into Boxes/Objects and route text via **host callbacks**, not in-kernel Bluetooth/WiFi sockets.
+**Goal:** Map legacy FS into Boxes/Objects with **typed 3D glyphs**, plus host-injected text labels. Glyphs are the OS “icons”; content payloads (the files themselves) stay separate.
+
+**Glyph package model (single file)**  
+Windows associates types via the registry pointing at a separate `.ico`; the icon file does not carry the association. For 3OS we want the stronger case: **one file = mesh + type metadata**.
+
+- **Container:** binary glTF (**GLB**). Keep the `glTF` magic / JSON+BIN chunks so any glTF tool can still open the mesh.
+- **Custom type:** ship as **`.3glyph`** (rename/export of a `.glb`). Hosts register the extension; loaders may also sniff GLB magic. Relabeling is safe — it is still a valid GLB on disk.
+- **Embedded association:** vendor extension `THREEOS_glyph` on the glTF root. **Canonical schema + demo pack JSON:** [`docs/THREEOS_glyph.md`](docs/THREEOS_glyph.md) and [`docs/glyph_packs/`](docs/glyph_packs/). Inject with [`tools/inject_3glyph.py`](tools/inject_3glyph.py).
+- **Authoring:** Blender → glTF 2.0 (`.glb`) → `python tools/inject_3glyph.py mesh.glb docs/glyph_packs/<pack>.json` → `.3glyph`.
+- **Resolution order:** registered `.3glyph` packs → built-in procedural fallbacks (unknown types still get a generic prism) → unlabeled Box/Object.
+
+Core owns the **association table + descriptors**; hosts own **decoding GLB meshes and drawing**. Core does not need a full glTF renderer in 0.4 — it reads the small JSON metadata (and may treat mesh bytes as an opaque blob handed to the host).
+
+**Quest 0.4 demo directory (minimal, two entries)**  
+Operator pre-stages **`Documents/3OS_Demo`** (see [`docs/QUEST_DEMO_DIR.md`](docs/QUEST_DEMO_DIR.md)). Contents are intentionally tiny:
+
+| On disk | Role in scene |
+| --- | --- |
+| `simple.glb` | **Content** file (not a glyph pack). Rendered with the registered **glTF/GLB Object glyph**; name label `simple.glb`. |
+| `Test1/` | Empty folder → **Box**. Rendered with default **Box glyph** (`box.3glyph` / authored from `box.glb`); name label `Test1`; secondary count label `0 objects`. |
+
+Authored glyph sources (Blender → GLB → `.3glyph` with `THREEOS_glyph`): glTF-logo-like pack for `.glb`/`.gltf`; **`box.glb`** as the default closed Box glyph for all Boxes; **`box_open.glb`** as the open-state Box glyph (toggleable). Content `simple.glb` must not be confused with these glyph assets.
+
+**Rendering:** Object and Box **glyphs** (including demo `gltf_mark`, `box`, `box_open`) must draw **semi-transparent** (see-through prismatic icons), not opaque solids. Hosts use a transparent/alpha material path (URP Transparent or equivalent). Pack `tint_rgba.a` and mesh alpha should stay below 1 (target ~0.45–0.65 unless tuned). Content payloads like `simple.glb` are unaffected unless they are also shown as glyphs.
+
+**Drop-into-Box interaction (kernel logic + host viz)**  
+While dragging an Object glyph near a Box within a distance threshold: snap the Object to a hold pose just above the Box; host shows an insert-arrow affordance under the Object’s name label. Leaving the threshold unsnaps. Releasing while snapped commits insert: emit storage events, run host anim (closed → open glyph, +10% scale bump and return, open → closed), hide/remove the Object glyph from the parent field, refresh Box count (`1 object`). Persist by moving/copying the file into the folder on disk via the host FS event sink.
+
+**Snap ↔ stick telekinesis:** On snap enter, clear Object velocity to zero and **re-anchor `start_hand` to the player’s current hand pose** without requiring a grip release. That way stick deflection is measured from the snap moment (no flyaway from the pre-snap stick). On unsnap, keep the same rule (re-anchor `start_hand`, zero velocity) so leaving the threshold is also a clean re-grab.
 
 - [ ] **Task 4.1: Legacy file system bridge (`src/storage/`)**
-  - [ ] Background crawler in `file_bridge.cpp` using `std::filesystem` (or host-provided file lists where sandboxed).
-  - [ ] `volumetric_glyph.cpp`: map extensions (`.txt`, `.pdf`, `.usd`, …) to low-poly Box/Object mesh definitions.
-- [ ] **Task 4.2: Multi-modal text router (`src/text/`) — host-injected**
+  - [ ] Background crawler / host-provided listing in `file_bridge.cpp` (Quest sandbox paths via host).
+  - [ ] Emit Object/Box records with path, extension, display name, child count; no mesh IO in the crawler.
+  - [ ] Document the 0.4 demo contract: listing must surface exactly `simple.glb` + empty `Test1` when that is what is on disk.
+- [ ] **Task 4.2: Glyph registry & `.3glyph` metadata (`volumetric_glyph`)**
+  - [ ] Define `THREEOS_glyph` schema (documented JSON fields + size/version constants), including Box closed/open glyph ids.
+  - [ ] Parse GLB JSON chunk enough to extract `THREEOS_glyph` (or reject / fall back); do not require full scene graph eval in core.
+  - [ ] Registry API: install/uninstall glyph pack by id; map extension/MIME → `glyph_id`; map Box → closed/open glyph pair; query descriptor for a path.
+  - [ ] Built-in procedural fallbacks when packs are missing (generic Object prism, generic Box).
+  - [ ] Sample packs: glTF-logo `.3glyph` → `.gltf`/`.glb`; `box.3glyph` + `box_open.3glyph` → all Boxes (toggle states).
+- [ ] **Task 4.3: Host glyph ABI**
+  - [ ] Blittable glyph descriptor: `glyph_id`, category, applies-to, bounds, procedural kind **or** opaque `.3glyph` blob/URI; Box state (`closed` / `open`).
+  - [ ] Label fields: primary name (`simple.glb`, `Test1`) and optional secondary (`0 objects` / `N objects`).
+  - [ ] Tick/query path: entity/path → descriptor + labels for host instantiation.
+- [ ] **Task 4.4: Box insert proximity & commit**
+  - [ ] While Object is dragged: test distance to candidate Boxes; enter/exit **snap** (hold pose above Box); expose snap target id + insert-pending flag to host (arrow affordance).
+  - [ ] On snap enter **and** snap exit: `velocity = 0` and reset grab-anchored `start_hand` to the current hand pose (grip may still be held).
+  - [ ] On release while snapped: validate, parent Object under Box in the workspace model, update Box child count, clear snap.
+  - [ ] Headless tests: enter threshold → snapped + vel zero + start_hand re-anchored; leave → unsnapped with same re-anchor; release snapped → child count 1 and Object no longer a root sibling.
+- [ ] **Task 4.5: Storage mutation event system (write-through)**
+  - [ ] Emit typed events (e.g. `ObjectMovedIntoBox`, with source path, destination folder path, entity ids) on successful insert (and later rename/delete).
+  - [ ] Host implements an FS sink: on Quest/Editor, perform the real filesystem move of `simple.glb` into `Test1/`; report success/failure back to core.
+  - [ ] On FS success, workspace stays consistent; on failure, roll back model (Object returns to field, count restored) and surface error.
+  - [ ] Harness: mock sink records the event; assert path rewrite `…/simple.glb` → `…/Test1/simple.glb`.
+- [ ] **Task 4.6: Multi-modal text router (`src/text/`) — host-injected**
   - [ ] Priority router in `text_io_router.cpp` that accepts strings from a **host-supplied callback / ABI entry** (keyboard, IME, engine UI).
   - [ ] Do **not** embed Bluetooth/WiFi keyboard sockets in core; leave transport to the host OS or Unity/Unreal layer.
   - [ ] Hooks for volumetric **Lexting** (3D hand-in-voxel → text field) as a later input source on the same router.
-  - [ ] `text_label.cpp` CRUD for Box/Object annotations.
-- [ ] **Task 4.3: Storage/text verification**
-  - [ ] Point the harness at a real directory; assert Boxes/Objects populate with correct glyph types; rename via injected text callback.
+  - [ ] `text_label.cpp` CRUD for Box/Object annotations (primary + secondary count strings).
+- [ ] **Task 4.7: Storage/text/glyph verification**
+  - [ ] Fixture listing mirrors demo dir (`simple.glb` + empty `Test1`); assert glyph ids, labels, and `0 objects`.
+  - [ ] Assert `.3glyph` metadata maps `.glb` content to the glTF pack (distinct from Box packs).
+  - [ ] Insert flow + mock FS sink as in 4.4/4.5; rename via text does not break association.
 
 ---
 

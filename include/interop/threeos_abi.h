@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * 3OS host ABI (Phase 0.3).
+ * 3OS host ABI (Phase 0.4).
  *
  * Units: meters.
  * Coordinates: OpenXR convention — right-handed, Y-up.
@@ -14,8 +14,8 @@
  *
  * Layout freeze (abi_version layout family):
  *   InteropInputFrame = 192 bytes, InteropTransformDelta = 48 bytes (Phase 0.1).
- * Topology structs additive (Phase 0.2). Kinematics APIs additive (Phase 0.3);
- * abi_version = 3.
+ * Topology (0.2), kinematics (0.3), storage/glyphs (0.4) are additive;
+ * abi_version = 4.
  */
 
 #include <stdint.h>
@@ -173,10 +173,50 @@ typedef struct ThreeOS_DoubleProxyState {
   ThreeOS_Aabb near_aabb;
 } ThreeOS_DoubleProxyState;
 
-/** Packed semver: (major << 16) | (minor << 8) | patch. Phase 0.3 => 0.3.0 */
+/** Workspace item for host glyph/label sync (200 bytes). */
+typedef struct ThreeOS_WorkspaceItem {
+  uint64_t entity_id;
+  uint32_t kind;  /* 0 Object, 1 Box */
+  uint32_t flags; /* bit0 in_field, bit1 insert_pending */
+  ThreeOS_Pose pose;
+  uint32_t child_count;
+  uint32_t box_visual; /* 0 n/a, 1 closed, 2 open */
+  char name[64];
+  char secondary_label[32];
+  char glyph_id[32];
+  float tint_r;
+  float tint_g;
+  float tint_b;
+  float tint_a;
+  uint32_t reserved0; /* pad to 200 (MSVC 8-byte align) */
+} ThreeOS_WorkspaceItem;
+
+/** Snap-to-box state (64 bytes). */
+typedef struct ThreeOS_SnapState {
+  uint32_t pending;
+  uint32_t reserved0;
+  uint64_t object_id;
+  uint64_t box_id;
+  ThreeOS_Pose hold_pose;
+  uint32_t reserved1;
+  uint32_t reserved2;
+  uint32_t reserved3;
+} ThreeOS_SnapState;
+
+/** Host FS write-through event (344 bytes). */
+typedef struct ThreeOS_StorageEvent {
+  uint32_t type; /* 0 none, 1 ObjectMovedIntoBox */
+  uint32_t awaiting_ack;
+  uint64_t object_id;
+  uint64_t box_id;
+  char source_rel[160];
+  char dest_rel[160];
+} ThreeOS_StorageEvent;
+
+/** Packed semver: (major << 16) | (minor << 8) | patch. Phase 0.4 => 0.4.0 */
 THREEOS_API uint32_t threeos_version(void);
 
-/** ABI layout/feature version; 3 = kinematics APIs present. */
+/** ABI layout/feature version; 4 = storage/glyph APIs present. */
 THREEOS_API uint32_t threeos_abi_version(void);
 
 THREEOS_API int32_t threeos_init(void);
@@ -198,6 +238,9 @@ THREEOS_API uint32_t threeos_sizeof_dome_state(void);
 THREEOS_API uint32_t threeos_sizeof_double_proxy_state(void);
 THREEOS_API uint32_t threeos_sizeof_kinetic_state(void);
 THREEOS_API uint32_t threeos_sizeof_stick_debug(void);
+THREEOS_API uint32_t threeos_sizeof_workspace_item(void);
+THREEOS_API uint32_t threeos_sizeof_snap_state(void);
+THREEOS_API uint32_t threeos_sizeof_storage_event(void);
 
 /* --- Topology (Phase 0.2) --- */
 
@@ -252,6 +295,27 @@ THREEOS_API int32_t threeos_kinematics_get_state(ThreeOS_KineticState* out_state
 THREEOS_API int32_t threeos_kinematics_get_stick_debug(ThreeOS_StickDebug* out_debug);
 THREEOS_API int32_t threeos_kinematics_set_object_pose(const ThreeOS_Pose* object_pose);
 
+/* --- Storage / glyphs (Phase 0.4) --- */
+
+THREEOS_API void threeos_storage_clear(void);
+THREEOS_API int32_t threeos_storage_add_object(const char* name, const char* relative_path,
+                                               uint64_t* out_entity_id);
+THREEOS_API int32_t threeos_storage_add_box(const char* name, const char* relative_path,
+                                            uint32_t child_count, uint64_t* out_entity_id);
+/** Layout field glyphs in a cubic matrix 1 m in front of head. Null head → origin facing -Z. */
+THREEOS_API int32_t threeos_storage_layout_demo(const ThreeOS_Pose* head_pose);
+THREEOS_API uint32_t threeos_storage_item_count(void);
+THREEOS_API int32_t threeos_storage_get_item(uint32_t index, ThreeOS_WorkspaceItem* out_item);
+THREEOS_API int32_t threeos_storage_get_snap(ThreeOS_SnapState* out_snap);
+THREEOS_API int32_t threeos_storage_try_commit_insert(void);
+THREEOS_API int32_t threeos_storage_poll_event(ThreeOS_StorageEvent* out_event);
+THREEOS_API int32_t threeos_storage_ack_event(int32_t success);
+THREEOS_API int32_t threeos_storage_set_box_open(uint64_t box_id, int32_t open);
+
+/** Install a .3glyph / GLB pack containing THREEOS_glyph metadata. */
+THREEOS_API int32_t threeos_glyph_install_pack(const uint8_t* bytes, uint32_t byte_count);
+
 #ifdef __cplusplus
 }
 #endif
+

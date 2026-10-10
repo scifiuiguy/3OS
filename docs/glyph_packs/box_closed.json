@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "glyph_id": "box_closed",
+  "display_name": "Box",
+  "category": "box",
+  "priority": 100,
+  "applies_to_extensions": [],
+  "applies_to_mime": [],
+  "box_state": "closed",
+  "bounds_m": [0.12, 0.12, 0.12],
+  "tint_rgba": [1.0, 1.0, 1.0, 0.55]
+}

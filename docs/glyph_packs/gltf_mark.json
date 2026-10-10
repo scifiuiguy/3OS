@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "glyph_id": "gltf_mark",
+  "display_name": "glTF / GLB",
+  "category": "file",
+  "priority": 100,
+  "applies_to_extensions": [".gltf", ".glb"],
+  "applies_to_mime": ["model/gltf+json", "model/gltf-binary"],
+  "box_state": null,
+  "bounds_m": [0.08, 0.08, 0.08],
+  "tint_rgba": [1.0, 1.0, 1.0, 0.55]
+}
