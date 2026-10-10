@@ -31,7 +31,34 @@ uint64_t g_tick_count = 0;
 std::optional<threeos::Pose> g_pending_portal_pose;
 uint64_t g_pending_portal_entity = 0;
 
+// Unsnap catch-up: visual lerps from hold → free kinematic pose (no pop).
+constexpr float kUnsnapCatchupSeconds = 0.12f;
+float g_unsnap_blend = 1.f;
+threeos::Pose g_unsnap_hold{};
+
 void set_error(const char* msg) { g_last_error = msg ? msg : ""; }
+
+threeos::Vec3 lerp_vec(const threeos::Vec3& a, const threeos::Vec3& b, float u) {
+  return threeos::Vec3{a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u,
+                       a.z + (b.z - a.z) * u};
+}
+
+threeos::Pose lerp_pose(const threeos::Pose& a, const threeos::Pose& b, float u) {
+  // Hold/escape share orientation in practice; blend position only.
+  threeos::Pose p = b;
+  p.position = lerp_vec(a.position, b.position, u);
+  return p;
+}
+
+float smoothstep01(float t) {
+  t = t < 0.f ? 0.f : (t > 1.f ? 1.f : t);
+  return t * t * (3.f - 2.f * t);
+}
+
+void clear_unsnap_catchup() {
+  g_unsnap_blend = 1.f;
+  g_unsnap_hold = {};
+}
 
 threeos::Vec3 from_c(const ThreeOS_Vec3& v) { return threeos::Vec3{v.x, v.y, v.z}; }
 ThreeOS_Vec3 to_c(const threeos::Vec3& v) { return ThreeOS_Vec3{v.x, v.y, v.z}; }
@@ -182,24 +209,66 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
   const threeos::Pose hand = right ? from_c(frame->right_aim)
                                    : (left ? from_c(frame->left_aim) : threeos::Pose{});
   const bool hand_valid = right || left;
+  const bool was_snapped = g_workspace.snap().pending;
+  const threeos::Pose prior_hold = g_workspace.snap().hold_pose;
   bool kin_moved =
       g_kinematics.tick(hand, from_c(frame->head), head_valid, frame->time_seconds, hand_valid);
   const float floor_contact_y =
       g_kinematics.params().floor_y + g_kinematics.params().object_radius;
 
-  // Box snap while possessing a workspace Object.
+  // Box snap while possessing a workspace Object or Box (box-into-box).
+  // While snapped, kinematics keeps an escape pose (stick accumulates). Display
+  // stays on hold until escape leaves the snap radius, then we lerp catch-up.
+  threeos::Pose display_pose = g_kinematics.state().pose;
+  bool force_display = false;
   if (g_kinematics.state().phase == threeos::KineticPhase::Possessed &&
       g_kinematics.state().entity_id != 0) {
     const bool snap_edge =
         g_workspace.update_snap(g_kinematics.state().entity_id, g_kinematics.state().pose);
-    if (snap_edge && hand_valid) {
-      g_kinematics.reanchor_hand(hand);
-    }
-    if (g_workspace.snap().pending) {
+    const bool now_pending = g_workspace.snap().pending;
+
+    if (snap_edge && now_pending) {
+      // Enter: park on hold, re-anchor stick, clear any prior catch-up.
+      clear_unsnap_catchup();
       g_kinematics.set_pose(g_workspace.snap().hold_pose);
       g_kinematics.zero_velocity();
+      if (hand_valid) {
+        g_kinematics.reanchor_hand(hand);
+      }
+      display_pose = g_workspace.snap().hold_pose;
+      force_display = true;
+      kin_moved = true;
+    } else if (was_snapped && !now_pending) {
+      // Exit: blend display from hold → free kinematic (escape) pose.
+      g_unsnap_hold = prior_hold;
+      g_unsnap_blend = 0.f;
+      kin_moved = true;
+    } else if (now_pending) {
+      // Stay snapped: do NOT reset kinematics to hold (escape must accumulate).
+      display_pose = g_workspace.snap().hold_pose;
+      force_display = true;
       kin_moved = true;
     }
+  } else if (g_kinematics.state().phase != threeos::KineticPhase::Possessed) {
+    clear_unsnap_catchup();
+  }
+
+  // Unsnap catch-up blend (hold → free pose).
+  if (g_unsnap_blend < 1.f &&
+      g_kinematics.state().phase == threeos::KineticPhase::Possessed) {
+    constexpr float kDt = 1.f / 72.f;
+    g_unsnap_blend += kDt / kUnsnapCatchupSeconds;
+    if (g_unsnap_blend >= 1.f) {
+      g_unsnap_blend = 1.f;
+      if (hand_valid) {
+        g_kinematics.reanchor_hand(hand);
+        g_kinematics.zero_velocity();
+      }
+    }
+    const float u = smoothstep01(g_unsnap_blend);
+    display_pose = lerp_pose(g_unsnap_hold, g_kinematics.state().pose, u);
+    force_display = true;
+    kin_moved = true;
   }
 
   // Keep workspace pose in sync for possess + coast so host Sync cannot snap to a stale layout pose.
@@ -207,7 +276,7 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
       (g_kinematics.state().phase == threeos::KineticPhase::Possessed ||
        g_kinematics.state().phase == threeos::KineticPhase::Coasting || kin_moved)) {
     if (auto* we = g_workspace.find_mut(g_kinematics.state().entity_id)) {
-      we->pose = g_kinematics.state().pose;
+      we->pose = force_display ? display_pose : g_kinematics.state().pose;
     }
   }
 
@@ -221,9 +290,11 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
       g_pending_portal_entity = 0;
     } else if (kin_moved && g_kinematics.state().entity_id != 0) {
       out_delta->entity_id = g_kinematics.state().entity_id;
-      out_delta->pose = to_c(g_kinematics.state().pose);
+      out_delta->pose = to_c(force_display ? display_pose : g_kinematics.state().pose);
       out_delta->flags = THREEOS_XFORM_KINEMATIC;
-      if (g_kinematics.state().pose.position.y <= floor_contact_y + 1e-4f) {
+      const float py = force_display ? display_pose.position.y
+                                    : g_kinematics.state().pose.position.y;
+      if (py <= floor_contact_y + 1e-4f) {
         out_delta->flags |= THREEOS_XFORM_FLOOR_CLAMP;
       }
     } else {
@@ -885,4 +956,42 @@ extern "C" THREEOS_API int32_t threeos_glyph_install_pack(const uint8_t* bytes, 
   g_workspace.resolve_glyphs();
   set_error("");
   return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_selection_get(uint64_t* out_entity_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_entity_id == nullptr) {
+    set_error("null out_entity_id");
+    return -2;
+  }
+  *out_entity_id = g_workspace.selection();
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_selection_set(uint64_t entity_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!g_workspace.set_selection(entity_id)) {
+    set_error("unknown entity");
+    return -2;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API void threeos_selection_clear(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return;
+  }
+  g_workspace.clear_selection();
+  set_error("");
 }

@@ -111,10 +111,13 @@ void KinematicsEngine::update_stick_debug(const Pose& hand_pose, const Pose& hea
   };
   const float mag = vec3_length(stick);
   const Vec3 flat = flat_forward_xz(head_pose.orientation, head_valid);
+  // Host maps Unity↔kernel with an X flip only (Unity +Z ≈ kernel +Z). Kernel
+  // "OpenXR forward" is -Z, which points toward the body in that frame — so the
+  // viz offset must subtract flat_forward to push the ray away from the stomach.
   const Vec3 origin{
-      start_hand_.position.x + flat.x * kStickVizForwardOffsetM,
-      start_hand_.position.y + flat.y * kStickVizForwardOffsetM,
-      start_hand_.position.z + flat.z * kStickVizForwardOffsetM,
+      start_hand_.position.x - flat.x * kStickVizForwardOffsetM,
+      start_hand_.position.y - flat.y * kStickVizForwardOffsetM + kStickVizUpOffsetM,
+      start_hand_.position.z - flat.z * kStickVizForwardOffsetM,
   };
 
   stick_debug_.active = true;
@@ -166,22 +169,19 @@ bool KinematicsEngine::tick(const Pose& hand_pose, const Pose& head_pose, bool h
     const float mag = vec3_length(stick);
 
     if (mag < params_.deadzone_m) {
-      // Inside deadzone: no drive. Friction then hard-rest so returning to the
-      // grab origin parks the object instead of creeping.
-      apply_friction(dt);
-      if (vec3_length(state_.velocity) < params_.settle_epsilon * 4.f) {
-        state_.velocity = {};
-      }
-      integrate(dt);
+      // Inside deadzone: hard-stop. No creep, no residual coast.
+      state_.velocity = {};
       update_stick_debug(hand_pose, head_pose, head_valid);
       return true;
     }
 
-    // Drive from current object pose; speed scales with distance from start_hand.
+    // Radial remap: drive from (|stick| - deadzone) so velocity rises from 0
+    // at the deadzone boundary instead of jumping to gain * deadzone.
+    const float eff = (mag - params_.deadzone_m) / mag;
     state_.velocity = Vec3{
-        params_.gain * stick.x,
-        params_.gain * stick.y,
-        params_.gain * stick.z,
+        params_.gain * stick.x * eff,
+        params_.gain * stick.y * eff,
+        params_.gain * stick.z * eff,
     };
     integrate(dt);
     update_stick_debug(hand_pose, head_pose, head_valid);

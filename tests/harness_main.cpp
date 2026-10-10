@@ -228,8 +228,10 @@ int main() {
   }
 
   // --- Kinematics: grab-anchored stick / deadzone / coast / floor clamp ---
-  // gain=10 (1/s), deadzone=1cm, friction=4
-  if (threeos_kinematics_set_params(10.f, 0.01f, 4.f, 0.f) != 0) {
+  // gain=10 (1/s), deadzone=0.015 m, friction=4
+  constexpr float kDeadzoneM = 0.015f;
+  constexpr float kStickOutsideM = 0.10f;  // outside 0.015 m deadzone
+  if (threeos_kinematics_set_params(10.f, kDeadzoneM, 4.f, 0.f) != 0) {
     std::fprintf(stderr, "FAIL kinematics_set_params: %s\n", threeos_last_error());
     ok = false;
   }
@@ -252,10 +254,10 @@ int main() {
   kf.time_seconds = 1.0;
   threeos_tick(&kf, &delta);
 
-  // Inside 1cm deadzone: no drive
+  // Inside 0.015 m deadzone: no drive
   kf.frame_index = 2;
   kf.time_seconds += 1.0 / 72.0;
-  kf.right_aim = identity_pose_at(0.005f, 1.0f, -0.5f);
+  kf.right_aim = identity_pose_at(0.01f, 1.0f, -0.5f);
   threeos_tick(&kf, &delta);
   threeos_kinematics_get_state(&ks);
   if (std::fabs(ks.vel_x) > 1e-3f) {
@@ -266,40 +268,43 @@ int main() {
   }
   const float x_after_deadzone = delta.pose.position.x;
 
-  // Stick 5cm to +X → v = 10 * 0.05 = 0.5 m/s; object advances from current pose
-  kf.frame_index = 3;
-  kf.time_seconds += 1.0 / 72.0;
-  kf.right_aim = identity_pose_at(0.05f, 1.0f, -0.5f);
-  threeos_tick(&kf, &delta);
+  // Stick ~4" to +X → remapped v = gain * (mag - deadzone); hold to accumulate.
+  const float kStickEffVel = 10.f * (kStickOutsideM - kDeadzoneM);
+  for (int i = 0; i < 12; ++i) {
+    kf.frame_index++;
+    kf.time_seconds += 1.0 / 72.0;
+    kf.right_aim = identity_pose_at(kStickOutsideM, 1.0f, -0.5f);
+    threeos_tick(&kf, &delta);
+  }
   if (delta.entity_id != entity || (delta.flags & THREEOS_XFORM_KINEMATIC) == 0) {
     std::fprintf(stderr, "FAIL kinematic delta missing\n");
     ok = false;
-  } else if (delta.pose.position.x <= x_after_deadzone) {
+  } else if (delta.pose.position.x <= x_after_deadzone + 0.01f) {
     std::fprintf(stderr, "FAIL expected +X glide from current, x=%f\n", delta.pose.position.x);
     ok = false;
   } else {
     std::printf("OK   stick glide x=%f (from %f)\n", delta.pose.position.x, x_after_deadzone);
   }
   threeos_kinematics_get_state(&ks);
-  ok = expect_near("stick.vel_x", ks.vel_x, 0.5f, 1e-3f) && ok;
+  ok = expect_near("stick.vel_x", ks.vel_x, kStickEffVel, 1e-3f) && ok;
 
-  // Stick debug ray: origin = start_hand + flat_forward*(-Z)*2", tip = origin + stick
+  // Stick debug ray: origin = start_hand - flat_forward*4" (away from body), tip = origin + stick
   ThreeOS_StickDebug sd{};
   if (threeos_kinematics_get_stick_debug(&sd) != 0 || sd.active == 0) {
     std::fprintf(stderr, "FAIL stick_debug inactive\n");
     ok = false;
   } else {
-    const float off = 2.f * 0.0254f;
-    ok = expect_near("stick_debug.mag", sd.magnitude, 0.05f, 1e-4f) && ok;
-    ok = expect_near("stick_debug.stick_x", sd.stick.x, 0.05f, 1e-4f) && ok;
-    // identity head → flat forward (0,0,-1); start_hand at (0,1,-0.5)
-    ok = expect_near("stick_debug.origin_z", sd.ray_origin.z, -0.5f - off, 1e-4f) && ok;
-    ok = expect_near("stick_debug.tip_x", sd.ray_tip.x, 0.05f, 1e-4f) && ok;
+    const float off = 4.f * 0.0254f;
+    ok = expect_near("stick_debug.mag", sd.magnitude, kStickOutsideM, 1e-4f) && ok;
+    ok = expect_near("stick_debug.stick_x", sd.stick.x, kStickOutsideM, 1e-4f) && ok;
+    // identity head → flat forward (0,0,-1); start_hand at (0,1,-0.5); viz subtracts flat
+    ok = expect_near("stick_debug.origin_z", sd.ray_origin.z, -0.5f + off, 1e-4f) && ok;
+    ok = expect_near("stick_debug.tip_x", sd.ray_tip.x, kStickOutsideM, 1e-4f) && ok;
     ok = expect_eq("stick_debug.in_deadzone", sd.in_deadzone, 0) && ok;
   }
 
-  // Return hand to start → dampen toward halt
-  for (int i = 0; i < 40; ++i) {
+  // Return hand to start → dampen toward halt (longer settle after ~1 m/s drive)
+  for (int i = 0; i < 80; ++i) {
     kf.frame_index++;
     kf.time_seconds += 1.0 / 72.0;
     kf.right_aim = identity_pose_at(0.f, 1.0f, -0.5f);
@@ -317,7 +322,7 @@ int main() {
   // Reverse stick to -X from current object pose (must not snap to possess start)
   kf.frame_index++;
   kf.time_seconds += 1.0 / 72.0;
-  kf.right_aim = identity_pose_at(-0.05f, 1.0f, -0.5f);
+  kf.right_aim = identity_pose_at(-kStickOutsideM, 1.0f, -0.5f);
   threeos_tick(&kf, &delta);
   if (delta.pose.position.x >= x_before_reverse) {
     std::fprintf(stderr, "FAIL reverse should continue from current x (%f -> %f)\n",
@@ -331,13 +336,13 @@ int main() {
                 obj.position.x);
   }
 
-  // ~1 ft stick → high speed (~3 m/s at gain 10)
+  // ~1 ft stick → remapped speed gain * (0.30 - deadzone)
   kf.frame_index++;
   kf.time_seconds += 1.0 / 72.0;
   kf.right_aim = identity_pose_at(0.30f, 1.0f, -0.5f);
   threeos_tick(&kf, &delta);
   threeos_kinematics_get_state(&ks);
-  ok = expect_near("one_foot.vel_x", ks.vel_x, 3.0f, 1e-3f) && ok;
+  ok = expect_near("one_foot.vel_x", ks.vel_x, 10.f * (0.30f - kDeadzoneM), 1e-3f) && ok;
 
   // Release → coast with friction decay
   threeos_kinematics_release();
@@ -447,6 +452,41 @@ int main() {
     std::printf("OK   box label Test1 / 0 objects glyph=%s\n", item.glyph_id);
   }
 
+  // Selection ABI
+  uint64_t sel = 1;
+  threeos_selection_get(&sel);
+  if (sel != 0) {
+    std::fprintf(stderr, "FAIL selection default nonzero %llu\n",
+                 static_cast<unsigned long long>(sel));
+    ok = false;
+  }
+  if (threeos_selection_set(obj_id) != 0) {
+    std::fprintf(stderr, "FAIL selection_set obj: %s\n", threeos_last_error());
+    ok = false;
+  }
+  threeos_selection_get(&sel);
+  if (sel != obj_id) {
+    std::fprintf(stderr, "FAIL selection_get after set\n");
+    ok = false;
+  } else {
+    std::printf("OK   selection_set/get obj=%llu\n", static_cast<unsigned long long>(sel));
+  }
+  if (threeos_selection_set(999999ull) == 0) {
+    std::fprintf(stderr, "FAIL selection_set should reject unknown id\n");
+    ok = false;
+  } else {
+    std::printf("OK   selection_set rejects unknown id\n");
+  }
+  threeos_selection_clear();
+  threeos_selection_get(&sel);
+  if (sel != 0) {
+    std::fprintf(stderr, "FAIL selection_clear\n");
+    ok = false;
+  } else {
+    std::printf("OK   selection_clear\n");
+  }
+  threeos_selection_set(obj_id);  // re-select; insert should clear
+
   // Snap: possess object, move near box
   ThreeOS_Pose obj_pose = identity_pose_at(item.pose.position.x, item.pose.position.y,
                                            item.pose.position.z);
@@ -483,6 +523,50 @@ int main() {
                 static_cast<unsigned long long>(snap.box_id));
   }
 
+  // Escape snap: keep possess, drive stick far so escape pose leaves 0.2 m.
+  for (int i = 0; i < 60; ++i) {
+    sf.frame_index++;
+    sf.time_seconds += 1.0 / 72.0;
+    sf.right_aim.position.x = box_pose.position.x + 0.35f;
+    sf.right_aim.position.y = box_pose.position.y + 0.35f;
+    sf.right_aim.position.z = box_pose.position.z + 0.35f;
+    threeos_tick(&sf, &delta);
+  }
+  threeos_storage_get_snap(&snap);
+  if (snap.pending != 0) {
+    std::fprintf(stderr, "FAIL expected snap exit after stick escape\n");
+    ok = false;
+  } else {
+    std::printf("OK   snap exit after stick escape\n");
+  }
+
+  // Re-enter snap for commit: release + re-possess near the box (escape leaves
+  // the object too far for a short stick re-drive after catch-up reanchor).
+  threeos_kinematics_release();
+  for (int i = 0; i < 10; ++i) {
+    sf.frame_index++;
+    sf.time_seconds += 1.0 / 72.0;
+    threeos_tick(&sf, &delta);
+  }
+  ThreeOS_Pose near_box = box_pose;
+  near_box.position.y += 0.10f;
+  threeos_kinematics_possess(obj_id, &near_box);
+  sf.right_aim = near_box;
+  threeos_tick(&sf, &delta);  // freeze start_hand
+  for (int i = 0; i < 12; ++i) {
+    sf.frame_index++;
+    sf.time_seconds += 1.0 / 72.0;
+    sf.right_aim = near_box;
+    threeos_tick(&sf, &delta);
+  }
+  threeos_storage_get_snap(&snap);
+  if (snap.pending == 0) {
+    std::fprintf(stderr, "FAIL expected snap re-enter before commit\n");
+    ok = false;
+  } else {
+    std::printf("OK   snap re-enter before commit\n");
+  }
+
   // Release while snapped → FS event
   threeos_kinematics_release();
   ThreeOS_StorageEvent ev{};
@@ -501,6 +585,14 @@ int main() {
     ok = false;
   } else {
     std::printf("OK   box secondary=%s\n", item.secondary_label);
+  }
+  threeos_selection_get(&sel);
+  if (sel != 0) {
+    std::fprintf(stderr, "FAIL selection should clear on insert, got %llu\n",
+                 static_cast<unsigned long long>(sel));
+    ok = false;
+  } else {
+    std::printf("OK   selection cleared on insert\n");
   }
 
   threeos_shutdown();

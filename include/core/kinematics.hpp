@@ -14,15 +14,13 @@
  * Stick deflection (meters):
  *   stick = current_hand - start_hand
  *
- * Deadzone: if |stick| < deadzone_m (default 1 cm), no drive is applied — any
- * residual velocity is friction-damped then cleared so returning the hand to
- * the grab origin brings the object to a halt.
- *
- * Outside the deadzone, object velocity (m/s) is proportional to the stick:
- *   v_obj = gain * stick
- * with gain in 1/s. Example: gain=10 and |stick|=0.30 m (~1 ft) → ~3 m/s.
- * Tiny wrist motions stay slow; several-feet-per-slice speeds require the hand
- * to travel on the order of a foot from start_hand.
+ * Deadzone (radial, default 0.015 m):
+ *   if |stick| < deadzone_m: velocity hard-zeroed (object stops).
+ *   else: remapped deflection so exit is continuous from 0:
+ *     stick_eff = stick * (|stick| - deadzone_m) / |stick|
+ *     v_obj = gain * stick_eff
+ * with gain in 1/s. Example: gain=10, deadzone=0.015, |stick|=0.30 m →
+ * ~2.85 m/s (not a jump from gain*deadzone at the boundary).
  *
  * Each tick integrates from the current object pose:
  *   p_obj += v_obj * dt
@@ -49,8 +47,8 @@ namespace threeos {
 struct KinematicsParams {
   /// Maps stick meters → object speed (1/s). ~10 ⇒ 1 ft stick ≈ 3 m/s.
   float gain = 10.f;
-  /// Min |current_hand - start_hand| before drive engages (meters).
-  float deadzone_m = 0.01f;
+  /// Radial |current_hand - start_hand| deadzone before drive engages (meters).
+  float deadzone_m = 0.015f;
   /// Exponential decay rate (1/s) while coasting or inside deadzone.
   float friction = 3.5f;
   float floor_y = 0.f;
@@ -83,8 +81,12 @@ struct StickDebug {
 
 class KinematicsEngine {
  public:
-  /// Temporary debug ray offset along flat player forward (2 inches).
-  static constexpr float kStickVizForwardOffsetM = 2.f * 0.0254f;
+  /// Stick debug ray offset away from the body (4 inches) so low-hand
+  /// telekinesis stays inside the HMD frustum. Applied opposite kernel -Z
+  /// forward under the Unity host's X-only handedness map.
+  static constexpr float kStickVizForwardOffsetM = 4.f * 0.0254f;
+  /// Extra world +Y lift on the stick viz (4 inches).
+  static constexpr float kStickVizUpOffsetM = 4.f * 0.0254f;
 
   const KinematicsParams& params() const { return params_; }
   void set_params(const KinematicsParams& p) { params_ = p; }

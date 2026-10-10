@@ -58,6 +58,8 @@ Inside the GLB JSON chunk, on the **root** glTF object:
 
 **Rendering note (0.4):** All OS glyphs draw as see-through icons. Hosts must use a transparent material queue; do not treat glyph meshes as opaque props.
 
+**Required Unity shader:** [ThreeOS/Glyph](../3OS_Unity/Shaders/ThreeOSGlyph.shader) — base + selection Fresnel \(same pass\) gated by `_Selected` (host `MaterialPropertyBlock`; no material swap). See README § Objects → Glyphs.
+
 \*Object/file packs should set `applies_to_extensions` (and usually leave `box_state` null). Box packs should set `category: "box"` and `box_state`, and typically leave `applies_to_extensions` empty (Boxes are bound by role, not by file extension).
 
 ## Demo packs (0.4)

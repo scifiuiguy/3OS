@@ -71,8 +71,9 @@ class Workspace {
   WorkspaceEntry* find_mut(EntityId id);
   const WorkspaceEntry* find(EntityId id) const;
 
-  /// While dragging `object_id` at `pose`, update snap vs boxes in field.
-  /// Returns true if snap enter/exit edge occurred (caller should re-anchor stick).
+  /// While dragging an Object or Box at `pose`, update snap vs other Boxes.
+  /// `pose` should be the free/escape kinematic pose (not the display hold).
+  /// Returns true if snap enter/exit edge occurred.
   bool update_snap(EntityId object_id, const Pose& pose);
 
   const SnapState& snap() const { return snap_; }
@@ -90,8 +91,15 @@ class Workspace {
   /// Temporarily show box open glyph during host anim (cosmetic).
   void set_box_visual_open(EntityId box_id, bool open);
 
+  /// Global single selection (`0` = none).
+  EntityId selection() const { return selected_id_; }
+  void clear_selection() { selected_id_ = 0; }
+  /// Returns false if `id` is nonzero and not a known workspace entry.
+  bool set_selection(EntityId id);
+
  private:
   EntityId next_id_ = 2000;
+  EntityId selected_id_ = 0;
   std::vector<WorkspaceEntry> entries_;
   GlyphRegistry* registry_ = nullptr;
   SnapState snap_{};

@@ -147,7 +147,7 @@ typedef struct ThreeOS_StickDebug {
   float magnitude;      /* |stick| meters */
   float unused0;
   ThreeOS_Vec3 stick;      /* current_hand - start_hand */
-  ThreeOS_Vec3 ray_origin; /* start_hand + flat_forward * 2" */
+  ThreeOS_Vec3 ray_origin; /* start_hand - flat_forward*4" + world +Y*2" */
   ThreeOS_Vec3 ray_tip;    /* ray_origin + stick */
   uint32_t reserved0;
   uint32_t reserved1;
@@ -216,7 +216,7 @@ typedef struct ThreeOS_StorageEvent {
 /** Packed semver: (major << 16) | (minor << 8) | patch. Phase 0.4 => 0.4.0 */
 THREEOS_API uint32_t threeos_version(void);
 
-/** ABI layout/feature version; 4 = storage/glyph APIs present. */
+/** ABI layout/feature version; 4 = storage/glyph + selection APIs present. */
 THREEOS_API uint32_t threeos_abi_version(void);
 
 THREEOS_API int32_t threeos_init(void);
@@ -314,6 +314,12 @@ THREEOS_API int32_t threeos_storage_set_box_open(uint64_t box_id, int32_t open);
 
 /** Install a .3glyph / GLB pack containing THREEOS_glyph metadata. */
 THREEOS_API int32_t threeos_glyph_install_pack(const uint8_t* bytes, uint32_t byte_count);
+
+/* --- Selection (Phase 0.4 tack-on; EntityId, 0 = none) --- */
+
+THREEOS_API int32_t threeos_selection_get(uint64_t* out_entity_id);
+THREEOS_API int32_t threeos_selection_set(uint64_t entity_id);
+THREEOS_API void threeos_selection_clear(void);
 
 #ifdef __cplusplus
 }

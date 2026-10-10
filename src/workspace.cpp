@@ -28,9 +28,22 @@ std::string extension_of(const std::string& path) {
 void Workspace::clear() {
   entries_.clear();
   next_id_ = 2000;
+  selected_id_ = 0;
   snap_ = {};
   event_ = {};
   have_rollback_ = false;
+}
+
+bool Workspace::set_selection(EntityId id) {
+  if (id == 0) {
+    selected_id_ = 0;
+    return true;
+  }
+  if (find(id) == nullptr) {
+    return false;
+  }
+  selected_id_ = id;
+  return true;
 }
 
 EntityId Workspace::add_object(const std::string& name, const std::string& relative_path) {
@@ -190,7 +203,9 @@ void Workspace::clear_snap() { snap_ = {}; }
 
 bool Workspace::update_snap(EntityId object_id, const Pose& pose) {
   WorkspaceEntry* obj = find_mut(object_id);
-  if (obj == nullptr || obj->kind != StorageKind::Object || !obj->in_field) {
+  // Objects and Boxes may snap-insert into a different in-field Box.
+  if (obj == nullptr || !obj->in_field ||
+      (obj->kind != StorageKind::Object && obj->kind != StorageKind::Box)) {
     const bool was = snap_.pending;
     clear_snap();
     return was;
@@ -200,8 +215,24 @@ bool Workspace::update_snap(EntityId object_id, const Pose& pose) {
   float best_d = kSnapDistanceM;
   Pose hold{};
   for (const auto& e : entries_) {
-    if (e.kind != StorageKind::Box || !e.in_field) {
+    if (e.kind != StorageKind::Box || !e.in_field || e.id == object_id) {
       continue;
+    }
+    // Do not nest a Box into one of its descendants (parent_box chain).
+    if (obj->kind == StorageKind::Box) {
+      bool is_desc = false;
+      EntityId walk = e.parent_box;
+      while (walk != 0) {
+        if (walk == object_id) {
+          is_desc = true;
+          break;
+        }
+        const WorkspaceEntry* p = find(walk);
+        walk = p != nullptr ? p->parent_box : 0;
+      }
+      if (is_desc) {
+        continue;
+      }
     }
     const float d = dist(pose.position, e.pose.position);
     if (d < best_d) {
@@ -249,6 +280,18 @@ bool Workspace::commit_insert(std::string* err) {
     }
     return false;
   }
+  if (box->kind != StorageKind::Box || obj->id == box->id) {
+    if (err) {
+      *err = "invalid insert target";
+    }
+    return false;
+  }
+  if (obj->kind != StorageKind::Object && obj->kind != StorageKind::Box) {
+    if (err) {
+      *err = "invalid insert source";
+    }
+    return false;
+  }
 
   last_insert_object_pose_ = obj->pose;
   have_rollback_ = true;
@@ -269,6 +312,9 @@ bool Workspace::commit_insert(std::string* err) {
   obj->in_field = false;
   obj->parent_box = box->id;
   box->child_count += 1;
+  if (selected_id_ == obj->id) {
+    selected_id_ = 0;
+  }
   clear_snap();
   return true;
 }
