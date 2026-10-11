@@ -14,22 +14,9 @@ Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop P
 
 ---
 
-<style>
-details > summary {
-  font-size: 1.5em;
-  font-weight: 600;
-  line-height: 1.3;
-  cursor: pointer;
-}
-details[open] > summary {
-  margin-bottom: 0.6em;
-  padding-bottom: 0.15em;
-}
-</style>
-
 <a id="what-is-3os"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">🧊 What is 3OS?</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧊 What is 3OS?</summary>
 
 3OS (pronounced **"three-oh-ess"**) is a voxel-first operating system interface that attempts to take us back to our roots by drawing upon incredible 90s research (not Hollywood but actual excellent-yet-rarely-utilized university work - see the Prior Art section). It aims to be the first 3D interface that's faster than desktop PCs for enterprise teams. Target hardware is HMDs, holographic displays, edge VDIs, and any other future hardware that enables stereoscopic depth visibility plus integration with legacy 2D screens. Primary target user demographic is office workers who already engage in lots of 3D content creation, including product designers and engineers using CAD software, game devs using game engines, VFX artists/programmers, etc. 
 
@@ -42,7 +29,7 @@ details[open] > summary {
 
 <a id="wimp-is-wimpy"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">🪟 WIMP is wimpy</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🪟 WIMP is wimpy</summary>
 
 The WIMP paradigm is a backwards compatibility tool in XR. It should not be front-and-center in any spatial computing OS. A VR or MR HMD that uses WIMP as its default metaphor set is like Windows 95 launching into a command line with no Desktop, no Start button, and no File Explorer, except at least the command line still brought extra speed for power users. WIMP interfaces do the opposite in XR, yet they're the ONLY OS interface in 2026, rather than a background legacy option. We cannot expect enterprise software suite companies to consider porting their robust systems into XR using stone tools.
 
@@ -52,7 +39,7 @@ The WIMP paradigm is a backwards compatibility tool in XR. It should not be fron
 
 <a id="3os-basics"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">📐 3OS Basics</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">📐 3OS Basics</summary>
 
 Instead of forcing users to aim virtual laser pointers at floating 2D windows, 3OS treats the entire environment as a high-capacity voxel field where the parameterized resolution defaults to a 3-inch voxel, the approximate size that satisfies high selection accuracy at rapid speed with 6DOF 10-finger hand motion (see the Trivariate validation below). The goal is to provide users a voxel grid representing all the subdivisions of 3D space in which they can hover, select, or otherwise interact with any voxel in under 0.25 seconds regardless of their body's distance away from that voxel. This is an impossible feat in all current spatial computing operating systems because of the false assumption that OS interfaces must use WIMP.
 
@@ -69,7 +56,7 @@ The 20-teens era of spatial OS design is the Xerox PARC era. The Windows 95 era 
 
 <a id="the-problem"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">⚠️ The Problem</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">⚠️ The Problem</summary>
 
 Software companies (Adobe, Autodesk, Salesforce, Intuit, Shopify, etc.) assess whether they should port their legacy platforms into a new OS frequently. Their software is typically web-browser first for cross-platform efficiency, but even with cross-platform apps, the most robust productivity tools in these apps typically run on the desktop version only.
 
@@ -100,7 +87,7 @@ XR has greater enterprise potential than desktop computers. Raw throughput capab
 
 <a id="the-solution"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">💡 The Solution</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">💡 The Solution</summary>
 
 The "right" XR interface must solve the three glaring challenges that keep XR interfaces slow:
 
@@ -121,7 +108,7 @@ Solve these problems, and enterprise adoption of XR can begin.
 
 <a id="3os-core-implementation-philosophy"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">🏛️ 3OS Core Implementation Philosophy</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏛️ 3OS Core Implementation Philosophy</summary>
 
 1. **Voxels, Not Surfaces:** The fundamental building block of UI/UX in 3OS is a discrete coordinate volume (optimized at $\approx 3\text{ in}^3$ for reliable human motor capability under rapid hand motion), not a pixel fragment or a flat projection plane. 
 
@@ -140,7 +127,7 @@ These two methods follow 80/20 Pareto distribution, where most objects occupying
 
 <a id="ergonomics-determine-interactivity-resolution"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">✋ Ergonomics Determine Interactivity Resolution</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">✋ Ergonomics Determine Interactivity Resolution</summary>
 
 **The limits of the body determine ideal interaction volume bounds:** 
 
@@ -161,7 +148,7 @@ See [spatial_os_trivariate_validation.md](spatial_os_trivariate_validation.md) f
 
 <a id="the-3os-unified-interaction-state-machine"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">🔄 The 3OS Unified Interaction State Machine</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🔄 The 3OS Unified Interaction State Machine</summary>
 
 To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR selection systems, 3OS routes all user intent through a deterministic, cascading three-stage state machine.
 
@@ -207,7 +194,7 @@ To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR s
 
 <a id="volumetric-workspace-management-portals-teleportation"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">🌀 Volumetric Workspace Management: Portals & Teleportation</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🌀 Volumetric Workspace Management: Portals & Teleportation</summary>
 
 3OS bypasses the slow, physics-based fishing-line-reeling or lassoing of legacy XR by utilizing **Non-Euclidean Voodoo Volumes**.
 
@@ -222,7 +209,7 @@ To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR s
 
 <a id="volumetric-topology-system-architecture"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">🗂️ Volumetric Topology & System Architecture</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🗂️ Volumetric Topology & System Architecture</summary>
 
 ### 1. The Selection Frustum
 Multi-selection is resolved by pulling open both hands or twisting wrists in a dual-pinch to scale a dynamic bounding **Selection Frustum** inside the double-proxy volume. The possessed group behaves rigidly, preserving relative spatial offsets during velocity-mapped transformations.
@@ -246,7 +233,7 @@ Emulating the 2D File Explorer's view shifts, 3OS can instantly re-compute the s
 
 <a id="architectural-enclosure-world-mesh-penetration"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">🧱 Architectural Enclosure & World Mesh Penetration</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧱 Architectural Enclosure & World Mesh Penetration</summary>
 
 3OS strictly decouples Newtonian physics from spatial containment boundaries to preserve environmental stability and presence. These rules apply to all data structures the OS recognizes. These structures are analogous to files and folders of other operating systems, but they use different metaphors in 3D. For example, folders are boxes in 3OS. Files are objects whose low-poly prismatic geometry is defined by the application that generates the data, much like applications define file types and icons in other operating systems.
 
@@ -262,7 +249,7 @@ Emulating the 2D File Explorer's view shifts, 3OS can instantly re-compute the s
 
 <a id="common-3d-element-types"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">🎲 Common 3D Element Types</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🎲 Common 3D Element Types</summary>
 
 ### 1) Objects
   3OS is intended for full cross-compatibility with desktop OS interfaces because the file metaphor remains intact in an extruded 3D-ified form. A file is an OBJECT in 3OS. Its icon is no longer an icon. It's a glyph, a low-poly prismatic piece of geometry that can represent the brand of the app that generated the file. In addition, 3OS will support treating media as objects as well, including audio clips, video clips, images, 3D assets, and point-cloud-based assets (particle effects and/or Gaussian splat assets).
@@ -334,7 +321,7 @@ Emulating the 2D File Explorer's view shifts, 3OS can instantly re-compute the s
 
 <a id="collaborative-rooms-vdi-enterprise-edge-compute-phase-20"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">🏢 Collaborative Rooms, VDI & Enterprise Edge Compute (Phase 2.0)</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 Collaborative Rooms, VDI & Enterprise Edge Compute (Phase 2.0)</summary>
 
 Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handheld screen joins a shared volumetric field, sessions run on on-prem **VDI** or home **edge** compute, and collaboration semantics cover personal/shared/full-room workspaces, flyweight vs copy assets, view vs object transforms, spectator cameras, and optional site-to-site sync. The full design — reference 20×20 office fixture, desk docks, IMU monitors, co-editor VOIP/avatars, and VCS for simultaneous copies — is in [docs/COLLABORATIVE_ROOMS.md](docs/COLLABORATIVE_ROOMS.md); task checklists are Phase 2.0 in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
@@ -345,7 +332,7 @@ Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handhel
 
 <a id="structural-outline"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">📁 Structural Outline</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">📁 Structural Outline</summary>
 
 ```
 3os-core/
@@ -441,7 +428,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <a id="architectural-synthesis"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">🧬 Architectural Synthesis</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧬 Architectural Synthesis</summary>
 
 3OS acts as the ultimate engineering synthesis of these two historical schools of thought:
 
@@ -464,7 +451,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <a id="getting-started"></a>
 <details open>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3;">🚀 Getting Started</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🚀 Getting Started</summary>
 
 ```bash
 git clone https://github.com/scifiuiguy/3OS.git
