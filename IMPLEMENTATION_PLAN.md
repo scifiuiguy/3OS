@@ -3,9 +3,9 @@
 This roadmap moves **3OS_Core** from an empty repo to a production-grade, hardware-native volumetric OS module. Phases are dependency-ordered. Contiguous semver tracks real deliverables (no fake version gaps).
 
 ```text
-Core  0.0 → 0.1 (small ABI freeze) → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 → 1.0 (native OpenXR parity)
-                │                     │     │     │     │     │     │
-Unity 0.0 → 0.1 (thin Quest harness) → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 → 1.0 (UPM polish)
+Core  0.0 → 0.1 → … → 0.5 (hands) → 0.6 (voodoo look) → 0.7 → 0.8 → 1.0 → 2.0 (collab room / VDI + edge)
+                │                 │                      │                 │     │     │
+Unity 0.0 → 0.1 → … → 0.5 (hands) → 0.6 (voodoo look) → 0.7 → 0.8 → 1.0 → 2.0 (enterprise host + room displays)
 ```
 
 ### Companion repo (parallel track)
@@ -50,7 +50,7 @@ Unity 0.0 → 0.1 (thin Quest harness) → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 �
 ---
 
 ### 🕸 Phase 0.2: Topology, Proxies & Portals (v0.2.0)
-**Goal:** World Proxy Half-Dome, Double-Proxy Voxel Lattice, and Voodoo portal teleportation. Prove with **headless tests** here; prove on Quest via the paired **Unity 0.2** gate.
+**Goal:** World Proxy Half-Dome, Double-Proxy Voxel Lattice, and Voodoo portal teleportation. Prove with **headless tests** here; prove on Quest via the paired **Unity 0.2** gate. *(Product look — translucent volumes, ghosts, bloom — is Phase 0.6.)*
 
 - [x] **Task 2.1: Multiscale coordinate workspace (`src/topology.cpp`)**
   - [x] Voxel indexing for discrete ~3-inch spatial blocks (`std::array<int, 3>` or equivalent).
@@ -79,8 +79,8 @@ Unity 0.0 → 0.1 (thin Quest harness) → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 �
 
 ---
 
-### 📂 Phase 0.4: Storage Glyphs, FS sync & selection (v0.4.0)
-**Goal:** Map legacy FS into Boxes/Objects with **typed 3D glyphs**, host-fed listing, cubic demo matrix layout, snap-insert with write-through **cut**, and single selection. Glyphs are the OS “icons”; content payloads (the files themselves) stay separate. Host keyboard / rename-via-text is **not** in this phase (→ 1.0).
+### 📂 Phase 0.4: Storage Glyphs, FS sync, selection & Box drill-down (v0.4.0)
+**Goal:** Map legacy FS into Boxes/Objects with **typed 3D glyphs**, host-fed listing, **yaw-level** cubic demo matrix, sticky snap-insert with catch-up suppress + write-through **cut** (nested paths), single selection, and Box expand/collapse ABI. Glyphs are the OS “icons”; content payloads (the files themselves) stay separate. Host keyboard / rename-via-text is **not** in this phase (→ 1.0).
 
 **Glyph package model (single file)**  
 Windows associates types via the registry pointing at a separate `.ico`; the icon file does not carry the association. For 3OS we want the stronger case: **one file = mesh + type metadata**.
@@ -103,16 +103,18 @@ Operator stages **`Documents/3OS_Demo`** (see [`docs/QUEST_DEMO_DIR.md`](docs/QU
 
 **Generalized host listing (shipped):** every file under the demo root → Object; every subdirectory → Box (child count from folder contents). Content `.glb` must not be confused with glyph pack assets.
 
-**Demo field layout (0.4):** `threeos_storage_layout_demo` places all in-field roots in a **cubic matrix** 1 m in front of the head (side = ceil(cbrt(n)); 1–8 → 2³, 9–27 → 3³, …). Full Matrix/Cluster/Real-Anchor *mode toggles* remain Phase 0.5.
+**Demo field layout (0.4):** `threeos_storage_layout_demo` places all in-field roots in a **cubic matrix** 1 m in front of the head (side = ceil(cbrt(n)); 1–8 → 2³, 9–27 → 3³, …). Layout uses **yaw-only** heading with **world +Y up** so head roll/pitch at start does not tilt the field off the floor. Full Matrix/Cluster/Real-Anchor *mode toggles* remain Phase 0.7.
 
 Authored glyph sources (Blender → GLB → `.3glyph` with `THREEOS_glyph`): glTF-logo-like pack for `.glb`/`.gltf`; **`box.glb`** as the default closed Box glyph for all Boxes; **`box_open.glb`** as the open-state Box glyph (toggleable).
 
 **Rendering:** Object and Box **glyphs** (including demo `gltf_mark`, `box`, `box_open`) must draw **semi-transparent** (see-through prismatic icons), not opaque solids. Hosts use a transparent/alpha material path (URP Transparent or equivalent). Pack `tint_rgba.a` and mesh alpha should stay below 1 (target ~0.45–0.65 unless tuned). Content payloads like `simple.glb` are unaffected unless they are also shown as glyphs.
 
 **Drop-into-Box interaction (kernel logic + host viz)**  
-While dragging an Object glyph near a Box within snap distance (**0.2 m**): snap the Object to a hold pose just above the Box; host shows an insert-arrow affordance under the Object’s name label. Leaving the threshold unsnaps. Releasing while snapped commits insert: emit storage events, run host anim (closed → open glyph, +10% scale bump and return, open → closed), hide/remove the Object glyph from the parent field, refresh Box count (`1 object` / `N objects`). Persist by **cutting (moving)** the file into the folder on disk via the host FS event sink (Quest Documents may require all-files access).
+While dragging an Object **or Box** near another in-field Box within snap distance (**0.2 m**): snap to a hold pose just above the target Box; host shows an insert-arrow affordance. Leaving the threshold unsnaps. Releasing while snapped commits insert: emit storage events, run host anim (closed → open glyph, +10% scale bump and return, open → closed), hide the dragged glyph from the field, refresh Box count (`1 object` / `N objects`). Persist by **cutting (moving)** the file/folder into the target folder on disk (Quest Documents may require all-files access). Nested relative paths (`Parent/Child`) are preserved on cut; failed FS ack restores the prior `parent_box` (not always root).
 
-**Snap ↔ stick telekinesis:** On snap enter, clear Object velocity to zero and **re-anchor `start_hand` to the player’s current hand pose** without requiring a grip release. That way stick deflection is measured from the snap moment (no flyaway from the pre-snap stick). On unsnap, keep the same rule (re-anchor `start_hand`, zero velocity) so leaving the threshold is also a clean re-grab.
+**Snap ↔ stick telekinesis:** On snap enter, clear Object velocity to zero and **re-anchor `start_hand` to the player’s current hand pose** without requiring a grip release. While snapped, the kinematic escape pose + velocity keep integrating under the stick; display stays on the hold. On unsnap, lerp display from hold → escape pose and **keep the stick-built velocity** (do not re-anchor / zero). **Sticky snap:** once pending, ignore other Boxes until the escape pose leaves *that* Box’s radius (prevents hold-pose cascade up a dense vertical stack). **Catch-up suppress:** while the unsnap lerp is active, snap does not re-engage (neighbor above the hold cannot suck the object back mid-escape).
+
+**Box expand / collapse (0.4):** Host double short-trigger opens a Box (global drill-down); kernel `expand_box` lays children out in a cubic matrix above the parent (shared `field_spacing_m`, cell-hash lift). X dismiss closes; nested open trees close **deepest-first** then the selected parent. Host reconstructs demo-relative folder paths from the `parent_box` chain so nested folders instantiate deeper levels correctly.
 
 - [x] **Task 4.1: Host-fed workspace listing (no in-kernel FS crawler)**
   - [x] Host lists sandbox paths and feeds Objects/Boxes via `threeos_storage_add_object` / `threeos_storage_add_box` (Quest Documents ∪ persistent; core stays path-agnostic).
@@ -125,23 +127,25 @@ While dragging an Object glyph near a Box within snap distance (**0.2 m**): snap
   - [x] Built-in procedural fallbacks when packs are missing (generic Object / Box glyph ids + host prism visuals).
   - [x] Sample packs: `gltf_mark.3glyph` → `.gltf`/`.glb`; `box.3glyph` + `box_open.3glyph` → Boxes (toggle states); injector [`tools/inject_3glyph.py`](tools/inject_3glyph.py).
 - [x] **Task 4.3: Host glyph / workspace ABI + demo matrix layout**
-  - [x] Blittable `ThreeOS_WorkspaceItem`: entity id, kind, pose, `glyph_id`, tint, name + secondary label, child count, paths, in-field flag; Box open via `threeos_storage_set_box_open`.
+  - [x] Blittable `ThreeOS_WorkspaceItem`: entity id, kind, pose, `glyph_id`, tint, name + secondary label, child count, in-field / expanded flags; Box open via `threeos_storage_set_box_open`.
   - [x] Label fields: primary name and secondary (`0 objects` / `1 object` / `N objects`).
   - [x] Query path: `threeos_storage_item_count` / `get_item` for host instantiation.
-  - [x] `threeos_storage_layout_demo(head)` — cubic matrix field layout (see above); headless asserts layout poses.
+  - [x] `threeos_storage_layout_demo(head)` — cubic matrix; yaw-only / world-up (head roll does not tilt the field); headless asserts layout poses + yaw-only under rolled head.
 - [x] **Task 4.4: Box insert proximity & commit**
-  - [x] While Object is dragged: test distance to candidate Boxes; enter/exit **snap** (hold pose above Box); expose snap via `threeos_storage_get_snap` (arrow affordance).
-  - [x] On snap enter **and** snap exit: `velocity = 0` and reset grab-anchored `start_hand` to the current hand pose (grip may still be held).
-  - [x] On release while snapped: `try_commit_insert` parents Object under Box, updates child count, clears snap, queues FS event; clears selection if the inserted Object was selected.
-  - [x] Headless tests: snap pending; release → child count 1, secondary label, Object leaves field.
+  - [x] While Object **or Box** is dragged: test distance to candidate Boxes; enter/exit **snap** (hold pose above Box); expose snap via `threeos_storage_get_snap` (arrow affordance). Refuse nesting a Box into its own descendant.
+  - [x] **Sticky snap:** once pending, ignore other Boxes until escape pose leaves the snapped Box’s radius (no cascade up a dense vertical stack).
+  - [x] **Catch-up suppress:** no snap engage while unsnap lerp is active (neighbor cannot re-suck mid-escape). Sticky exit does not same-frame retarget.
+  - [x] On snap enter: `velocity = 0` and reset grab-anchored `start_hand`. On snap escape: lerp catch-up to escape pose; **keep** stick-built velocity (no re-anchor / zero).
+  - [x] On release while snapped: `try_commit_insert` parents under Box, updates child counts (incl. prior parent decrement), clears snap, queues FS event; clears selection if the inserted entity was selected.
+  - [x] Headless tests: snap pending; sticky Bot in dense stack; snap suppressed during catch-up; escape preserves velocity; release → child count 1, secondary label, Object leaves field.
 - [x] **Task 4.5: Storage mutation event system (write-through cut)**
   - [x] Emit typed `ObjectMovedIntoBox` (source rel path, dest rel path, entity ids) on commit; host polls + acks.
-  - [x] Host FS sink performs real **cut/move** into the Box folder (Quest: Documents + persistent; all-files access for Documents delete); Editor/desktop move likewise.
-  - [x] On FS success, workspace stays consistent; on failure, roll back model (Object returns to field, count restored) and surface error.
+  - [x] Host FS sink performs real **cut/move** into the Box folder (Quest: Documents + persistent; all-files access for Documents delete); supports nested `Parent/Child` relative paths for files and folders.
+  - [x] On FS success, workspace stays consistent; on failure, roll back model (entity returns to field, **prior `parent_box` restored**, counts adjusted) and surface error.
   - [x] Harness: poll event asserts path rewrite `simple.glb` → `Test1/simple.glb`; ack success.
 - [x] **Task 4.6: Single selection (0.4 tack-on)**
   - [x] Global selection state in ABI: `EntityId` or null (`0`) — `threeos_selection_get/set/clear`.
-  - [x] Host index-trigger select / empty-space deselect; yaw-aligned translucent highlight.
+  - [x] Host index-trigger select / empty-space deselect; selection highlight is a host shader rim (see Unity plan).
   - [x] Selection-gated far telekinesis (possess while selected ignores near-field distance).
 - [x] **Task 4.7: Storage/glyph verification**
   - [x] Harness fixture `simple.glb` + empty `Test1`; assert glyph ids, labels, and `0 objects` → `1 object` after insert.
@@ -150,41 +154,89 @@ While dragging an Object glyph near a Box within snap distance (**0.2 m**): snap
   - [ ] *(Rename via host text is **not** a 0.4 gate — deferred to Phase 1.0 with the text router.)*
 - [x] **Task 4.8: Box expand / collapse layout**
   - [x] Shared `field_spacing_m` (default 0.22 m) for demo + expand matrices.
-  - [x] `expand_box` / `collapse_box` (+ parent/in_field helpers): cubic matrix above parent; uniform cell-hash encroachment (no octree); children stay independent world poses.
+  - [x] ABI: `set_parent_box` / `set_in_field` / `get_parent_box` / `expand_box` / `collapse_box`; flag bit2 `box_expanded` on workspace items.
+  - [x] `expand_box` / `collapse_box`: cubic matrix above parent; uniform cell-hash encroachment (no octree); children stay independent world poses (no lasting hierarchy).
   - [x] Harness: expand places children above box without overlapping a blocker; collapse clears `in_field` / expanded flag.
 
-**Headless / Quest gate (0.4):** Harness green for glyphs, cubic layout, snap-insert, selection ABI, box expand/collapse. Quest APK demonstrates host listing + matrix field + cut write-through + selection highlight / far possess + Box double-tap expand / X close (device smoke on latest APK).
+**Headless / Quest gate (0.4):** Harness green for glyphs, yaw-level cubic layout, snap-insert (sticky + catch-up suppress + escape velocity), selection ABI, box expand/collapse. Quest APK demonstrates host listing + matrix field + cut write-through (incl. nested paths) + selection rim / far possess + Box double-tap expand / nested X close / nested open drill-down (device smoke on latest APK, currently Phase04 XR **51+**).
 
 ---
 
-### 🗂️ Phase 0.5: Layouts, Anchors & Selection Frustum (v0.5.0)
-**Goal:** Cover README workspace features omitted from the original Gemini plan.
+### ✋ Phase 0.5: Hand & Controller Integration (v0.5.0)
+**Goal:** Make interaction input first-class: tracked hands and Quest controllers drive the same semantic actions (hover, select/pinch, possess/grip, release) through a stable ABI, so later phases (frustum, voodoo look polish, layouts) are not stuck on Quest Trigger-only hacks.
 
-- [ ] **Task 5.1: Procedural volumetric layouts**
-  - [ ] **Matrix View** — packed 3D cubic grids as a **toggleable layout mode** (demo cubic matrix already seeded in 0.4 `layout_demo_field`; 0.5 owns mode switching + persistence).
+**Scope note:** Phase 0.1–0.4 already marshal a thin `InteropInputFrame` and Quest trigger/grip paths enough for storage demos. 0.5 hardens **parity** (hands ↔ controllers), richer pose/button semantics, and headless coverage — not a greenfield rewrite of kinematics.
+
+- [ ] **Task 5.1: Input ABI — hands + controllers**
+  - [ ] Extend blittable input (append-only after 0.1 freeze): per-hand / per-controller pose, tracking confidence / lost flags, and discrete action bits (hover probe, select/pinch, possess/grip, menu/secondary as needed).
+  - [ ] Document units, handedness, and OpenXR ↔ Unity convention parity for palm vs pinch tip vs controller tip.
+  - [ ] Keep device transport out of core: hosts fill frames; core consumes semantics.
+- [ ] **Task 5.2: Facade action mapping**
+  - [ ] Map pinch (hands) and trigger/A (controllers) onto the same select / commit paths used by selection + storage.
+  - [ ] Map grip (or documented controller equivalent) onto possess / telekinesis start-stop consistently with 0.3–0.4 stick law.
+  - [ ] Dual-source policy: prefer hands when confidently tracked; fall back to controllers without double-firing the same action.
+- [ ] **Task 5.3: Interaction-point policy**
+  - [ ] Define the driving interaction point (pinch tip / controller tip / offset cursor) used for hover volume tests and snap proximity — document default offset so the hand does not occlude the proxy (README point-cursor story).
+  - [ ] Soft-fail when tracking drops mid-possess (no crash; clear or coast per kinematics rules).
+- [ ] **Task 5.4: Headless verification**
+  - [ ] Inject mock hand and controller streams; assert select / possess / release semantics match.
+  - [ ] Assert tracking-lost mid-drag does not corrupt workspace or snap state.
+
+**Headless / Quest gate (0.5):** Harness green for dual-source input mapping. Quest: storage + telekinesis demo completable with **controllers alone** and with **tracked hands alone** (select, drag, snap-insert, Box expand) without Trigger-only special cases.
+
+---
+
+### 🧿 Phase 0.6: Voodoo Volume Look Development (v0.6.0)
+**Goal:** Turn the Phase 0.2 functional Half-Dome / double-proxy / portal remaps into **readable, product-shaped voodoo volumes** — translucent near-field proxies, far-field ghosts, and clear portal affordances. Core exposes the state and bounds hosts need to draw; Unity owns materials/meshes/animation (paired Unity 0.6).
+
+**Scope note:** Topology math and portal teleport already shipped in 0.2. This phase is **look + draw contracts**, not new teleport algorithms. Full enclosure / wall-mask shaders stay in 0.8; layout mode toggles stay in 0.7.
+
+- [ ] **Task 6.1: Voodoo volume descriptors (ABI)**
+  - [ ] Blittable descriptors for World Proxy Half-Dome and Double-Proxy Lattice: center, extents, scale ratio, open/closed, linked far-field region, voxel cell size hint (default ~3").
+  - [ ] Query path so hosts can rebuild meshes/materials from kernel state each frame (or on dirty).
+  - [ ] Parameterize default near-field box from Trivariate / README navel-forward rest pose (host may override).
+- [ ] **Task 6.2: Ghost / proxy draw contract**
+  - [ ] Expose which far-field entities (and empty cells, if needed) participate in the open proxy so hosts can draw **ghost copies** in the near field and/or far-field hand/cursor ghosts.
+  - [ ] Keep mesh authorship in the host; core supplies ids, poses, and proxy remap transforms only.
+- [ ] **Task 6.3: Portal affordance state**
+  - [ ] Clear enter/hold/place/dismiss state for Half-Dome → lattice bloom so hosts can animate without inventing parallel state machines.
+  - [ ] Headless: open dome → select region → lattice open; descriptors match expected bounds/links.
+- [ ] **Task 6.4: Look-facing verification**
+  - [ ] Harness asserts descriptor fields and remap transforms for a fixture proxy session (no GPU in core).
+  - [ ] Document host look checklist (paired Unity Quest gate owns the visual pass).
+
+**Headless / Quest gate (0.6):** Harness green for descriptors + portal state. Quest: Half-Dome and double-proxy read as intentional translucent voodoo volumes (not debug wire cubes); ghosts/cursors convey near↔far linkage during a portal drag.
+
+---
+
+### 🗂️ Phase 0.7: Layouts, Anchors & Selection Frustum (v0.7.0)
+**Goal:** Cover README workspace features deferred from the original 0.5 slot — toggleable layouts, anchor subordination, and dual-hand selection frustum. *(Global Box expand without dismissing parents remains seeded in 0.4; this phase owns the explicit global/local mode toggle.)*
+
+- [ ] **Task 7.1: Procedural volumetric layouts**
+  - [ ] **Matrix View** — packed 3D cubic grids as a **toggleable layout mode** (demo cubic matrix already seeded in 0.4 `layout_demo_field`; 0.7 owns mode switching + persistence).
   - [ ] **Cluster View** — metadata/semantic groupings.
   - [ ] **Real Anchor View** — snap back to world surfaces / custom origins.
-- [ ] **Task 5.2: Layered coordinate subordination**
+- [ ] **Task 7.2: Layered coordinate subordination**
   - [ ] Toggle **Egocentric** (user-locked), **Allocentric** (world-locked), **Object-locked** (parent asset) origins.
-- [ ] **Task 5.3: Selection frustum**
-  - [ ] Dual-pinch / dual-hand scaled bounding frustum inside a double-proxy; rigid group transforms preserve relative offsets.
-- [ ] **Task 5.4: Global vs local box drill-down**
-  - [ ] Global mode (default): open Box without dismissing parent contents.
+- [ ] **Task 7.3: Selection frustum**
+  - [ ] Dual-pinch / dual-hand scaled bounding frustum inside a double-proxy; rigid group transforms preserve relative offsets. *(Builds on 0.5 hand/controller pinch parity.)*
+- [ ] **Task 7.4: Global vs local box drill-down**
+  - [ ] Global mode (default): open Box without dismissing parent contents. *(Seeded in 0.4 Task 4.8 / Unity U4.8 — 0.7 owns an explicit mode toggle.)*
   - [ ] Local mode: dismiss parent level when opening a Box.
 
 ---
 
-### 🧱 Phase 0.6: Full Enclosure, Shader Adapters & AI Hooks (v0.6.0)
-**Goal:** Complete boundary policy; keep plane math in C++; treat shaders as **per-engine adapters**. Optional AI as typed commands, not speech hashes.
+### 🧱 Phase 0.8: Full Enclosure, Shader Adapters & AI Hooks (v0.8.0)
+**Goal:** Complete boundary policy; keep plane math in C++; treat shaders as **per-engine adapters**. Optional AI as typed commands, not speech hashes. *(Deferred from the original 0.6 slot.)*
 
-- [ ] **Task 6.1: Enclosure engine (`src/enclosure.cpp`)**
+- [ ] **Task 8.1: Enclosure engine (`src/enclosure.cpp`)**
   - [ ] Strict floor policy (already seeded in 0.3) plus wall/ceiling plane constraints.
   - [ ] Rigidbody matrix default `Disabled`; optional per-object gravity opt-in.
   - [ ] Semantic wall masking: core supplies plane equations; hosts clip meshes.
-- [ ] **Task 6.2: Shader adapters (not core-only HLSL)**
+- [ ] **Task 8.2: Shader adapters (not core-only HLSL)**
   - [ ] Reference plane → clip interface in core.
   - [ ] Ship example `SemanticWallMask.hlsl` for D3D/Unity-style hosts; document that Vulkan/GL/Unreal use equivalent adapters.
-- [ ] **Task 6.3: Agentic service layer (`src/ai/`)**
+- [ ] **Task 8.3: Agentic service layer (`src/ai/`)**
   - [ ] Accept **typed intent/commands** (string or enum) from the host OEM assistant via ABI.
   - [ ] Map commands onto facade actions (e.g. matrix layout, portal open) — no in-kernel “speech hashing.”
 
@@ -193,35 +245,113 @@ While dragging an Object glyph near a Box within snap distance (**0.2 m**): snap
 ### 🚀 Phase 1.0: Native OpenXR Realization (v1.0.0)
 **Goal:** Run the kernel against real OpenXR handles, with a concrete acceptance checklist (not a single vague “certification” checkbox).
 
-- [ ] **Task 7.1: OpenXR lifecycle (`src/main.cpp` or dedicated runtime entry)**
+- [ ] **Task 9.1: OpenXR lifecycle (`src/main.cpp` or dedicated runtime entry)**
   - [ ] Replace mock telemetry with OpenXR session/instance/system handles.
   - [ ] Request `XR_EXT_hand_tracking` (and `XR_EXT_eye_gaze_interaction` when available).
   - [ ] Establish `XR_REFERENCE_SPACE_TYPE_STAGE` (allocentric) and `XR_REFERENCE_SPACE_TYPE_VIEW` (egocentric).
-- [ ] **Task 7.2: Multi-modal text router (`src/text/`) — host-injected**
+- [ ] **Task 9.2: Multi-modal text router (`src/text/`) — host-injected**
   - [ ] Priority router in `text_io_router.cpp` that accepts strings from a **host-supplied callback / ABI entry** (keyboard, IME, engine UI).
   - [ ] Do **not** embed Bluetooth/WiFi keyboard sockets in core; leave transport to the host OS or Unity/Unreal layer.
   - [ ] Hooks for volumetric **Lexting** (3D hand-in-voxel → text field) as a later input source on the same router.
   - [ ] `text_label.cpp` CRUD for Box/Object annotations (primary + secondary count strings).
-- [ ] **Task 7.3: Acceptance checklist**
-  - [ ] Macro-target via World Proxy Half-Dome on far-field empty space.
+- [ ] **Task 9.3: Acceptance checklist**
+  - [ ] Macro-target via World Proxy Half-Dome on far-field empty space (product look from 0.6).
   - [ ] Double-proxy micro-resolve + CRUD in empty voxels.
   - [ ] Portal teleport near ↔ far and cross-proxy.
+  - [ ] Hands **and** controllers complete the demo path (from 0.5).
   - [ ] Velocity glide with friction settle; floor clamp holds.
-  - [ ] Wall masking does not clip through partition planes incorrectly.
+  - [ ] Wall masking does not clip through partition planes incorrectly (from 0.8).
   - [ ] Storage glyphs + rename via host text injection.
-  - [ ] Layout mode toggle and at least one anchor-mode switch work in-session.
+  - [ ] Layout mode toggle and at least one anchor-mode switch work in-session (from 0.7).
 
 ---
 
-### 📝 Post-1.0: Parking lot (ideas without tasks yet)
+### 🏢 Phase 2.0: Collaborative Room Workspaces (v2.0.0)
+**Goal:** Multi-user 3OS on **on-prem VDI** (office GPU farms) and **home/edge compute** (IoT-class servers), interfacing every 2D screen in a room — wall-mounted or handheld — as a first-class, possessable display in shared volumetric workspaces. Phase 1.0 remains the single-user / native-OpenXR product bar; 2.0 adds session, presence, display, and media-sync systems.
 
-Capture design notes and UX instincts that are not ready for checklist tasks. No sequencing — promote into a real phase when fleshed out. Mirror host-facing notes in Unity’s Post-1.0 section when relevant.
+**Design write-up:** [`docs/COLLABORATIVE_ROOMS.md`](docs/COLLABORATIVE_ROOMS.md) (room fixture, flyweight/copy, VCS, co-editor VOIP/avatars, site-to-site opt-in).
+
+**Reference office room (design target)**  
+Optimal layout: **20 ft × 20 ft**. Three walls are workstation walls; the fourth has the entry door and a **guest couch**. Room center is empty with a large carpet — everyone’s primary volumetric workspace.
+
+| Element | Spec |
+| --- | --- |
+| Workstation walls | 3 walls × **4 stations** each (**12 workers**); each station **50" wide** |
+| Monitors / wall | **8× 24"** displays on a single wall rail; ball joint for quick portrait ↔ landscape; small padding for rotation; **IMU on each monitor back** (pose → server) |
+| Console | **48" wide**; two drawers **22" wide × 10" deep**; feet raise console **4"** off floor |
+| Desk beam dock | Square groove **3.0625"** wide at console center for a **3" square-tube** standing-desk beam; pogo-pin power/data + spring latch; press-release within reach on entry |
+| Standing desk | Off-the-shelf unit with power/data routing; surface **30" × 16"** (keyboard, mouse, flush USB/power only). Worker unlatches, pulls out, spins to face room center for volumetric work; can latch back to wall for legacy dual-monitor work |
+| Spectator / guest screens | Couch wall **and** opposite wall: **two large 4K screens each**, in addition to workstation monitors |
+| Room cameras | **Four** corner cameras aimed at center; each captures virtual shared-space content and, by default, drives monitors on the **opposite** side of the room as spectator views |
+| Compute | On-prem **VDI** with GPU headroom for **12 simultaneous** workers (enterprise); home deployments use edge/IoT-class servers with the same session/display contracts at smaller scale |
+
+**Arrival flow (office):** Latch-release desk → face carpet → launch eyewear app → log into **3OS enterprise** on the VDI → land in **personal workspace** first; join or create **shared** workspaces (pairs, 3–4+, or **full-room**) as invited.
+
+- [ ] **Task 10.1: Multi-user session & workspace model**
+  - [ ] Session identity: authenticated user, device credentials, room/tenant binding (enterprise VDI vs home edge).
+  - [ ] Workspace kinds: **personal** (default on login), **shared** (any invite size — pairs, trios, larger), **full-room** (everyone present; owns room-wide spectator routing).
+  - [ ] Invite / join / leave ABI; presence list per workspace; host is not the source of truth for ACLs (server/session service is).
+  - [ ] Solo-in-shared: other invitees’ volumetric content **masked** in eyewear until explicitly unmasked or co-possessed — personal focus without leaving the shared session.
+- [ ] **Task 10.2: Display registry (every 2D screen in the room)**
+  - [ ] First-class **Display** entities: wall monitors, large 4K guest screens, handheld tablets/phones once logged in.
+  - [ ] Pose pipeline: per-display **IMU** (and/or camera-assisted localization for handhelds) fused into room coordinates; portrait/landscape from mount/IMU.
+  - [ ] Static vs handheld lifecycle; hot-plug / battery / tracking-lost soft-fail without dropping the session.
+  - [ ] Reference-room catalog helpers (optional): 3×8 workstation monitors + 4× 4K guest screens + N handhelds — parameterization, not a hardcode-only layout.
+- [ ] **Task 10.3: Spectator cameras & default monitor routing**
+  - [ ] Four corner camera frustums as room-aligned virtual observers of the shared volumetric field.
+  - [ ] Default binding: each camera feeds spectator views to monitors on the **opposite** wall; full-room workspace can reassign routing.
+  - [ ] Large 4K pair on couch wall / opposite wall prioritized for guests without eyewear.
+  - [ ] Compositor contract: server (VDI/edge) renders spectator frames; eyewear clients do not each re-render all wall feeds.
+- [ ] **Task 10.4: Snap-to-monitor & shared monitor possession**
+  - [ ] Extend standard 3OS transforms: snap any volumetric content onto any registered display → that display leaves default spectator mode and shows an **object-focused** view (3D asset render, video playback, image, text surface, etc. by content type).
+  - [ ] Every monitor is **possessable** by any workspace member; possession is shared — any other invitee may interact or **release** possession, restoring default spectator view.
+  - [ ] Legacy workstation mode: user faces wall, latches desk into console, possesses the **two monitors above their station**; those displays behave as a conventional dual-monitor desktop until released.
+- [ ] **Task 10.5: Logged-in device localization & pull-in**
+  - [ ] Cameras + session creds **semantically track** issued devices (e.g. tablet) in room space while logged in.
+  - [ ] Gesture/ABI to **pull** that device’s live surface into the shared volumetric workspace (real-time mirror), using localized pose for placement.
+  - [ ] Same localization authority used for wall displays (IMU → server) so handheld and bolted screens share one coordinate frame.
+- [ ] **Task 10.6: Asset references (flyweights) vs asset copies**
+  - [ ] First-class open binding: each workspace open of an asset is either a **copy** (independent instance) or a **reference** (flyweight to one server-RAM object). Same filename / same path must not imply a mode by accident.
+  - [ ] Flyweight: attribute edits and **object** transforms propagate immediately to every workspace holding that reference, even across parallel workspaces with different view angles. **No merge** — one singleton in RAM; durable save/commit of that singleton is ordinary persistence, not a collaboration merge path. Teams may choose flyweight specifically to avoid diff/merge (especially same-room).
+  - [ ] Copy: edits and object transforms stay local to that instance; no cross-workspace mutation; reconciliation is VCS (10.6b).
+  - [ ] **Locality gate (default):** allow flyweight inside a low-latency co-residency domain (**room**; **building/campus** on the same on-prem fabric). By default refuse or force **copy** for cross-region / high-RTT peers.
+  - [ ] **Optional site-to-site flyweight:** tenant opt-in when they provision an **MMO-class** (expensive) sync fabric between sites; then cross-site opens may bind as flyweight under the same no-merge + co-editor presence rules. Document cost/SLA; never imply WAN flyweight is free or default.
+  - [ ] **Co-editor presence (required on flyweight open/join):** expose who else is live on that singleton (user, room/station if known, workspace). Invisible co-editors are not allowed; this is social coordination, not a VCS merge.
+  - [ ] **Roster actions:** in-3OS **VOIP conference** with selected co-editors (esp. other rooms on campus); **bidirectional avatar fly-in** — place remote co-editor avatars in the local room field and local avatars in theirs so deixis/gaze align with live flyweight edits.
+  - [ ] Default staging: place document origin / primary content at **room center** when opening into a workspace (overridable); placement is not the same as copy-vs-reference choice.
+  - [ ] Headless: two workspaces open one flyweight — object spin in A visible in B; camera flip in A leaves B’s object upright; presence list includes both. Two copies — object spin in A leaves B upright. Cross-domain open request cannot bind as flyweight.
+- [ ] **Task 10.6b: VCS integration for simultaneous copies**
+  - [ ] Treat concurrent copies of the same logical asset as **divergent lineages** (branch-like): source revision identity, per-copy dirty state, commit/check-in, merge/rebase to trunk, conflict surfacing (including binary/DCC payloads). Required whenever flyweight is disallowed (cross-site) or teams choose isolation.
+  - [ ] Session/ABI hooks for VCS actions as volumetric intents (checkout/open-as-copy, promote, get-latest, resolve conflict) — plumb Git/Perforce/Plastic/etc.; do not embed a full VCS engine in core.
+  - [ ] Optional lock/lease policy when merge would be unsafe. True flyweight sessions have **no** merge UX for live edits.
+  - [ ] Headless/fixture: two copy opens diverge → merge path reports conflict or clean promote; same-domain flyweight path has no merge step for live object spin.
+- [ ] **Task 10.7: View transform vs object transform**
+  - [ ] Separate ABI/state: **view / camera** (per user or per workspace view rig) vs **object anchor** (coordinates / orientation relative to document or room origin).
+  - [ ] Camera/view moves never write object attributes; object transforms never silently rewrite another user’s camera.
+  - [ ] Spectator and snap-to-monitor focused views may follow a workspace camera into a flyweight without baking that orbit into the asset transform.
+  - [ ] Host DCC ports (e.g. Maya-in-3OS thought experiment): scene edits = object/document; orbit/tumble/“flip upside down for looking” = view unless the user explicitly transforms the asset.
+- [ ] **Task 10.8: Real-time media sync**
+  - [ ] Sync text, images, video, and 3D assets across eyewear clients and possessed/spectator displays with session-scoped consistency (who sees what under mask/invite/copy-vs-reference rules).
+  - [ ] Bandwidth/GPU policy hooks for 12-user VDI vs smaller edge nodes (quality ladders, spectator vs personal LOD; flyweight sharing vs duplicated instances) — policy in server/host; kernel exposes intent, not vendor codecs.
+- [ ] **Task 10.9: Deployment contracts (VDI + edge)**
+  - [ ] Document split: **session/display/compositor** on on-prem VDI or home edge server; **eyewear/host** as thin interactive clients.
+  - [ ] Headless tests: workspace invite graph; display pose update; snap → focused view → release → spectator restore; mask rules for solo-in-shared; flyweight vs copy + view vs object cases from 10.6/10.7; copy-divergence → VCS promote/merge hook from 10.6b.
+  - [ ] No requirement that core embed a full VDI stack — define ABI + reference server responsibilities; implementations may be separate services.
+
+**Gate (2.0):** Reference-room (or scaled fixture) demo — 2+ authenticated users in a shared workspace; wall monitors show opposite-camera spectator views; snap content to a monitor → focused view; second user releases possession → spectator restored; logged-in handheld localized and pull-in works; masked solo presence hides peer content until unmasked; parallel workspaces prove **flyweight** object edits cross sessions while **camera** flips do not, and **copies** isolate object edits with a **VCS promote/merge** path (not silent overwrite). Home-edge path exercises the same contracts at smaller display counts.
+
+---
+
+### 📝 Parking lot (ideas without tasks yet)
+
+Capture design notes and UX instincts that are not ready for checklist tasks. No sequencing — promote into a real phase (including 2.x) when fleshed out. Mirror host-facing notes in Unity’s parking-lot section when relevant.
 
 **Notes**
 
 - *(Selection-gated telekinesis promoted into Phase 0.4 Task 4.6.)*
 - [ ] **Glyph pack GUI (artist tool):** Simple desktop/Editor UI to generate `.3glyph` files (pick GLB, edit `THREEOS_glyph` fields, inject metadata) for artists who do not want to run `tools/inject_3glyph.py` from the CLI. Wraps the existing injector; does not embed host shaders in the pack.
 - [ ] **Global field spacing + glyph scale:** Runtime `threeos_storage_get/set_field_spacing(float meters)` (clamped); Unity inspector/settings drive both kernel spacing and host `GlyphSizeM` (keep ~2.2× ratio or one master “field cell size”); optionally re-layout in-field matrices and rescale glyph roots so the whole field can be resized without hunting magic numbers. Kernel already shares `Workspace::kDefaultFieldSpacingM` / `field_spacing_m_` for demo + box-expand layout.
+- [ ] **Matrix padding / margins:** Tunable cell padding and snap-margin (independent of spacing) so dense stacks are comfortable without relying only on sticky-snap; expose alongside field-spacing controls in a later milestone.
 
 ---
 
@@ -232,7 +362,11 @@ Do not duplicate the full Unity checklist here. Use **[3OS_Unity/IMPLEMENTATION_
 | After core… | Unity must… |
 | --- | --- |
 | **0.1** ABI freeze | Thin harness: bridge, input router, plugin load/ping on Quest |
-| **0.2–0.6** | Matching visuals/UX for proxies, telekinesis, glyphs, layouts, mask |
+| **0.2–0.4** | Proxies (functional), telekinesis, storage glyphs / FS cut |
+| **0.5** | Hands + controllers parity on device |
+| **0.6** | Voodoo volume product look (Half-Dome / lattice / ghosts) |
+| **0.7–0.8** | Layouts / frustum / anchors; enclosure mask + command hook |
 | **1.0** | UPM polish + full demo acceptance; core native OpenXR is parity, not a blocker |
+| **2.0** | Enterprise/edge collaborative host: room displays, spectator cams, shared workspaces |
 
 Unreal (if pursued) can mirror the same paired-version pattern against the same ABI.
