@@ -1,11 +1,14 @@
 #pragma once
 
+#include "core/centroid_registry.hpp"
 #include "core/hand_interaction.hpp"
 #include "core/types.hpp"
+#include "storage/workspace.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <vector>
 
 namespace threeos {
 
@@ -45,6 +48,17 @@ struct VoodooDragArrow {
   Vec3 ray_tip{};
 };
 
+/// Snap-mode node in hand/arrow space (field-scaled inverse of far BB gain).
+struct VoodooSnapNode {
+  EntityId centroid_id = 0;
+  CentroidKind kind = CentroidKind::None;
+  bool snapped = false;
+  Vec3 world_position{};  // arrow-origin + hand_offset (viz)
+  Vec3 hand_offset{};     // stick-space target
+  Vec3 field_position{};  // real centroid
+  float radius_m = 0.035f;
+};
+
 enum class VoodooSessionPhase : uint32_t {
   Idle = 0,
   Dragging = 1,
@@ -59,25 +73,26 @@ struct VoodooSessionState {
   VoodooBoundingBox far_bb{};
   VoodooBoundingBox near_bb{};
   VoodooDragArrow arrow{};
+  std::vector<VoodooSnapNode> snap_nodes{};
+  EntityId snapped_centroid_id = 0;
 };
 
 class VoodooVolumeEngine {
  public:
   static constexpr float kDefaultDeadzoneM = 0.015f;
-  /// Far BB spawn: farther out for field placement.
   static constexpr float kFarRestForwardM = 1.0f;
-  /// Near BB bottom-center: ~neutral elbow/cursor reach + 3″ (Quest-tuned).
-  static constexpr float kNearRestForwardM = 0.33f + 3.f * 0.0254f;  // ≈0.4062 m
-  /// Drop bottom anchor 4″ below navel height (Quest-tuned).
+  static constexpr float kNearRestForwardM = 0.33f + 3.f * 0.0254f;
   static constexpr float kNearRestYBelowNavelM = 4.f * 0.0254f;
   static constexpr float kNavelBelowHeadM = 0.35f;
-  /// Far BB start size = near extents × this (near stays 1×).
   static constexpr float kFarStartScale = 2.f;
-  /// Subtle far-position follow (seconds); low latency, cuts high-gain jitter.
   static constexpr float kFarDampTauS = 0.045f;
-  /// Stick viz: push origin away from body along floor-forward.
   static constexpr float kStickVizForwardOffsetM = 4.f * 0.0254f;
   static constexpr float kStickVizUpOffsetM = 4.f * 0.0254f;
+  /// Hand-space snap capture radius (~1.4").
+  static constexpr float kSnapNodeRadiusM = 0.035f;
+  /// Soft pull starts at this multiple of radius.
+  static constexpr float kSnapPullMul = 2.2f;
+  static constexpr float kExtentsLerpPerSec = 4.f;
 
   const VoodooFieldParams& params() const { return params_; }
   bool set_params(const VoodooFieldParams& p);
@@ -99,9 +114,10 @@ class VoodooVolumeEngine {
 
   void reset();
 
-  /// Drive one hand from its intents. Release parks far + opens near; tracking loss cancels.
+  /// Drive one hand. Pass live centroids + workspace for snap-mode gravity / BB fit.
   void tick_hand(uint32_t hand, const InteractionIntents& intents, const Pose& hand_pose,
-                 bool hand_valid, const Pose& head, bool head_valid, float dt_seconds);
+                 bool hand_valid, const Pose& head, bool head_valid, float dt_seconds,
+                 const CentroidRegistry& centroids, const Workspace& workspace);
 
  private:
   struct HandRuntime {
@@ -109,6 +125,7 @@ class VoodooVolumeEngine {
     Pose start_hand_{};
     Pose rest_far_{};
     Vec3 far_smoothed_{};
+    Vec3 extents_smoothed_{};
     bool have_start_hand_ = false;
     bool have_far_smoothed_ = false;
     bool deadzone_armed_ = false;
@@ -121,14 +138,16 @@ class VoodooVolumeEngine {
   void cancel_drag(uint32_t hand);
   void dismiss(uint32_t hand);
   void update_far_while_dragging(uint32_t hand, const Pose& hand_pose, const Pose& head,
-                                 bool head_valid, float dt_seconds);
-  void update_arrow(uint32_t hand, const Pose& hand_pose, const Pose& head, bool head_valid);
+                                 bool head_valid, float dt_seconds,
+                                 const CentroidRegistry& centroids, const Workspace& workspace);
+  void update_arrow(uint32_t hand, const Pose& hand_pose, const Pose& head, bool head_valid,
+                    const Vec3* stick_override);
+  void rebuild_snap_nodes(uint32_t hand, const CentroidRegistry& centroids);
+  Vec3 fit_extents_for_aabb(const Vec3& aabb_min, const Vec3& aabb_max) const;
   void apply_near_extents(VoodooBoundingBox& bb) const;
   void apply_far_start_extents(VoodooBoundingBox& bb) const;
   Pose far_rest_pose(const Pose& head, bool head_valid) const;
-  /// Pose is box center; bottom-center sits at near rest anchor for neutral cursor land.
   Pose near_rest_pose(const Pose& head, bool head_valid) const;
-  /// Yaw-only billboard: box +Z faces toward head on the floor plane.
   static Quat yaw_billboard_toward(const Vec3& from, const Pose& head, bool head_valid);
   static Vec3 flat_forward(const Pose& head, bool head_valid);
 

@@ -28,6 +28,8 @@ struct WorkspaceEntry {
   Pose pose{};
   bool in_field = true;  // false once inserted / collapsed out of the field
   EntityId parent_box = 0;
+  /// God root this entry belongs to (0 = unassigned / legacy single field).
+  EntityId god_root_id = 0;
   std::string glyph_id;
   /// Box-only: contents currently expanded into the field.
   bool expanded = false;
@@ -72,11 +74,18 @@ class Workspace {
   /// Parent under a box (0 = root). Does not change in_field.
   bool set_parent_box(EntityId id, EntityId parent_box_id);
   bool set_in_field(EntityId id, bool in_field);
+  bool set_god_root(EntityId id, EntityId god_root_id);
 
   /// Place root-field items in a cubic matrix 1 m in front of `head` (OpenXR).
   /// Side length = ceil(cbrt(n)) so 1–8 → 2³, 9–27 → 3³, etc. (n==1 → 1³).
   /// Uses yaw-only heading (world up) so head roll/pitch does not tilt the field.
+  /// If `god_root_id != 0`, only that god's root children are laid out (still 1 m ahead).
   void layout_demo_field(const Pose& head);
+  void layout_demo_field(const Pose& head, EntityId god_root_id);
+
+  /// Place one god's root in-field children in a cubic matrix centered on `center`.
+  /// Yaw from `center.orientation` (floor-parallel). Returns false if god has no items.
+  bool layout_god_field(EntityId god_root_id, const Pose& center);
 
   /// Show children of `box_id` in a cubic matrix above the box (collision-aware).
   /// Children are entries with parent_box == box_id; they are set in_field=true.

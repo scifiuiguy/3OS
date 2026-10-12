@@ -15,6 +15,7 @@ add_library(3os_kernel SHARED
   src/workspace.cpp
   src/hand_interaction.cpp
   src/voodoo_volume.cpp
+  src/centroid_registry.cpp
 )
 
 add_library(3os::kernel ALIAS 3os_kernel)

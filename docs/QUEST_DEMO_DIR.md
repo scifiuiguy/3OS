@@ -12,17 +12,18 @@ At **Start**, `ThreeOSStorageController` **scans** the demo directory and instan
   Test1/          # empty folder — shown as Box glyph
 ```
 
-## Quest / Android (authoritative)
+## Quest / Android
 
-Quest **always** uses app-persistent storage for write-through (public `Documents` is not reliable for `File.Move` / inserts):
+**List / Start priority:** when `Documents/3OS_Demo` (and `Documents/3OS_Demo2`) are populated, those are the primary demo roots. App-persistent storage is the writable mirror for inserts and a fallback when Documents is empty.
 
-`Android/data/com.scifiuiguy.threeos.sample/files/3OS_Demo`
+| Role | Path |
+| --- | --- |
+| Documents (MTP staging, list priority) | `/storage/emulated/0/Documents/3OS_Demo` (+ `3OS_Demo2`) |
+| Persistent (writable mirror) | `Android/data/com.scifiuiguy.threeos.sample/files/3OS_Demo` (+ `3OS_Demo2`) |
 
-Via MTP / headset file browser that is typically:
+Start **mirrors additively** both ways (never deletes). Dual-god fixture loads `3OS_Demo` (−15°) and `3OS_Demo2` (+15°).
 
-`/sdcard/Android/data/com.scifiuiguy.threeos.sample/files/3OS_Demo/`
-
-On insert, HUD shows `moved → 3OS_Demo/Test1/simple.glb` under that root.
+On insert, HUD shows `moved → 3OS_Demo/Test1/simple.glb` under the active write root.
 
 ### Documents / MTP (“hard drive”)
 

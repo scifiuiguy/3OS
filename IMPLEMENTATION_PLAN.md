@@ -268,17 +268,17 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
   - [x] Far BB: navel-forward rest at activate at **2×** near start size; yaw-only billboard toward user while dragging (retained on park); subtle position damp; scaled hand-Δ motion; intentional release parks far and opens near at navel (1×, no ghosts yet); tracking-loss cancels drag only.
   - [x] Yellow drag-arrow + deadzone state (origin, tip, armed flag) shared contract with selection drag (fix unarmed-on-spawn bug there too).
   - [x] Unity: wireframe far + near BBs (not solid cubes); dual-hand viz.
-- [ ] **Task 6.2: Centroids (sibling groups + god parent)**
-  - [ ] Persistent centroid per open Box’s child group; update whenever any member’s pose changes (not only on voodoo activate).
-  - [ ] Nested rule: if an object’s parent Box is in-scene, that sibling set has its own centroid.
-  - [ ] Snap activation **samples current** centroid poses as snap targets (do not recompute-all as a freeze; keep live updates).
-  - [ ] **God parent** centroid for the field root (Quest `Documents/3OS_Demo` today): imaginary Box (no glyph), but centroid of top-level children is a snap node that can grab **all** root contents.
-  - [ ] Data model supports **multiple god nodes** concurrently (folders under Documents now; future shared drives later).
-  - [ ] **Quest snap-test Start layout (demo):** spawn **two** god nodes so voodoo drag shows two centroid snap targets — each **10 ft** from user, **±15°** azimuth from facing, and **10 ft** up. Pair with dual Documents folders (or equivalent) once multi-god spawn lands.
-- [ ] **Task 6.3: Snap-mode nodes + gravity** *(not in 6.1 — snap dots / gravity land here)*
-  - [ ] Around the yellow drag tip, render a cluster of spherical snap dots at **field-scaled** positions of every open-box centroid (plus god-root node) so the same gain that moves the far BB maps tip contact onto real objects.
-  - [ ] Tip gravity: when near multiple nodes, pull toward the **closest**; snap tip to that node and snap the far-field BB to the real centroid.
-  - [ ] On snap, interpolate BB size on all three axes to encapsulate that centroid’s children **without** breaking the parameterized aspect (`near_bb_voxels`).
+- [x] **Task 6.2: Centroids (sibling groups + god parent)**
+  - [x] Persistent centroid per open Box’s child group (average of in-field children); update live each tick; **omit** empty sets.
+  - [x] Nested rule: expanded Box in-scene → sibling children share a box centroid.
+  - [x] Snap activation **samples current** centroid poses (registry rebuilt every tick — no freeze).
+  - [x] **God parent** centroid: imaginary root (no glyph); average of that god’s top-level in-field children.
+  - [x] Data model supports **multiple god nodes** (`god_root_id` on entries + `threeos_god_register`).
+  - [x] **Quest snap-test Start layout:** dual gods from `3OS_Demo` + `3OS_Demo2` at **10 ft**, **±15°** azimuth, **2.5 ft** up; field centroid markers + 6.3 hand-space snap dots.
+- [x] **Task 6.3: Snap-mode nodes + gravity** *(not in 6.1 — snap dots / gravity land here)*
+  - [x] Around the yellow drag tip, render a cluster of spherical snap dots at **field-scaled** positions of every open-box centroid (plus god-root node) so the same gain that moves the far BB maps tip contact onto real objects.
+  - [x] Tip gravity: when near multiple nodes, pull toward the **closest**; snap tip to that node and snap the far-field BB to the real centroid.
+  - [x] On snap, interpolate BB size on all three axes to encapsulate that centroid’s children **without** breaking the parameterized aspect (`near_bb_voxels`).
 - [ ] **Task 6.4: Near-field ghosts + portal contents**
   - [ ] Near BB shell already opens on any release in 6.1; here: ghost copies of the sibling group inside the near BB, scale-shrunk so far-field nominal size maps into the near box (when far has grown).
   - [ ] Ghost of the **parent Box** at the near BB’s bottom-center node.
@@ -301,7 +301,7 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 - [ ] **Task 6.8: Multi god-node spawn**
   - [ ] Instantiate contents from any number of local Documents folders (e.g. `3OS_Demo`, `3OS_Demo2`, …), each as a god node with collision avoidance at Start.
   - [ ] One node → current forward-of-user layout; multiple → lateral orbit around the user; if orbit is full, spill to farther concentric ground orbits out to `field_radius_m` (default 50 ft), then fill upward to `field_height_m` (default 30 ft); if still no room, HUD error naming the directory that could not instantiate.
-  - [ ] **Snap-test fixture:** when ≥2 gods are configured for Quest demos, prefer the Task 6.2 dual layout (10 ft range, ±15° azimuth, 10 ft up) before falling back to generic orbit spill.
+  - [ ] **Snap-test fixture:** when ≥2 gods are configured for Quest demos, prefer the Task 6.2 dual layout (10 ft range, ±15° azimuth, 2.5 ft up) before falling back to generic orbit spill.
   - [ ] Keep ABI open for future god nodes on network shares (Google Drive / PC `F:` over Wi‑Fi) — not required to ship in 0.6.
 - [ ] **Task 6.9: Headless + Quest gate**
   - [ ] Harness: snap vs free-range intents; centroid updates; snap gravity picks nearest; BB aspect lock; parameterized voxel/near-BB/field limits; near open creates temp vs persistent centroids; summon does not expand far BB via temp; deadzone arms only after leave/re-enter.

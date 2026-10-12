@@ -501,6 +501,55 @@ THREEOS_API int32_t threeos_voodoo_set_field_params(const ThreeOS_VoodooFieldPar
 THREEOS_API int32_t threeos_voodoo_get_session(uint32_t hand, ThreeOS_VoodooSession* out_session);
 THREEOS_API int32_t threeos_voodoo_get_drag_arrow(uint32_t hand, ThreeOS_VoodooDragArrow* out_arrow);
 
+/* --- Centroids / god roots (Phase 0.6 Task 6.2; additive) --- */
+
+enum ThreeOS_CentroidKind : uint32_t {
+  THREEOS_CENTROID_NONE = 0,
+  THREEOS_CENTROID_GOD = 1,
+  THREEOS_CENTROID_BOX = 2,
+};
+
+/** Live centroid snapshot (64 bytes). Empty sets are omitted from the list. */
+typedef struct ThreeOS_Centroid {
+  uint64_t id;               /* god id or box entity id */
+  uint32_t kind;             /* ThreeOS_CentroidKind */
+  uint32_t member_count;
+  uint64_t linked_entity_id; /* same as id in 6.2 */
+  ThreeOS_Vec3 position;     /* average of member world positions */
+  float unused0;
+  char name[16];
+  uint32_t reserved0;
+  uint32_t reserved1;
+} ThreeOS_Centroid;
+
+THREEOS_API uint32_t threeos_sizeof_centroid(void);
+THREEOS_API void threeos_god_clear(void);
+THREEOS_API int32_t threeos_god_register(const char* name, const ThreeOS_Pose* anchor,
+                                         uint64_t* out_god_id);
+THREEOS_API int32_t threeos_god_set_anchor(uint64_t god_id, const ThreeOS_Pose* anchor);
+THREEOS_API int32_t threeos_storage_set_god_root(uint64_t entity_id, uint64_t god_root_id);
+THREEOS_API int32_t threeos_storage_layout_god(uint64_t god_root_id, const ThreeOS_Pose* center);
+THREEOS_API uint32_t threeos_centroid_count(void);
+THREEOS_API int32_t threeos_centroid_get(uint32_t index, ThreeOS_Centroid* out_centroid);
+
+/* --- Voodoo snap nodes (Phase 0.6 Task 6.3; additive) --- */
+
+/** Snap-mode node near the yellow arrow (48 bytes). */
+typedef struct ThreeOS_VoodooSnapNode {
+  uint64_t centroid_id;
+  uint32_t kind;    /* ThreeOS_CentroidKind */
+  uint32_t snapped; /* 1 if tip currently locked to this node */
+  ThreeOS_Vec3 world_position;
+  float radius_m;
+  ThreeOS_Vec3 field_position; /* real centroid in field */
+  float unused0;
+} ThreeOS_VoodooSnapNode;
+
+THREEOS_API uint32_t threeos_sizeof_voodoo_snap_node(void);
+THREEOS_API uint32_t threeos_voodoo_snap_node_count(uint32_t hand);
+THREEOS_API int32_t threeos_voodoo_get_snap_node(uint32_t hand, uint32_t index,
+                                                 ThreeOS_VoodooSnapNode* out_node);
+
 #ifdef __cplusplus
 }
 #endif

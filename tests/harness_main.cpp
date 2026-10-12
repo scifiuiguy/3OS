@@ -64,6 +64,7 @@ int main() {
   ok = expect_eq("sizeof_voodoo_bounding_box", threeos_sizeof_voodoo_bounding_box(), 80) && ok;
   ok = expect_eq("sizeof_voodoo_session", threeos_sizeof_voodoo_session(), 176) && ok;
   ok = expect_eq("sizeof_voodoo_drag_arrow", threeos_sizeof_voodoo_drag_arrow(), 64) && ok;
+  ok = expect_eq("sizeof_voodoo_snap_node", threeos_sizeof_voodoo_snap_node(), 48) && ok;
 
   if (threeos_tick(nullptr, nullptr) != -1) {
     std::fprintf(stderr, "FAIL tick before init should return -1\n");
@@ -1286,6 +1287,264 @@ int main() {
     ok = expect_eq("dz.in_after_arm", sd.in_deadzone, 1u) && ok;
     std::printf("OK   stick deadzone arming\n");
     threeos_kinematics_release();
+  }
+
+  // --- Phase 0.6 Task 6.2: centroids + dual gods ---
+  {
+    threeos_storage_clear();
+    threeos_god_clear();
+    ok = expect_eq("centroid.empty", threeos_centroid_count(), 0u) && ok;
+
+    ThreeOS_Pose anchor{};
+    anchor.orientation = {0.f, 0.f, 0.f, 1.f};
+    uint64_t godA = 0;
+    uint64_t godB = 0;
+    ok = (threeos_god_register("DemoA", &anchor, &godA) == 0) && ok;
+    ok = (threeos_god_register("DemoB", &anchor, &godB) == 0) && ok;
+    ok = expect_eq("god.ids_distinct", godA != godB ? 1u : 0u, 1u) && ok;
+
+    // Empty gods → omitted from list.
+    ThreeOS_InteropInputFrame cf{};
+    cf.frame_index = 9400;
+    cf.time_seconds = 50.0;
+    cf.tracking_flags = THREEOS_TRACK_HEAD;
+    cf.head = identity_pose_at(0.f, 1.6f, 0.f);
+    ThreeOS_InteropTransformDelta cd{};
+    threeos_tick(&cf, &cd);
+    ok = expect_eq("centroid.omit_empty_gods", threeos_centroid_count(), 0u) && ok;
+
+    uint64_t o1 = 0;
+    uint64_t o2 = 0;
+    uint64_t o3 = 0;
+    threeos_storage_add_object("a.glb", "a.glb", &o1);
+    threeos_storage_add_object("b.glb", "b.glb", &o2);
+    threeos_storage_add_object("c.glb", "c.glb", &o3);
+    threeos_storage_set_god_root(o1, godA);
+    threeos_storage_set_god_root(o2, godA);
+    threeos_storage_set_god_root(o3, godB);
+
+    ThreeOS_Pose layA = identity_pose_at(-1.f, 3.f, -3.f);
+    ThreeOS_Pose layB = identity_pose_at(1.f, 3.f, -3.f);
+    ok = (threeos_storage_layout_god(godA, &layA) == 0) && ok;
+    ok = (threeos_storage_layout_god(godB, &layB) == 0) && ok;
+    threeos_tick(&cf, &cd);
+    ok = expect_eq("centroid.two_gods", threeos_centroid_count(), 2u) && ok;
+
+    ThreeOS_Centroid c0{};
+    ThreeOS_Centroid c1{};
+    threeos_centroid_get(0, &c0);
+    threeos_centroid_get(1, &c1);
+    ok = expect_eq("centroid.kind_god", c0.kind, THREEOS_CENTROID_GOD) && ok;
+    // Average of two DemoA objects near layA (2-cube matrix around center).
+    const ThreeOS_Centroid* ca = c0.id == godA ? &c0 : &c1;
+    const ThreeOS_Centroid* cb = c0.id == godB ? &c0 : &c1;
+    ok = expect_eq("centroid.A.members", ca->member_count, 2u) && ok;
+    ok = expect_eq("centroid.B.members", cb->member_count, 1u) && ok;
+    ok = expect_near("centroid.A.y", ca->position.y, 3.f, 0.5f) && ok;
+    ok = expect_near("centroid.B.y", cb->position.y, 3.f, 0.5f) && ok;
+
+    // Expanded box centroid = average of children; empty → omit.
+    uint64_t box = 0;
+    threeos_storage_add_box("Nest", "Nest", 2, &box);
+    threeos_storage_set_god_root(box, godB);
+    uint64_t ch1 = 0;
+    uint64_t ch2 = 0;
+    threeos_storage_add_object("n1.glb", "Nest/n1.glb", &ch1);
+    threeos_storage_add_object("n2.glb", "Nest/n2.glb", &ch2);
+    threeos_storage_set_parent_box(ch1, box);
+    threeos_storage_set_parent_box(ch2, box);
+    threeos_storage_set_in_field(ch1, 0);
+    threeos_storage_set_in_field(ch2, 0);
+    threeos_tick(&cf, &cd);
+    const uint32_t before_expand = threeos_centroid_count();
+    threeos_storage_expand_box(box);
+    // Place children at known poses via expand layout, then override.
+    auto* we_unused = reinterpret_cast<void*>(0);
+    (void)we_unused;
+    // Move via possess-free: set poses by re-layout isn't exposed; use expand then tick.
+    threeos_tick(&cf, &cd);
+    ok = expect_eq("centroid.has_box", threeos_centroid_count() > before_expand ? 1u : 0u, 1u) &&
+         ok;
+    bool found_box = false;
+    for (uint32_t i = 0; i < threeos_centroid_count(); ++i) {
+      ThreeOS_Centroid cx{};
+      threeos_centroid_get(i, &cx);
+      if (cx.kind == THREEOS_CENTROID_BOX && cx.id == box) {
+        found_box = true;
+        ok = expect_eq("centroid.box.members", cx.member_count, 2u) && ok;
+      }
+    }
+    ok = expect_eq("centroid.box_present", found_box ? 1u : 0u, 1u) && ok;
+
+    threeos_storage_collapse_box(box);
+    threeos_tick(&cf, &cd);
+    found_box = false;
+    for (uint32_t i = 0; i < threeos_centroid_count(); ++i) {
+      ThreeOS_Centroid cx{};
+      threeos_centroid_get(i, &cx);
+      if (cx.id == box) {
+        found_box = true;
+      }
+    }
+    ok = expect_eq("centroid.box_omitted_collapsed", found_box ? 1u : 0u, 0u) && ok;
+    std::printf("OK   centroids god average + box omit\n");
+  }
+
+  // --- Phase 0.6 Task 6.3: snap nodes + tip gravity + aspect-locked BB fit ---
+  {
+    threeos_storage_clear();
+    threeos_god_clear();
+
+    ThreeOS_Pose anchor{};
+    anchor.orientation = {0.f, 0.f, 0.f, 1.f};
+    uint64_t godA = 0;
+    uint64_t godB = 0;
+    threeos_god_register("SnapA", &anchor, &godA);
+    threeos_god_register("SnapB", &anchor, &godB);
+    uint64_t o1 = 0;
+    uint64_t o2 = 0;
+    uint64_t o3 = 0;
+    threeos_storage_add_object("sa.glb", "sa.glb", &o1);
+    threeos_storage_add_object("sb.glb", "sb.glb", &o2);
+    threeos_storage_add_object("sc.glb", "sc.glb", &o3);
+    threeos_storage_set_god_root(o1, godA);
+    threeos_storage_set_god_root(o2, godA);
+    threeos_storage_set_god_root(o3, godB);
+    // Place gods near far-rest (+Z) so hand-space offsets stay within ~arm reach.
+    ThreeOS_Pose layA = identity_pose_at(-0.5f, 1.4f, 2.0f);
+    ThreeOS_Pose layB = identity_pose_at(0.8f, 1.6f, 2.5f);
+    threeos_storage_layout_god(godA, &layA);
+    threeos_storage_layout_god(godB, &layB);
+
+    auto fill_hand = [](ThreeOS_HandSample* h, float x, float y, float z) {
+      *h = ThreeOS_HandSample{};
+      h->tracked = 1;
+      h->tip_flags = 0x1Fu;
+      h->thumb_tip = {x, y, z};
+      h->index_tip = {x + 0.02f, y, z};
+      h->index_proximal = {x, y, z};
+      h->palm_mode = THREEOS_PALM_DOWN;
+      h->palm_mode_valid = 1;
+      h->primary_pressed = 1;
+      h->primary_value = 1.f;
+    };
+
+    ThreeOS_HandSample L{};
+    ThreeOS_HandSample R{};
+    fill_hand(&R, 0.2f, 1.2f, -0.3f);
+    R.primary_pressed = 1;
+    threeos_interaction_set_hands(&L, &R);
+
+    ThreeOS_InteropInputFrame vf{};
+    vf.frame_index = 9500;
+    vf.time_seconds = 60.0;
+    vf.tracking_flags =
+        THREEOS_TRACK_HEAD | THREEOS_TRACK_LEFT_AIM | THREEOS_TRACK_RIGHT_AIM;
+    vf.head = identity_pose_at(0.f, 1.6f, 0.f);
+    vf.head.orientation = {0.f, 0.f, 0.f, 1.f};
+    vf.right_aim = identity_pose_at(0.2f, 1.2f, -0.3f);
+    ThreeOS_InteropTransformDelta vd{};
+    threeos_tick(&vf, &vd);
+
+    ok = expect_eq("snap.centroid_count", threeos_centroid_count() >= 2u ? 1u : 0u, 1u) && ok;
+    ok = expect_eq("snap.node_count", threeos_voodoo_snap_node_count(1), threeos_centroid_count()) &&
+         ok;
+    ok = expect_eq("snap.free_nodes_L", threeos_voodoo_snap_node_count(0), 0u) && ok;
+
+    ThreeOS_VoodooSession sess{};
+    threeos_voodoo_get_session(1, &sess);
+    ok = expect_eq("snap.session_open", sess.open, 1u) && ok;
+    ok = expect_eq("snap.mode", sess.mode, THREEOS_VOODOO_SNAP) && ok;
+    const float rest_x = sess.far_bb.pose.position.x;
+    const float rest_y = sess.far_bb.pose.position.y;
+    const float rest_z = sess.far_bb.pose.position.z;
+    const float start_ext_y = sess.far_bb.extents.y;
+
+    ThreeOS_VoodooSnapNode target{};
+    bool found_target = false;
+    for (uint32_t i = 0; i < threeos_voodoo_snap_node_count(1); ++i) {
+      ThreeOS_VoodooSnapNode n{};
+      threeos_voodoo_get_snap_node(1, i, &n);
+      if (n.centroid_id == godA) {
+        target = n;
+        found_target = true;
+        break;
+      }
+    }
+    ok = expect_eq("snap.target_node", found_target ? 1u : 0u, 1u) && ok;
+
+    ThreeOS_VoodooFieldParams fp{};
+    threeos_voodoo_get_field_params(&fp);
+    const float gain_h = fp.field_radius_m / fp.arm_reach_m;
+    const float gain_v = fp.field_height_m / fp.arm_reach_m;
+    const float sx = (target.field_position.x - rest_x) / gain_h;
+    const float sy = (target.field_position.y - rest_y) / gain_v;
+    const float sz = (target.field_position.z - rest_z) / gain_h;
+
+    // Move tip to hand-space node (stick ≈ hand_offset).
+    fill_hand(&R, 0.2f + sx, 1.2f + sy, -0.3f + sz);
+    vf.right_aim = identity_pose_at(0.2f + sx, 1.2f + sy, -0.3f + sz);
+    for (int i = 0; i < 18; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+
+    threeos_voodoo_get_session(1, &sess);
+    ThreeOS_VoodooSnapNode snapped_node{};
+    bool any_snapped = false;
+    for (uint32_t i = 0; i < threeos_voodoo_snap_node_count(1); ++i) {
+      ThreeOS_VoodooSnapNode n{};
+      threeos_voodoo_get_snap_node(1, i, &n);
+      if (n.snapped != 0) {
+        snapped_node = n;
+        any_snapped = true;
+      }
+    }
+    if (!any_snapped || snapped_node.centroid_id != godA) {
+      std::fprintf(stderr, "FAIL snap lock any=%d id=%llu want=%llu far=(%.2f,%.2f,%.2f)\n",
+                   any_snapped ? 1 : 0, (unsigned long long)snapped_node.centroid_id,
+                   (unsigned long long)godA, sess.far_bb.pose.position.x, sess.far_bb.pose.position.y,
+                   sess.far_bb.pose.position.z);
+      ok = false;
+    } else {
+      ok = expect_eq("snap.linked", sess.far_bb.linked_centroid_id == godA ? 1u : 0u, 1u) && ok;
+      ok = expect_near("snap.far_x", sess.far_bb.pose.position.x, target.field_position.x, 0.35f) &&
+           ok;
+      ok = expect_near("snap.far_z", sess.far_bb.pose.position.z, target.field_position.z, 0.35f) &&
+           ok;
+      // Aspect lock: W/D ratio matches near voxels; Y at least start (fit uses max scale).
+      ok = expect_near("snap.aspect_wd", sess.far_bb.extents.x / sess.far_bb.extents.z, 1.f, 1e-3f) &&
+           ok;
+      ok = expect_eq("snap.extents_grown",
+                     sess.far_bb.extents.y + 1e-4f >= start_ext_y ? 1u : 0u, 1u) &&
+           ok;
+      ok = expect_eq("snap.aspect_vox_y", static_cast<uint32_t>(sess.far_bb.aspect_voxels.y), 6u) &&
+           ok;
+      std::printf("OK   snap nodes + tip lock + aspect-locked fit\n");
+    }
+
+    // Release parks, then free-range re-open: no snap-node cluster.
+    R.primary_pressed = 0;
+    R.secondary_pressed = 0;
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    threeos_tick(&vf, &vd);
+
+    fill_hand(&R, 0.2f, 1.2f, -0.3f);
+    R.primary_pressed = 0;
+    R.secondary_pressed = 1;
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    vf.right_aim = identity_pose_at(0.2f, 1.2f, -0.3f);
+    threeos_tick(&vf, &vd);
+    threeos_voodoo_get_session(1, &sess);
+    ok = expect_eq("snap.free_mode", sess.mode, THREEOS_VOODOO_FREE) && ok;
+    ok = expect_eq("snap.free_node_count", threeos_voodoo_snap_node_count(1), 0u) && ok;
+    std::printf("OK   free-range has no snap nodes\n");
   }
 
   threeos_shutdown();

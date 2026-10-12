@@ -1,5 +1,6 @@
 #include "interop/threeos_marshaller.hpp"
 
+#include "core/centroid_registry.hpp"
 #include "core/hand_interaction.hpp"
 #include "core/interaction_facade.hpp"
 #include "core/kinematics.hpp"
@@ -31,6 +32,7 @@ threeos::GlyphRegistry g_glyphs;
 threeos::Workspace g_workspace;
 threeos::HandInteractionEngine g_hands;
 threeos::VoodooVolumeEngine g_voodoo;
+threeos::CentroidRegistry g_centroids;
 bool g_hands_pushed_this_frame = false;
 uint64_t g_tick_count = 0;
 std::optional<threeos::Pose> g_pending_portal_pose;
@@ -125,6 +127,7 @@ static_assert(sizeof(ThreeOS_VoodooFieldParams) == 32, "VoodooFieldParams size")
 static_assert(sizeof(ThreeOS_VoodooBoundingBox) == 80, "VoodooBoundingBox size");
 static_assert(sizeof(ThreeOS_VoodooSession) == 176, "VoodooSession size");
 static_assert(sizeof(ThreeOS_VoodooDragArrow) == 64, "VoodooDragArrow size");
+static_assert(sizeof(ThreeOS_Centroid) == 64, "Centroid size");
 
 extern "C" THREEOS_API uint32_t threeos_version(void) {
   return (kMajor << 16) | (kMinor << 8) | kPatch;
@@ -182,6 +185,7 @@ extern "C" THREEOS_API int32_t threeos_init(void) {
   g_pending_portal_entity = 0;
   g_hands.reset();
   g_voodoo.reset();
+  g_centroids.clear();
   g_hands_pushed_this_frame = false;
   set_error("");
   return 0;
@@ -193,6 +197,7 @@ extern "C" THREEOS_API void threeos_shutdown(void) {
   g_kinematics.clear();
   g_workspace.clear();
   g_glyphs.clear();
+  g_centroids.clear();
   g_pending_portal_pose.reset();
   set_error("");
 }
@@ -258,35 +263,6 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
   }
   g_hands.tick(from_c(frame->head), head_valid, frame->time_seconds);
   g_hands_pushed_this_frame = false;
-
-  // Voodoo: independent L/R sessions — scaled far drag; release parks + opens near.
-  {
-    static double s_prev_voodoo_t = -1.0;
-    float dt = 1.f / 72.f;
-    if (s_prev_voodoo_t >= 0.0) {
-      const double raw = frame->time_seconds - s_prev_voodoo_t;
-      if (raw > 1e-4 && raw < 0.25) {
-        dt = static_cast<float>(raw);
-      }
-    }
-    s_prev_voodoo_t = frame->time_seconds;
-
-    const threeos::Pose head_pose = from_c(frame->head);
-    for (uint32_t vh = 0; vh < 2u; ++vh) {
-      const bool aim_ok = (vh == 0u) ? left : right;
-      const bool cursor_ok = g_hands.cursor(vh).active;
-      threeos::Pose vhand{};
-      if (cursor_ok) {
-        vhand.position = g_hands.cursor(vh).position;
-      } else if (vh == 0u && left) {
-        vhand = from_c(frame->left_aim);
-      } else if (vh == 1u && right) {
-        vhand = from_c(frame->right_aim);
-      }
-      g_voodoo.tick_hand(vh, g_hands.pending_intents(vh), vhand, cursor_ok || aim_ok, head_pose,
-                         head_valid, dt);
-    }
-  }
 
   // Latch drive hand from host select bits / triggers (same signals as Unity _selectHand).
   auto pick_drive_hand = [&]() -> int {
@@ -452,6 +428,37 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
       out_delta->entity_id = 0;
       out_delta->pose = frame->head;
       out_delta->flags = frame->tracking_flags;
+    }
+  }
+
+  g_centroids.rebuild(g_workspace);
+
+  // Voodoo after centroids so snap-mode nodes/gravity see live averages.
+  {
+    static double s_prev_voodoo_t = -1.0;
+    float dt = 1.f / 72.f;
+    if (s_prev_voodoo_t >= 0.0) {
+      const double raw = frame->time_seconds - s_prev_voodoo_t;
+      if (raw > 1e-4 && raw < 0.25) {
+        dt = static_cast<float>(raw);
+      }
+    }
+    s_prev_voodoo_t = frame->time_seconds;
+
+    const threeos::Pose head_pose = from_c(frame->head);
+    for (uint32_t vh = 0; vh < 2u; ++vh) {
+      const bool aim_ok = (vh == 0u) ? left : right;
+      const bool cursor_ok = g_hands.cursor(vh).active;
+      threeos::Pose vhand{};
+      if (cursor_ok) {
+        vhand.position = g_hands.cursor(vh).position;
+      } else if (vh == 0u && left) {
+        vhand = from_c(frame->left_aim);
+      } else if (vh == 1u && right) {
+        vhand = from_c(frame->right_aim);
+      }
+      g_voodoo.tick_hand(vh, g_hands.pending_intents(vh), vhand, cursor_ok || aim_ok, head_pose,
+                         head_valid, dt, g_centroids, g_workspace);
     }
   }
 
@@ -976,6 +983,8 @@ extern "C" THREEOS_API void threeos_storage_clear(void) {
   }
   g_workspace.clear();
   g_workspace.set_glyph_registry(&g_glyphs);
+  g_centroids.clear_gods();
+  g_centroids.rebuild(g_workspace);
 }
 
 extern "C" THREEOS_API int32_t threeos_storage_add_object(const char* name, const char* relative_path,
@@ -1507,6 +1516,182 @@ extern "C" THREEOS_API int32_t threeos_voodoo_get_drag_arrow(uint32_t hand,
   out_arrow->ray_origin = to_c(a.ray_origin);
   out_arrow->ray_tip = to_c(a.ray_tip);
   out_arrow->deadzone_armed = a.deadzone_armed ? 1u : 0u;
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_centroid(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_Centroid));
+}
+
+extern "C" THREEOS_API void threeos_god_clear(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return;
+  }
+  g_centroids.clear_gods();
+  g_centroids.rebuild(g_workspace);
+}
+
+extern "C" THREEOS_API int32_t threeos_god_register(const char* name, const ThreeOS_Pose* anchor,
+                                                    uint64_t* out_god_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (name == nullptr || out_god_id == nullptr) {
+    set_error("null god args");
+    return -2;
+  }
+  threeos::Pose a{};
+  if (anchor != nullptr) {
+    a = from_c(*anchor);
+  }
+  const auto id = g_centroids.register_god(name, a);
+  if (id == 0) {
+    set_error("god register failed");
+    return -3;
+  }
+  *out_god_id = id;
+  g_centroids.rebuild(g_workspace);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_god_set_anchor(uint64_t god_id, const ThreeOS_Pose* anchor) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (anchor == nullptr) {
+    set_error("null anchor");
+    return -2;
+  }
+  if (!g_centroids.set_god_anchor(god_id, from_c(*anchor))) {
+    set_error("unknown god");
+    return -3;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_set_god_root(uint64_t entity_id,
+                                                            uint64_t god_root_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!g_workspace.set_god_root(entity_id, god_root_id)) {
+    set_error("set_god_root failed");
+    return -2;
+  }
+  g_centroids.rebuild(g_workspace);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_layout_god(uint64_t god_root_id,
+                                                          const ThreeOS_Pose* center) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (center == nullptr) {
+    set_error("null center");
+    return -2;
+  }
+  if (!g_workspace.layout_god_field(god_root_id, from_c(*center))) {
+    set_error("layout_god empty or unknown");
+    return -3;
+  }
+  g_workspace.resolve_glyphs();
+  g_centroids.rebuild(g_workspace);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API uint32_t threeos_centroid_count(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return static_cast<uint32_t>(g_centroids.centroids().size());
+}
+
+extern "C" THREEOS_API int32_t threeos_centroid_get(uint32_t index, ThreeOS_Centroid* out_centroid) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_centroid == nullptr) {
+    set_error("null centroid");
+    return -2;
+  }
+  if (index >= g_centroids.centroids().size()) {
+    set_error("centroid index oob");
+    return -3;
+  }
+  const auto& c = g_centroids.centroids()[index];
+  std::memset(out_centroid, 0, sizeof(*out_centroid));
+  out_centroid->id = c.id;
+  out_centroid->kind = static_cast<uint32_t>(c.kind);
+  out_centroid->member_count = c.member_count;
+  out_centroid->linked_entity_id = c.linked_entity_id;
+  out_centroid->position = to_c(c.position);
+  if (!c.name.empty()) {
+    std::strncpy(out_centroid->name, c.name.c_str(), sizeof(out_centroid->name) - 1);
+  }
+  set_error("");
+  return 0;
+}
+
+static_assert(sizeof(ThreeOS_VoodooSnapNode) == 48, "VoodooSnapNode size");
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_voodoo_snap_node(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_VoodooSnapNode));
+}
+
+extern "C" THREEOS_API uint32_t threeos_voodoo_snap_node_count(uint32_t hand) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized || hand > 1u) {
+    return 0;
+  }
+  return static_cast<uint32_t>(g_voodoo.session(hand).snap_nodes.size());
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_get_snap_node(uint32_t hand, uint32_t index,
+                                                            ThreeOS_VoodooSnapNode* out_node) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (hand > 1u) {
+    set_error("hand out of range");
+    return -3;
+  }
+  if (out_node == nullptr) {
+    set_error("null snap node");
+    return -2;
+  }
+  const auto& nodes = g_voodoo.session(hand).snap_nodes;
+  if (index >= nodes.size()) {
+    set_error("snap node index oob");
+    return -4;
+  }
+  const auto& n = nodes[index];
+  std::memset(out_node, 0, sizeof(*out_node));
+  out_node->centroid_id = n.centroid_id;
+  out_node->kind = static_cast<uint32_t>(n.kind);
+  out_node->snapped = n.snapped ? 1u : 0u;
+  out_node->world_position = to_c(n.world_position);
+  out_node->radius_m = n.radius_m;
+  out_node->field_position = to_c(n.field_position);
   set_error("");
   return 0;
 }

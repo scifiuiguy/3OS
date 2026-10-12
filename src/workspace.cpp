@@ -134,6 +134,15 @@ bool Workspace::set_in_field(EntityId id, bool in_field) {
   return true;
 }
 
+bool Workspace::set_god_root(EntityId id, EntityId god_root_id) {
+  WorkspaceEntry* e = find_mut(id);
+  if (e == nullptr) {
+    return false;
+  }
+  e->god_root_id = god_root_id;
+  return true;
+}
+
 namespace {
 
 Vec3 quat_rotate(const Quat& q, const Vec3& v) {
@@ -188,6 +197,20 @@ Quat yaw_only_from_orientation(const Quat& orientation) {
 }  // namespace
 
 void Workspace::layout_demo_field(const Pose& head) {
+  layout_demo_field(head, 0);
+}
+
+void Workspace::layout_demo_field(const Pose& head, EntityId god_root_id) {
+  const Quat yaw = yaw_only_from_orientation(head.orientation);
+  const Vec3 forward = quat_rotate(yaw, Vec3{0.f, 0.f, -1.f});
+  Pose center{};
+  center.position = vec_add(head.position, vec_scale(forward, 1.f));
+  center.orientation = yaw;
+  if (god_root_id != 0) {
+    layout_god_field(god_root_id, center);
+    return;
+  }
+  // Legacy: all unassigned + all gods' roots together 1 m ahead.
   std::vector<WorkspaceEntry*> items;
   items.reserve(entries_.size());
   for (auto& e : entries_) {
@@ -196,23 +219,15 @@ void Workspace::layout_demo_field(const Pose& head) {
     }
     items.push_back(&e);
   }
-
   const int n = static_cast<int>(items.size());
   if (n == 0) {
     return;
   }
-
   const int side = cube_side_for_count(n);
-  // Yaw-only basis: +X right, world +Y up, -Z forward (OpenXR).
-  const Quat yaw = yaw_only_from_orientation(head.orientation);
   const Vec3 right = quat_rotate(yaw, Vec3{1.f, 0.f, 0.f});
   const Vec3 up{0.f, 1.f, 0.f};
-  const Vec3 forward = quat_rotate(yaw, Vec3{0.f, 0.f, -1.f});
-  const Vec3 center = vec_add(head.position, vec_scale(forward, 1.f));
-
   const float spacing = field_spacing_m_;
   const float extent = 0.5f * spacing * static_cast<float>(side - 1);
-
   for (int i = 0; i < n; ++i) {
     const int ix = i % side;
     const int iy = (i / side) % side;
@@ -221,9 +236,48 @@ void Workspace::layout_demo_field(const Pose& head) {
     const float ly = static_cast<float>(iy) * spacing - extent;
     const float lz = static_cast<float>(iz) * spacing - extent;
     items[i]->pose.position = vec_add(
-        center, vec_add(vec_add(vec_scale(right, lx), vec_scale(up, ly)), vec_scale(forward, lz)));
+        center.position,
+        vec_add(vec_add(vec_scale(right, lx), vec_scale(up, ly)), vec_scale(forward, lz)));
     items[i]->pose.orientation = yaw;
   }
+}
+
+bool Workspace::layout_god_field(EntityId god_root_id, const Pose& center) {
+  if (god_root_id == 0) {
+    return false;
+  }
+  std::vector<WorkspaceEntry*> items;
+  items.reserve(entries_.size());
+  for (auto& e : entries_) {
+    if (!e.in_field || e.parent_box != 0 || e.god_root_id != god_root_id) {
+      continue;
+    }
+    items.push_back(&e);
+  }
+  const int n = static_cast<int>(items.size());
+  if (n == 0) {
+    return false;
+  }
+  const Quat yaw = yaw_only_from_orientation(center.orientation);
+  const Vec3 right = quat_rotate(yaw, Vec3{1.f, 0.f, 0.f});
+  const Vec3 up{0.f, 1.f, 0.f};
+  const Vec3 forward = quat_rotate(yaw, Vec3{0.f, 0.f, -1.f});
+  const int side = cube_side_for_count(n);
+  const float spacing = field_spacing_m_;
+  const float extent = 0.5f * spacing * static_cast<float>(side - 1);
+  for (int i = 0; i < n; ++i) {
+    const int ix = i % side;
+    const int iy = (i / side) % side;
+    const int iz = i / (side * side);
+    const float lx = static_cast<float>(ix) * spacing - extent;
+    const float ly = static_cast<float>(iy) * spacing - extent;
+    const float lz = static_cast<float>(iz) * spacing - extent;
+    items[i]->pose.position =
+        vec_add(center.position,
+                vec_add(vec_add(vec_scale(right, lx), vec_scale(up, ly)), vec_scale(forward, lz)));
+    items[i]->pose.orientation = yaw;
+  }
+  return true;
 }
 
 bool Workspace::layout_box_expand(EntityId box_id, std::string* err) {
