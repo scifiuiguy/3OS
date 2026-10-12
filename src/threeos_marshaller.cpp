@@ -1,5 +1,6 @@
 #include "interop/threeos_marshaller.hpp"
 
+#include "core/hand_interaction.hpp"
 #include "core/interaction_facade.hpp"
 #include "core/kinematics.hpp"
 #include "core/topology.hpp"
@@ -15,9 +16,9 @@
 namespace {
 
 constexpr uint32_t kMajor = 0;
-constexpr uint32_t kMinor = 4;
+constexpr uint32_t kMinor = 5;
 constexpr uint32_t kPatch = 0;
-constexpr uint32_t kAbiVersion = 4;
+constexpr uint32_t kAbiVersion = 5;
 
 std::mutex g_mu;
 bool g_initialized = false;
@@ -27,6 +28,8 @@ threeos::TopologyWorkspace g_topology;
 threeos::KinematicsEngine g_kinematics;
 threeos::GlyphRegistry g_glyphs;
 threeos::Workspace g_workspace;
+threeos::HandInteractionEngine g_hands;
+bool g_hands_pushed_this_frame = false;
 uint64_t g_tick_count = 0;
 std::optional<threeos::Pose> g_pending_portal_pose;
 uint64_t g_pending_portal_entity = 0;
@@ -35,6 +38,8 @@ uint64_t g_pending_portal_entity = 0;
 constexpr float kUnsnapCatchupSeconds = 0.12f;
 float g_unsnap_blend = 1.f;
 threeos::Pose g_unsnap_hold{};
+// Latched hand driving kinematics while possessed (0=left, 1=right, -1=none).
+int g_kin_hand_latch = -1;
 
 void set_error(const char* msg) { g_last_error = msg ? msg : ""; }
 
@@ -111,6 +116,9 @@ static_assert(sizeof(ThreeOS_StickDebug) == 64, "StickDebug size");
 static_assert(sizeof(ThreeOS_WorkspaceItem) == 200, "WorkspaceItem size");
 static_assert(sizeof(ThreeOS_SnapState) == 64, "SnapState size");
 static_assert(sizeof(ThreeOS_StorageEvent) == 344, "StorageEvent size");
+static_assert(sizeof(ThreeOS_HandSample) == 128, "HandSample size");
+static_assert(sizeof(ThreeOS_PointCursor) == 32, "PointCursor size");
+static_assert(sizeof(ThreeOS_InteractionIntents) == 16, "InteractionIntents size");
 
 extern "C" THREEOS_API uint32_t threeos_version(void) {
   return (kMajor << 16) | (kMinor << 8) | kPatch;
@@ -166,6 +174,8 @@ extern "C" THREEOS_API int32_t threeos_init(void) {
   g_workspace.set_glyph_registry(&g_glyphs);
   g_pending_portal_pose.reset();
   g_pending_portal_entity = 0;
+  g_hands.reset();
+  g_hands_pushed_this_frame = false;
   set_error("");
   return 0;
 }
@@ -206,9 +216,107 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
       (frame->tracking_flags & THREEOS_TRACK_RIGHT_AIM) != 0;
   const bool left = (frame->tracking_flags & THREEOS_TRACK_LEFT_AIM) != 0;
   const bool head_valid = (frame->tracking_flags & THREEOS_TRACK_HEAD) != 0;
-  const threeos::Pose hand = right ? from_c(frame->right_aim)
-                                   : (left ? from_c(frame->left_aim) : threeos::Pose{});
-  const bool hand_valid = right || left;
+
+  // If host did not push HandSamples, synthesize controller-style samples from the frame.
+  if (!g_hands_pushed_this_frame) {
+    auto synth = [&](bool tracked, const ThreeOS_Pose& aim, float trigger, float grip,
+                     uint32_t select_bit, uint32_t grab_bit, uint32_t ternary_bit) {
+      threeos::HandSample s{};
+      s.tracked = tracked;
+      s.tip_flags = 0x10u;  // index-proximal bit — controller aim as probe anchor
+      s.index_tip = from_c(aim.position);
+      s.thumb_tip = s.index_tip;
+      s.middle_tip = s.index_tip;
+      s.ring_tip = s.index_tip;
+      s.index_proximal = s.index_tip;
+      s.primary_value = trigger;
+      s.secondary_value = grip;
+      s.ternary_value = (frame->button_flags & ternary_bit) != 0 ? 1.f : 0.f;
+      s.primary_pressed = (frame->button_flags & select_bit) != 0;
+      s.secondary_pressed = (frame->button_flags & grab_bit) != 0;
+      s.ternary_pressed = (frame->button_flags & ternary_bit) != 0;
+      // Palm from controller aim "up" vector (local +Y).
+      const auto q = from_c(aim.orientation);
+      s.palm_normal = threeos::Vec3{2.f * (q.x * q.y - q.w * q.z),
+                                    1.f - 2.f * (q.x * q.x + q.z * q.z),
+                                    2.f * (q.y * q.z + q.w * q.x)};
+      s.palm_mode_valid = false;
+      return s;
+    };
+    g_hands.set_hands(
+        synth(left, frame->left_aim, frame->left_trigger, frame->left_grip_value,
+              THREEOS_BTN_LEFT_SELECT, THREEOS_BTN_LEFT_GRAB, THREEOS_BTN_LEFT_TERNARY),
+        synth(right, frame->right_aim, frame->right_trigger, frame->right_grip_value,
+              THREEOS_BTN_RIGHT_SELECT, THREEOS_BTN_RIGHT_GRAB, THREEOS_BTN_RIGHT_TERNARY));
+  }
+  g_hands.tick(from_c(frame->head), head_valid, frame->time_seconds);
+  g_hands_pushed_this_frame = false;
+
+  // Latch drive hand from host select bits / triggers (same signals as Unity _selectHand).
+  auto pick_drive_hand = [&]() -> int {
+    constexpr float kTrig = 0.55f;
+    const bool l = frame->left_trigger >= kTrig ||
+                   (frame->button_flags & THREEOS_BTN_LEFT_SELECT) != 0;
+    const bool r = frame->right_trigger >= kTrig ||
+                   (frame->button_flags & THREEOS_BTN_RIGHT_SELECT) != 0;
+    if (l && !r) {
+      return 0;
+    }
+    if (r && !l) {
+      return 1;
+    }
+    if (l && r) {
+      return frame->left_trigger >= frame->right_trigger ? 0 : 1;
+    }
+    const uint32_t h = g_hands.intents().handedness;
+    return h <= 1u ? static_cast<int>(h) : -1;
+  };
+
+  if (g_kinematics.state().phase == threeos::KineticPhase::Possessed) {
+    if (g_kin_hand_latch < 0) {
+      g_kin_hand_latch = pick_drive_hand();
+    }
+  } else {
+    g_kin_hand_latch = -1;
+  }
+
+  threeos::Pose hand{};
+  bool hand_valid = false;
+  auto try_cursor_hand = [&](int h) -> bool {
+    if (h != 0 && h != 1) {
+      return false;
+    }
+    if (!g_hands.cursor(static_cast<uint32_t>(h)).active) {
+      return false;
+    }
+    hand.position = g_hands.cursor(static_cast<uint32_t>(h)).position;
+    hand.orientation = from_c(h == 0 ? frame->left_aim.orientation : frame->right_aim.orientation);
+    return true;
+  };
+  auto try_aim_hand = [&](int h) -> bool {
+    if (h == 0 && left) {
+      hand = from_c(frame->left_aim);
+      return true;
+    }
+    if (h == 1 && right) {
+      hand = from_c(frame->right_aim);
+      return true;
+    }
+    return false;
+  };
+
+  const int prefer = g_kin_hand_latch >= 0 ? g_kin_hand_latch : pick_drive_hand();
+  if (prefer == 0 || prefer == 1) {
+    // Latched / selected hand: NEVER fall back to the opposite hand (that was the
+    // left-drag → right-stick bug when the left cursor was briefly inactive).
+    if (try_cursor_hand(prefer) || try_aim_hand(prefer)) {
+      hand_valid = true;
+    }
+  } else if (try_cursor_hand(0) || try_aim_hand(0)) {
+    hand_valid = true;
+  } else if (try_cursor_hand(1) || try_aim_hand(1)) {
+    hand_valid = true;
+  }
   const bool was_snapped = g_workspace.snap().pending;
   const threeos::Pose prior_hold = g_workspace.snap().hold_pose;
   bool kin_moved =
@@ -219,51 +327,58 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
   // Box snap while possessing a workspace Object or Box (box-into-box).
   // While snapped, kinematics keeps an escape pose (stick accumulates). Display
   // stays on hold until escape leaves the snap radius, then we lerp catch-up.
+  // During catch-up, snap is suppressed so a Box just above the hold cannot
+  // re-suck the object while the user is trying to leave.
   threeos::Pose display_pose = g_kinematics.state().pose;
   bool force_display = false;
+  const bool catchup_active = g_unsnap_blend < 1.f;
   if (g_kinematics.state().phase == threeos::KineticPhase::Possessed &&
       g_kinematics.state().entity_id != 0) {
-    const bool snap_edge =
-        g_workspace.update_snap(g_kinematics.state().entity_id, g_kinematics.state().pose);
-    const bool now_pending = g_workspace.snap().pending;
-
-    if (snap_edge && now_pending) {
-      // Enter: park on hold, re-anchor stick, clear any prior catch-up.
-      clear_unsnap_catchup();
-      g_kinematics.set_pose(g_workspace.snap().hold_pose);
-      g_kinematics.zero_velocity();
-      if (hand_valid) {
-        g_kinematics.reanchor_hand(hand);
+    if (catchup_active) {
+      if (g_workspace.snap().pending) {
+        g_workspace.clear_snap();
       }
-      display_pose = g_workspace.snap().hold_pose;
-      force_display = true;
-      kin_moved = true;
-    } else if (was_snapped && !now_pending) {
-      // Exit: blend display from hold → free kinematic (escape) pose.
-      g_unsnap_hold = prior_hold;
-      g_unsnap_blend = 0.f;
-      kin_moved = true;
-    } else if (now_pending) {
-      // Stay snapped: do NOT reset kinematics to hold (escape must accumulate).
-      display_pose = g_workspace.snap().hold_pose;
-      force_display = true;
-      kin_moved = true;
+    } else {
+      const bool snap_edge =
+          g_workspace.update_snap(g_kinematics.state().entity_id, g_kinematics.state().pose);
+      const bool now_pending = g_workspace.snap().pending;
+
+      if (snap_edge && now_pending) {
+        // Enter: park on hold, re-anchor stick, clear any prior catch-up.
+        clear_unsnap_catchup();
+        g_kinematics.set_pose(g_workspace.snap().hold_pose);
+        g_kinematics.zero_velocity();
+        if (hand_valid) {
+          g_kinematics.reanchor_hand(hand);
+        }
+        display_pose = g_workspace.snap().hold_pose;
+        force_display = true;
+        kin_moved = true;
+      } else if (was_snapped && !now_pending) {
+        // Exit: blend display from hold → free kinematic (escape) pose.
+        g_unsnap_hold = prior_hold;
+        g_unsnap_blend = 0.f;
+        kin_moved = true;
+      } else if (now_pending) {
+        // Stay snapped: do NOT reset kinematics to hold (escape must accumulate).
+        display_pose = g_workspace.snap().hold_pose;
+        force_display = true;
+        kin_moved = true;
+      }
     }
   } else if (g_kinematics.state().phase != threeos::KineticPhase::Possessed) {
     clear_unsnap_catchup();
   }
 
-  // Unsnap catch-up blend (hold → free pose).
+  // Unsnap catch-up: display races from hold → free kinematic pose. While
+  // snapped, stick kept integrating escape pose + velocity; on exit we must
+  // NOT reanchor/zero — that velocity is the inertia the object "would have had".
   if (g_unsnap_blend < 1.f &&
       g_kinematics.state().phase == threeos::KineticPhase::Possessed) {
     constexpr float kDt = 1.f / 72.f;
     g_unsnap_blend += kDt / kUnsnapCatchupSeconds;
     if (g_unsnap_blend >= 1.f) {
       g_unsnap_blend = 1.f;
-      if (hand_valid) {
-        g_kinematics.reanchor_hand(hand);
-        g_kinematics.zero_velocity();
-      }
     }
     const float u = smoothstep01(g_unsnap_blend);
     display_pose = lerp_pose(g_unsnap_hold, g_kinematics.state().pose, u);
@@ -624,6 +739,55 @@ extern "C" THREEOS_API int32_t threeos_kinematics_possess(uint64_t entity_id,
   }
   g_kinematics.possess(entity_id, from_c(*object_pose));
   g_facade.set_state(threeos::InteractionState::Possessed);
+  g_kin_hand_latch = -1;
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_kinematics_possess_with_hand(uint64_t entity_id,
+                                                                   const ThreeOS_Pose* object_pose,
+                                                                   uint32_t hand) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (entity_id == 0 || object_pose == nullptr) {
+    set_error("bad possess args");
+    return -2;
+  }
+  if (hand > 1u) {
+    set_error("drive hand must be 0 or 1");
+    return -2;
+  }
+  g_kinematics.possess(entity_id, from_c(*object_pose));
+  g_facade.set_state(threeos::InteractionState::Possessed);
+  g_kin_hand_latch = static_cast<int>(hand);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_kinematics_set_drive_hand(uint32_t hand) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (hand > 1u) {
+    set_error("drive hand must be 0 or 1");
+    return -2;
+  }
+  const int prev = g_kin_hand_latch;
+  g_kin_hand_latch = static_cast<int>(hand);
+  // Re-anchor only when the drive hand *changes*. Calling this every frame while
+  // possessed used to freeze start_hand to the current cursor → zero stick / no motion.
+  if (prev != g_kin_hand_latch &&
+      g_kinematics.state().phase == threeos::KineticPhase::Possessed &&
+      g_hands.cursor(hand).active) {
+    threeos::Pose p{};
+    p.position = g_hands.cursor(hand).position;
+    g_kinematics.reanchor_hand(p);
+  }
   set_error("");
   return 0;
 }
@@ -634,6 +798,7 @@ extern "C" THREEOS_API int32_t threeos_kinematics_release(void) {
     set_error("not initialized");
     return -1;
   }
+  g_kin_hand_latch = -1;
   // Drop-into-box: releasing while snapped commits insert (no coast).
   if (g_workspace.snap().pending) {
     std::string err;
@@ -1079,4 +1244,109 @@ extern "C" THREEOS_API void threeos_selection_clear(void) {
   }
   g_workspace.clear_selection();
   set_error("");
+}
+
+namespace {
+
+threeos::HandSample from_c_hand(const ThreeOS_HandSample* in) {
+  threeos::HandSample s{};
+  if (in == nullptr || in->tracked == 0) {
+    return s;
+  }
+  s.tracked = true;
+  s.tip_flags = in->tip_flags;
+  s.thumb_tip = from_c(in->thumb_tip);
+  s.index_tip = from_c(in->index_tip);
+  s.middle_tip = from_c(in->middle_tip);
+  s.ring_tip = from_c(in->ring_tip);
+  s.palm_normal = from_c(in->palm_normal);
+  s.palm_mode_valid = in->palm_mode_valid != 0;
+  s.palm_mode = static_cast<threeos::PalmMode>(in->palm_mode);
+  s.primary_value = in->primary_value;
+  s.secondary_value = in->secondary_value;
+  s.ternary_value = in->ternary_value;
+  s.primary_pressed = in->primary_pressed != 0;
+  s.secondary_pressed = in->secondary_pressed != 0;
+  s.ternary_pressed = in->ternary_pressed != 0;
+  s.index_proximal = from_c(in->index_proximal);
+  return s;
+}
+
+}  // namespace
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_hand_sample(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_HandSample));
+}
+extern "C" THREEOS_API uint32_t threeos_sizeof_point_cursor(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_PointCursor));
+}
+extern "C" THREEOS_API uint32_t threeos_sizeof_interaction_intents(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_InteractionIntents));
+}
+
+extern "C" THREEOS_API int32_t threeos_interaction_set_hands(const ThreeOS_HandSample* left,
+                                                             const ThreeOS_HandSample* right) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  g_hands.set_hands(from_c_hand(left), from_c_hand(right));
+  g_hands_pushed_this_frame = true;
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_interaction_get_cursor(uint32_t hand,
+                                                              ThreeOS_PointCursor* out_cursor) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_cursor == nullptr || hand > 1u) {
+    set_error("bad cursor args");
+    return -2;
+  }
+  const auto& c = g_hands.cursor(hand);
+  std::memset(out_cursor, 0, sizeof(*out_cursor));
+  out_cursor->active = c.active ? 1u : 0u;
+  out_cursor->driving_channel = static_cast<uint32_t>(c.driving_channel);
+  out_cursor->scale = c.scale;
+  out_cursor->driving_distance_m = c.driving_distance_m;
+  out_cursor->position = to_c(c.position);
+  out_cursor->palm_mode = static_cast<uint32_t>(c.palm_mode);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_interaction_get_intents(
+    ThreeOS_InteractionIntents* out_intents) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_intents == nullptr) {
+    set_error("null intents");
+    return -2;
+  }
+  const auto& i = g_hands.intents();
+  out_intents->flags = static_cast<uint32_t>(i.flags);
+  out_intents->palm_mode = static_cast<uint32_t>(i.active_palm);
+  out_intents->active_channel = static_cast<uint32_t>(i.active_channel);
+  out_intents->handedness = i.handedness;
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_interaction_set_pinch_thresh_m(float meters) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  g_hands.set_pinch_thresh_m(meters);
+  set_error("");
+  return 0;
 }

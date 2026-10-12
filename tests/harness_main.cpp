@@ -45,9 +45,9 @@ int main() {
   const uint32_t patch = version & 0xFFu;
   std::printf("threeos_version => %u.%u.%u (0x%08X)\n", major, minor, patch, version);
   ok = expect_eq("major", major, 0) && ok;
-  ok = expect_eq("minor", minor, 4) && ok;
+  ok = expect_eq("minor", minor, 5) && ok;
   ok = expect_eq("patch", patch, 0) && ok;
-  ok = expect_eq("abi_version", threeos_abi_version(), 4) && ok;
+  ok = expect_eq("abi_version", threeos_abi_version(), 5) && ok;
   ok = expect_eq("sizeof_input_frame", threeos_sizeof_input_frame(), 192) && ok;
   ok = expect_eq("sizeof_transform_delta", threeos_sizeof_transform_delta(), 48) && ok;
   ok = expect_eq("sizeof_dome_state", threeos_sizeof_dome_state(), 48) && ok;
@@ -57,6 +57,9 @@ int main() {
   ok = expect_eq("sizeof_workspace_item", threeos_sizeof_workspace_item(), 200) && ok;
   ok = expect_eq("sizeof_snap_state", threeos_sizeof_snap_state(), 64) && ok;
   ok = expect_eq("sizeof_storage_event", threeos_sizeof_storage_event(), 344) && ok;
+  ok = expect_eq("sizeof_hand_sample", threeos_sizeof_hand_sample(), 128) && ok;
+  ok = expect_eq("sizeof_point_cursor", threeos_sizeof_point_cursor(), 32) && ok;
+  ok = expect_eq("sizeof_interaction_intents", threeos_sizeof_interaction_intents(), 16) && ok;
 
   if (threeos_tick(nullptr, nullptr) != -1) {
     std::fprintf(stderr, "FAIL tick before init should return -1\n");
@@ -295,12 +298,17 @@ int main() {
     std::fprintf(stderr, "FAIL stick_debug inactive\n");
     ok = false;
   } else {
-    const float off = 4.f * 0.0254f;
+    const float stick_back = 4.f * 0.0254f;
+    const float cursor_fwd = 7.f * 0.0254f;
+    const float cursor_lat = 4.f * 0.0254f;
     ok = expect_near("stick_debug.mag", sd.magnitude, kStickOutsideM, 1e-4f) && ok;
     ok = expect_near("stick_debug.stick_x", sd.stick.x, kStickOutsideM, 1e-4f) && ok;
-    // identity head → flat forward (0,0,-1); start_hand at (0,1,-0.5); viz subtracts flat
-    ok = expect_near("stick_debug.origin_z", sd.ray_origin.z, -0.5f + off, 1e-4f) && ok;
-    ok = expect_near("stick_debug.tip_x", sd.ray_tip.x, kStickOutsideM, 1e-4f) && ok;
+    // Phase 0.5: kinematics aim is the point-cursor probe (aim + 7" floor-forward + 2" up
+    // when head invalid → +Z). Stick viz: origin = start_hand - flat_forward*4".
+    const float cursor_z = -0.5f + cursor_fwd;
+    ok = expect_near("stick_debug.origin_z", sd.ray_origin.z, cursor_z + stick_back, 1e-4f) && ok;
+    // Right cursor includes +4" OpenXR lateral (Unity shows left); tip.x = start.x + stick.x.
+    ok = expect_near("stick_debug.tip_x", sd.ray_tip.x, kStickOutsideM + cursor_lat, 1e-4f) && ok;
     ok = expect_eq("stick_debug.in_deadzone", sd.in_deadzone, 0) && ok;
   }
 
@@ -438,6 +446,51 @@ int main() {
   // Slot (0,0,0) is at local -extent on each axis; forward*(-extent) pushes +Z toward head.
   threeos_storage_get_item(0, &item);
   ok = expect_near("layout.obj.z", item.pose.position.z, -1.f + 0.11f, 0.08f) && ok;
+
+  // Rolled head must not tilt glyphs off world-up (yaw-only layout).
+  {
+    threeos_storage_clear();
+    uint64_t a = 0;
+    uint64_t b = 0;
+    ThreeOS_Pose rolled = identity_pose_at(0.f, 1.5f, 0.f);
+    const float half = 0.4f;  // ~45° roll about forward-ish; nonzero x/z on quat
+    rolled.orientation.x = std::sin(half);
+    rolled.orientation.z = std::sin(half * 0.5f);
+    rolled.orientation.w = std::cos(half);
+    // Renormalize roughly
+    const float qn = std::sqrt(rolled.orientation.x * rolled.orientation.x +
+                               rolled.orientation.y * rolled.orientation.y +
+                               rolled.orientation.z * rolled.orientation.z +
+                               rolled.orientation.w * rolled.orientation.w);
+    rolled.orientation.x /= qn;
+    rolled.orientation.y /= qn;
+    rolled.orientation.z /= qn;
+    rolled.orientation.w /= qn;
+    if (threeos_storage_add_object("a.glb", "a.glb", &a) != 0 ||
+        threeos_storage_add_object("b.glb", "b.glb", &b) != 0 ||
+        threeos_storage_layout_demo(&rolled) != 0) {
+      std::fprintf(stderr, "FAIL yaw-layout seed: %s\n", threeos_last_error());
+      ok = false;
+    } else {
+      ThreeOS_WorkspaceItem wa{};
+      threeos_storage_get_item(0, &wa);
+      if (std::fabs(wa.pose.orientation.x) > 1e-3f || std::fabs(wa.pose.orientation.z) > 1e-3f) {
+        std::fprintf(stderr, "FAIL layout kept head roll (qx=%f qz=%f)\n",
+                     wa.pose.orientation.x, wa.pose.orientation.z);
+        ok = false;
+      } else {
+        std::printf("OK   layout yaw-only under rolled head (qy=%f)\n", wa.pose.orientation.y);
+      }
+    }
+    // Restore the main storage seed for the rest of the suite.
+    threeos_storage_clear();
+    if (threeos_storage_add_object("simple.glb", "simple.glb", &obj_id) != 0 ||
+        threeos_storage_add_box("Test1", "Test1", 0, &box_id) != 0 ||
+        threeos_storage_layout_demo(&layout_head) != 0) {
+      std::fprintf(stderr, "FAIL storage re-seed after yaw test: %s\n", threeos_last_error());
+      ok = false;
+    }
+  }
   threeos_storage_get_item(0, &item);
   if (std::strcmp(item.glyph_id, "gltf_mark") != 0) {
     std::fprintf(stderr, "FAIL object glyph_id=%s expected gltf_mark\n", item.glyph_id);
@@ -525,12 +578,15 @@ int main() {
   }
 
   // Escape snap: keep possess, drive stick far so escape pose leaves 0.2 m.
+  // Hold a steady far aim so stick-built velocity persists after catch-up.
+  ThreeOS_Pose escape_aim = box_pose;
+  escape_aim.position.x += 0.35f;
+  escape_aim.position.y += 0.35f;
+  escape_aim.position.z += 0.35f;
   for (int i = 0; i < 60; ++i) {
     sf.frame_index++;
     sf.time_seconds += 1.0 / 72.0;
-    sf.right_aim.position.x = box_pose.position.x + 0.35f;
-    sf.right_aim.position.y = box_pose.position.y + 0.35f;
-    sf.right_aim.position.z = box_pose.position.z + 0.35f;
+    sf.right_aim = escape_aim;
     threeos_tick(&sf, &delta);
   }
   threeos_storage_get_snap(&snap);
@@ -541,8 +597,29 @@ int main() {
     std::printf("OK   snap exit after stick escape\n");
   }
 
+  // Catch-up (~0.12 s) must land on stick velocity — not reanchor/zero it.
+  for (int i = 0; i < 20; ++i) {
+    sf.frame_index++;
+    sf.time_seconds += 1.0 / 72.0;
+    sf.right_aim = escape_aim;
+    threeos_tick(&sf, &delta);
+  }
+  {
+    ThreeOS_KineticState ks{};
+    threeos_kinematics_get_state(&ks);
+    const float speed =
+        std::sqrt(ks.vel_x * ks.vel_x + ks.vel_y * ks.vel_y + ks.vel_z * ks.vel_z);
+    if (speed < 0.05f) {
+      std::fprintf(stderr, "FAIL expected non-zero velocity after snap escape catch-up (speed=%f)\n",
+                   speed);
+      ok = false;
+    } else {
+      std::printf("OK   snap escape preserves velocity (speed=%f)\n", speed);
+    }
+  }
+
   // Re-enter snap for commit: release + re-possess near the box (escape leaves
-  // the object too far for a short stick re-drive after catch-up reanchor).
+  // the object too far for a short stick re-drive).
   threeos_kinematics_release();
   for (int i = 0; i < 10; ++i) {
     sf.frame_index++;
@@ -594,6 +671,147 @@ int main() {
     ok = false;
   } else {
     std::printf("OK   selection cleared on insert\n");
+  }
+
+  // Sticky snap: hold above a dense vertical stack must not cascade to the top.
+  {
+    threeos_storage_clear();
+    uint64_t bot = 0;
+    uint64_t mid = 0;
+    uint64_t top = 0;
+    uint64_t sticky_obj = 0;
+    ThreeOS_Pose head = identity_pose_at(0.f, 1.5f, 0.f);
+    const float spacing = 0.22f;
+    const float x = 0.f;
+    const float z = -1.f;
+    const float y0 = 1.0f;
+    if (threeos_storage_add_box("Bot", "Bot", 0, &bot) != 0 ||
+        threeos_storage_add_box("Mid", "Mid", 0, &mid) != 0 ||
+        threeos_storage_add_box("Top", "Top", 0, &top) != 0 ||
+        threeos_storage_add_object("sticky.glb", "sticky.glb", &sticky_obj) != 0) {
+      std::fprintf(stderr, "FAIL sticky-snap seed: %s\n", threeos_last_error());
+      ok = false;
+    } else {
+      auto park = [&](uint64_t id, float y, double* t) {
+        ThreeOS_Pose p = identity_pose_at(x, y, z);
+        threeos_kinematics_possess(id, &p);
+        ThreeOS_InteropInputFrame f{};
+        f.tracking_flags = THREEOS_TRACK_RIGHT_AIM | THREEOS_TRACK_HEAD;
+        f.right_aim = p;
+        f.head = head;
+        f.time_seconds = *t;
+        threeos_tick(&f, &delta);
+        *t += 1.0 / 72.0;
+        threeos_kinematics_release();
+        for (int i = 0; i < 4; ++i) {
+          f.frame_index++;
+          f.time_seconds = *t;
+          *t += 1.0 / 72.0;
+          threeos_tick(&f, &delta);
+        }
+      };
+      double t = 50.0;
+      park(bot, y0, &t);
+      park(mid, y0 + spacing, &t);
+      park(top, y0 + 2.f * spacing, &t);
+
+      // Approach from just below the bottom box so first snap is Bot.
+      ThreeOS_Pose approach = identity_pose_at(x, y0 + 0.05f, z);
+      threeos_kinematics_possess(sticky_obj, &approach);
+      ThreeOS_InteropInputFrame sf2{};
+      sf2.tracking_flags = THREEOS_TRACK_RIGHT_AIM | THREEOS_TRACK_HEAD;
+      sf2.right_aim = approach;
+      sf2.head = head;
+      sf2.time_seconds = t;
+      threeos_tick(&sf2, &delta);
+      t += 1.0 / 72.0;
+      for (int i = 0; i < 8; ++i) {
+        sf2.frame_index++;
+        sf2.time_seconds = t;
+        t += 1.0 / 72.0;
+        sf2.right_aim = approach;
+        threeos_tick(&sf2, &delta);
+      }
+      ThreeOS_SnapState sticky_snap{};
+      threeos_storage_get_snap(&sticky_snap);
+      if (sticky_snap.pending == 0 || sticky_snap.box_id != bot) {
+        std::fprintf(stderr,
+                     "FAIL sticky snap expected Bot first (pending=%u box=%llu)\n",
+                     sticky_snap.pending,
+                     static_cast<unsigned long long>(sticky_snap.box_id));
+        ok = false;
+      } else {
+        // Hold pose sits nearer Mid than Bot; without stickiness it would cascade.
+        for (int i = 0; i < 24; ++i) {
+          sf2.frame_index++;
+          sf2.time_seconds = t;
+          t += 1.0 / 72.0;
+          sf2.right_aim = approach;
+          threeos_tick(&sf2, &delta);
+        }
+        threeos_storage_get_snap(&sticky_snap);
+        if (sticky_snap.pending == 0 || sticky_snap.box_id != bot) {
+          std::fprintf(stderr,
+                       "FAIL sticky snap cascaded away from Bot (pending=%u box=%llu)\n",
+                       sticky_snap.pending,
+                       static_cast<unsigned long long>(sticky_snap.box_id));
+          ok = false;
+        } else {
+          std::printf("OK   sticky snap stays on Bot in dense vertical stack\n");
+        }
+
+        // Escape toward Mid. As soon as Bot releases, the next ~catch-up window
+        // must stay clear even though the free pose is inside Mid's radius.
+        ThreeOS_Pose escape_aim = identity_pose_at(x, y0 + spacing, z);
+        bool escaped = false;
+        for (int i = 0; i < 90; ++i) {
+          sf2.frame_index++;
+          sf2.time_seconds = t;
+          t += 1.0 / 72.0;
+          sf2.right_aim = escape_aim;
+          threeos_tick(&sf2, &delta);
+          threeos_storage_get_snap(&sticky_snap);
+          if (sticky_snap.pending == 0) {
+            escaped = true;
+            break;
+          }
+        }
+        if (!escaped) {
+          std::fprintf(stderr, "FAIL sticky snap never left Bot during escape drive\n");
+          ok = false;
+        } else {
+          // Catch-up is ~0.12 s ≈ 9 ticks; stay inside that window.
+          bool sucked = false;
+          for (int i = 0; i < 8; ++i) {
+            sf2.frame_index++;
+            sf2.time_seconds = t;
+            t += 1.0 / 72.0;
+            sf2.right_aim = escape_aim;
+            threeos_tick(&sf2, &delta);
+            threeos_storage_get_snap(&sticky_snap);
+            if (sticky_snap.pending != 0) {
+              sucked = true;
+              break;
+            }
+          }
+          if (sucked) {
+            std::fprintf(stderr,
+                         "FAIL snap re-engaged during catch-up (box=%llu)\n",
+                         static_cast<unsigned long long>(sticky_snap.box_id));
+            ok = false;
+          } else {
+            std::printf("OK   snap suppressed during unsnap catch-up near Mid\n");
+          }
+        }
+      }
+      threeos_kinematics_release();
+      for (int i = 0; i < 4; ++i) {
+        sf2.frame_index++;
+        sf2.time_seconds = t;
+        t += 1.0 / 72.0;
+        threeos_tick(&sf2, &delta);
+      }
+    }
   }
 
   // Expand / collapse: children above box; lift when default layer is occupied.
@@ -710,6 +928,178 @@ int main() {
         }
       }
     }
+  }
+
+  // --- Hand interaction / point cursor 0.5 ---
+  {
+    threeos_interaction_set_pinch_thresh_m(0.0635f);
+
+    ThreeOS_HandSample L{};
+    ThreeOS_HandSample R{};
+    R.tracked = 1;
+    R.tip_flags = 0x1Fu;  // thumb+index+middle+ring+index proximal
+    R.thumb_tip = {0.f, 1.2f, -0.3f};
+    R.index_tip = {0.02f, 1.2f, -0.3f};   // 2cm — inside thresh
+    R.middle_tip = {0.05f, 1.2f, -0.3f};  // 5cm — inside
+    R.ring_tip = {0.08f, 1.2f, -0.3f};    // 8cm — outside
+    R.index_proximal = {0.f, 1.2f, -0.3f};  // cursor probe anchor
+    R.palm_mode = THREEOS_PALM_DOWN;
+    R.palm_mode_valid = 1;
+    R.primary_value = 0.3f;
+    if (threeos_interaction_set_hands(&L, &R) != 0) {
+      std::fprintf(stderr, "FAIL set_hands: %s\n", threeos_last_error());
+      ok = false;
+    }
+
+    ThreeOS_InteropInputFrame hf{};
+    hf.frame_index = 9001;
+    hf.time_seconds = 10.0;
+    hf.tracking_flags = THREEOS_TRACK_HEAD | THREEOS_TRACK_RIGHT_AIM;
+    hf.head = identity_pose_at(0.f, 1.6f, 0.f);
+    // Head looking +Z on floor plane.
+    hf.head.orientation = {0.f, 0.f, 0.f, 1.f};
+    hf.right_aim = identity_pose_at(0.f, 1.2f, -0.3f);
+    ThreeOS_InteropTransformDelta hd{};
+    if (threeos_tick(&hf, &hd) != 0) {
+      std::fprintf(stderr, "FAIL hand tick: %s\n", threeos_last_error());
+      ok = false;
+    }
+
+    ThreeOS_PointCursor cur{};
+    if (threeos_interaction_get_cursor(1, &cur) != 0 || cur.active == 0) {
+      std::fprintf(stderr, "FAIL right cursor inactive\n");
+      ok = false;
+    } else {
+      // Shortest in-threshold pair is index–thumb (0.02m).
+      ok = expect_eq("cursor.driving_primary", cur.driving_channel, THREEOS_PINCH_PRIMARY) && ok;
+      // Index proximal (0, 1.2, -0.3) + 0.1778 fwd (+Z) + 0.0762 up + 4" lateral (+right OpenXR).
+      ok = expect_near("cursor.x", cur.position.x, 0.f + 0.1016f, 1e-3f) && ok;
+      ok = expect_near("cursor.y", cur.position.y, 1.2f + 0.0762f, 1e-3f) && ok;
+      ok = expect_near("cursor.z", cur.position.z, -0.3f + 0.1778f, 1e-3f) && ok;
+      // scale ≈ 0.1 + 0.9*(0.02/0.0635) ≈ 0.383
+      ok = expect_near("cursor.scale_approach", cur.scale, 0.1f + 0.9f * (0.02f / 0.0635f), 0.02f) &&
+           ok;
+      std::printf("OK   cursor probe + approach scale\n");
+    }
+
+    // Primary press edge → SelectPulse; palm down → VoodooHold (not drag).
+    R.primary_pressed = 1;
+    threeos_interaction_set_hands(&L, &R);
+    hf.frame_index++;
+    hf.time_seconds += 0.016;
+    threeos_tick(&hf, &hd);
+    ThreeOS_InteractionIntents intents{};
+    if (threeos_interaction_get_intents(&intents) != 0) {
+      std::fprintf(stderr, "FAIL get_intents\n");
+      ok = false;
+    } else {
+      const bool select = (intents.flags & THREEOS_INTENT_SELECT_PULSE) != 0;
+      const bool drag = (intents.flags & THREEOS_INTENT_DRAG_ACTIVE) != 0;
+      const bool voodoo = (intents.flags & THREEOS_INTENT_VOODOO_HOLD) != 0;
+      if (!select || drag || !voodoo) {
+        std::fprintf(stderr, "FAIL intents palm-down: flags=0x%X (want select+voodoo)\n",
+                     intents.flags);
+        ok = false;
+      } else {
+        std::printf("OK   select+voodoo intents (palm down)\n");
+      }
+    }
+
+    // Palm sideways + primary hold → DragActive (no voodoo).
+    R.palm_mode = THREEOS_PALM_SIDEWAYS;
+    R.primary_pressed = 1;
+    threeos_interaction_set_hands(&L, &R);
+    hf.frame_index++;
+    hf.time_seconds += 0.016;
+    threeos_tick(&hf, &hd);
+    threeos_interaction_get_intents(&intents);
+    {
+      const bool drag = (intents.flags & THREEOS_INTENT_DRAG_ACTIVE) != 0;
+      const bool voodoo = (intents.flags & THREEOS_INTENT_VOODOO_HOLD) != 0;
+      if (!drag || voodoo) {
+        std::fprintf(stderr, "FAIL intents palm-sideways: flags=0x%X (want drag, no voodoo)\n",
+                     intents.flags);
+        ok = false;
+      } else {
+        std::printf("OK   drag intent (palm sideways)\n");
+      }
+    }
+
+    // Palm up + primary hold → neither drag nor voodoo (Quest OS reserves the gesture).
+    R.palm_mode = THREEOS_PALM_UP;
+    R.primary_pressed = 1;
+    threeos_interaction_set_hands(&L, &R);
+    hf.frame_index++;
+    hf.time_seconds += 0.016;
+    threeos_tick(&hf, &hd);
+    threeos_interaction_get_intents(&intents);
+    {
+      const bool drag = (intents.flags & THREEOS_INTENT_DRAG_ACTIVE) != 0;
+      const bool voodoo = (intents.flags & THREEOS_INTENT_VOODOO_HOLD) != 0;
+      if (drag || voodoo) {
+        std::fprintf(stderr, "FAIL intents palm-up: flags=0x%X (want no drag/voodoo)\n",
+                     intents.flags);
+        ok = false;
+      } else {
+        std::printf("OK   palm-up unmapped (OS-reserved)\n");
+      }
+    }
+
+    // Controller-style synth: trigger select + A/X ternary via frozen frame bits.
+    ThreeOS_InteropInputFrame cf{};
+    cf.frame_index = 9100;
+    cf.time_seconds = 20.0;
+    cf.tracking_flags = THREEOS_TRACK_HEAD | THREEOS_TRACK_RIGHT_AIM;
+    cf.head = identity_pose_at(0.f, 1.6f, 0.f);
+    cf.right_aim = identity_pose_at(0.2f, 1.1f, -0.4f);
+    cf.right_trigger = 0.8f;
+    cf.button_flags = THREEOS_BTN_RIGHT_SELECT | THREEOS_BTN_RIGHT_TERNARY;
+    // Clear explicit hands so tick synthesizes from frame.
+    ThreeOS_HandSample empty{};
+    threeos_interaction_set_hands(&empty, &empty);
+    // Next tick without set_hands → synth path. Drop prior push flag by not calling set_hands.
+    // Actually set_hands marks pushed; call tick once after clearing via untracked samples that
+    // still "pushed". Force synth by ticking without set_hands after a prior tick consumed push.
+    threeos_tick(&cf, &hd);  // consumes pushed empty hands
+    cf.frame_index++;
+    cf.time_seconds += 0.016;
+    threeos_tick(&cf, &hd);  // synth from frame
+    threeos_interaction_get_cursor(1, &cur);
+    threeos_interaction_get_intents(&intents);
+    if (cur.active == 0) {
+      std::fprintf(stderr, "FAIL controller synth cursor inactive\n");
+      ok = false;
+    } else if ((intents.flags & THREEOS_INTENT_PRIMARY_HELD) == 0) {
+      std::fprintf(stderr, "FAIL controller synth missing primary held flags=0x%X\n", intents.flags);
+      ok = false;
+    } else {
+      ok = expect_eq("controller.ternary_channel_or_held",
+                     (intents.flags & THREEOS_INTENT_TERNARY_HELD) != 0 ? 1u : 0u, 1u) &&
+           ok;
+      std::printf("OK   controller synth primary+ternary\n");
+    }
+
+    // Palm hysteresis: borderline normal stays previous mode.
+    ThreeOS_HandSample H{};
+    H.tracked = 1;
+    H.tip_flags = 0x3u;
+    H.thumb_tip = {0.f, 1.f, 0.f};
+    H.index_tip = {0.1f, 1.f, 0.f};
+    H.palm_mode_valid = 0;
+    H.palm_normal = {0.f, 0.75f, 0.f};  // enter Up (≥0.70)
+    threeos_interaction_set_hands(&empty, &H);
+    cf.frame_index++;
+    cf.time_seconds += 0.05;
+    threeos_tick(&cf, &hd);
+    threeos_interaction_get_cursor(1, &cur);
+    ok = expect_eq("palm.enter_up", cur.palm_mode, THREEOS_PALM_UP) && ok;
+    H.palm_normal = {0.f, 0.55f, 0.f};  // between leave-up (0.50) and enter — stay Up
+    threeos_interaction_set_hands(&empty, &H);
+    cf.frame_index++;
+    cf.time_seconds += 0.05;
+    threeos_tick(&cf, &hd);
+    threeos_interaction_get_cursor(1, &cur);
+    ok = expect_eq("palm.hysteresis_up", cur.palm_mode, THREEOS_PALM_UP) && ok;
   }
 
   threeos_shutdown();

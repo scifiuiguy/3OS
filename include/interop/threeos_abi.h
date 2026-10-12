@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * 3OS host ABI (Phase 0.4).
+ * 3OS host ABI (Phase 0.5).
  *
  * Units: meters.
  * Coordinates: OpenXR convention — right-handed, Y-up.
@@ -14,8 +14,8 @@
  *
  * Layout freeze (abi_version layout family):
  *   InteropInputFrame = 192 bytes, InteropTransformDelta = 48 bytes (Phase 0.1).
- * Topology (0.2), kinematics (0.3), storage/glyphs (0.4) are additive;
- * abi_version = 4.
+ * Topology (0.2), kinematics (0.3), storage/glyphs (0.4), hand interaction (0.5)
+ * are additive; abi_version = 5. InteropInputFrame size remains frozen.
  */
 
 #include <stdint.h>
@@ -79,6 +79,9 @@ enum ThreeOS_ButtonFlags : uint32_t {
   THREEOS_BTN_LEFT_GRAB = 1u << 2,
   THREEOS_BTN_RIGHT_GRAB = 1u << 3,
   THREEOS_BTN_MENU = 1u << 4,
+  /** Ternary channel (controller A/X / primaryButton). Additive; frame size unchanged. */
+  THREEOS_BTN_LEFT_TERNARY = 1u << 5,
+  THREEOS_BTN_RIGHT_TERNARY = 1u << 6,
 };
 
 /**
@@ -213,10 +216,10 @@ typedef struct ThreeOS_StorageEvent {
   char dest_rel[160];
 } ThreeOS_StorageEvent;
 
-/** Packed semver: (major << 16) | (minor << 8) | patch. Phase 0.4 => 0.4.0 */
+/** Packed semver: (major << 16) | (minor << 8) | patch. Phase 0.5 => 0.5.0 */
 THREEOS_API uint32_t threeos_version(void);
 
-/** ABI layout/feature version; 4 = storage/glyph + selection APIs present. */
+/** ABI layout/feature version; 5 = hand interaction / point-cursor APIs present. */
 THREEOS_API uint32_t threeos_abi_version(void);
 
 THREEOS_API int32_t threeos_init(void);
@@ -290,6 +293,12 @@ THREEOS_API int32_t threeos_topology_voxel_to_world(ThreeOS_VoxelCoord voxel,
 THREEOS_API int32_t threeos_kinematics_set_params(float gain, float deadzone_m, float friction,
                                                   float floor_y);
 THREEOS_API int32_t threeos_kinematics_possess(uint64_t entity_id, const ThreeOS_Pose* object_pose);
+/** Possess and latch drive hand in one call (0=left, 1=right). Preferred over possess+set_drive_hand. */
+THREEOS_API int32_t threeos_kinematics_possess_with_hand(uint64_t entity_id,
+                                                         const ThreeOS_Pose* object_pose,
+                                                         uint32_t hand);
+/** Latch which hand drives possess stick (0=left, 1=right). Call right after possess. */
+THREEOS_API int32_t threeos_kinematics_set_drive_hand(uint32_t hand);
 THREEOS_API int32_t threeos_kinematics_release(void);
 THREEOS_API int32_t threeos_kinematics_get_state(ThreeOS_KineticState* out_state);
 THREEOS_API int32_t threeos_kinematics_get_stick_debug(ThreeOS_StickDebug* out_debug);
@@ -334,6 +343,90 @@ THREEOS_API int32_t threeos_glyph_install_pack(const uint8_t* bytes, uint32_t by
 THREEOS_API int32_t threeos_selection_get(uint64_t* out_entity_id);
 THREEOS_API int32_t threeos_selection_set(uint64_t entity_id);
 THREEOS_API void threeos_selection_clear(void);
+
+/* --- Hand interaction / point cursor (Phase 0.5; additive) --- */
+
+enum ThreeOS_PalmMode : uint32_t {
+  THREEOS_PALM_UP = 0,
+  THREEOS_PALM_SIDEWAYS = 1,
+  THREEOS_PALM_DOWN = 2,
+};
+
+enum ThreeOS_PinchChannel : uint32_t {
+  THREEOS_PINCH_NONE = 0,
+  THREEOS_PINCH_PRIMARY = 1,
+  THREEOS_PINCH_SECONDARY = 2,
+  THREEOS_PINCH_TERNARY = 3,
+};
+
+enum ThreeOS_InteractionIntentFlags : uint32_t {
+  THREEOS_INTENT_NONE = 0,
+  THREEOS_INTENT_SELECT_PULSE = 1u << 0,
+  THREEOS_INTENT_DRAG_ACTIVE = 1u << 1,
+  THREEOS_INTENT_VOODOO_HOLD = 1u << 2,
+  THREEOS_INTENT_PRIMARY_HELD = 1u << 3,
+  THREEOS_INTENT_SECONDARY_HELD = 1u << 4,
+  THREEOS_INTENT_TERNARY_HELD = 1u << 5,
+};
+
+/**
+ * Per-hand sample from host (128 bytes).
+ * Hands: fill tips + tip_flags; pressed from pinch detection.
+ * Controllers: tip_flags=0; fill aim as index_tip; primary/secondary/ternary values + pressed.
+ */
+typedef struct ThreeOS_HandSample {
+  uint32_t tracked;
+  uint32_t tip_flags; /* bit0 thumb,1 index,2 middle,3 ring,4 index proximal */
+  ThreeOS_Vec3 thumb_tip;
+  ThreeOS_Vec3 index_tip;
+  ThreeOS_Vec3 middle_tip;
+  ThreeOS_Vec3 ring_tip;
+  ThreeOS_Vec3 palm_normal; /* world; ignored if palm_mode_valid */
+  uint32_t palm_mode;       /* ThreeOS_PalmMode */
+  uint32_t palm_mode_valid;
+  float primary_value;
+  float secondary_value;
+  float ternary_value;
+  uint32_t primary_pressed;
+  uint32_t secondary_pressed;
+  uint32_t ternary_pressed;
+  ThreeOS_Vec3 index_proximal; /* cursor anchor when tip_flags bit4 */
+  uint32_t reserved3;
+  uint32_t reserved4;
+  uint32_t reserved5;
+  uint32_t reserved6; /* pad to 128 */
+} ThreeOS_HandSample;
+
+/** Point cursor probe for one hand (32 bytes). */
+typedef struct ThreeOS_PointCursor {
+  uint32_t active;
+  uint32_t driving_channel; /* ThreeOS_PinchChannel */
+  float scale;
+  float driving_distance_m;
+  ThreeOS_Vec3 position;
+  uint32_t palm_mode;
+} ThreeOS_PointCursor;
+
+/** Aggregated facade intents for the preferred busy hand (16 bytes). */
+typedef struct ThreeOS_InteractionIntents {
+  uint32_t flags;           /* ThreeOS_InteractionIntentFlags */
+  uint32_t palm_mode;       /* ThreeOS_PalmMode */
+  uint32_t active_channel;  /* ThreeOS_PinchChannel */
+  uint32_t handedness;      /* 0 left, 1 right, 2 none */
+} ThreeOS_InteractionIntents;
+
+THREEOS_API uint32_t threeos_sizeof_hand_sample(void);
+THREEOS_API uint32_t threeos_sizeof_point_cursor(void);
+THREEOS_API uint32_t threeos_sizeof_interaction_intents(void);
+
+/** Push both hands (null = clear / untracked). Call each frame before threeos_tick. */
+THREEOS_API int32_t threeos_interaction_set_hands(const ThreeOS_HandSample* left,
+                                                  const ThreeOS_HandSample* right);
+
+THREEOS_API int32_t threeos_interaction_get_cursor(uint32_t hand /*0 left, 1 right*/,
+                                                   ThreeOS_PointCursor* out_cursor);
+THREEOS_API int32_t threeos_interaction_get_intents(ThreeOS_InteractionIntents* out_intents);
+THREEOS_API int32_t threeos_interaction_set_pinch_thresh_m(float meters);
 
 #ifdef __cplusplus
 }

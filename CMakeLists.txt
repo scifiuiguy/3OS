@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(3os_kernel VERSION 0.4.0 LANGUAGES CXX)
+project(3os_kernel VERSION 0.5.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,6 +13,7 @@ add_library(3os_kernel SHARED
   src/kinematics.cpp
   src/glyph_registry.cpp
   src/workspace.cpp
+  src/hand_interaction.cpp
 )
 
 add_library(3os::kernel ALIAS 3os_kernel)

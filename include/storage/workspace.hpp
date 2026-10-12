@@ -75,6 +75,7 @@ class Workspace {
 
   /// Place root-field items in a cubic matrix 1 m in front of `head` (OpenXR).
   /// Side length = ceil(cbrt(n)) so 1–8 → 2³, 9–27 → 3³, etc. (n==1 → 1³).
+  /// Uses yaw-only heading (world up) so head roll/pitch does not tilt the field.
   void layout_demo_field(const Pose& head);
 
   /// Show children of `box_id` in a cubic matrix above the box (collision-aware).
@@ -93,6 +94,8 @@ class Workspace {
 
   /// While dragging an Object or Box at `pose`, update snap vs other Boxes.
   /// `pose` should be the free/escape kinematic pose (not the display hold).
+  /// Once snapped, stays on that Box until `pose` leaves its snap radius
+  /// (ignores nearer neighbors — prevents hold-pose cascade in dense stacks).
   /// Returns true if snap enter/exit edge occurred.
   bool update_snap(EntityId object_id, const Pose& pose);
 

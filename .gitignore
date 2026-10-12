@@ -4,6 +4,9 @@ GLOBAL_ATTRIBUTES.md
 # Companion SDK — separate repo, local reference only
 3OS_Unity/
 
+# marketing copy and media
+marketing/
+
 # Local Unity Editor host project (created via Unity CLI; not part of core)
 3OS_Unity_Sample_Project/
 unity-create-sample.log

@@ -172,6 +172,19 @@ int cube_side_for_count(int n) {
   return side;
 }
 
+/// Flatten pitch/roll: keep facing yaw on the XZ plane so field matrices stay
+/// parallel to the floor even if the user rolls their head at layout time.
+Quat yaw_only_from_orientation(const Quat& orientation) {
+  const Vec3 fwd = quat_rotate(orientation, Vec3{0.f, 0.f, -1.f});
+  const float xz = std::sqrt(fwd.x * fwd.x + fwd.z * fwd.z);
+  if (xz < 1e-4f) {
+    return Quat{0.f, 0.f, 0.f, 1.f};
+  }
+  const float yaw = std::atan2(fwd.x, -fwd.z);
+  const float half = yaw * 0.5f;
+  return Quat{0.f, std::sin(half), 0.f, std::cos(half)};
+}
+
 }  // namespace
 
 void Workspace::layout_demo_field(const Pose& head) {
@@ -190,10 +203,11 @@ void Workspace::layout_demo_field(const Pose& head) {
   }
 
   const int side = cube_side_for_count(n);
-  // Local OpenXR axes from head: +X right, +Y up, -Z forward.
-  const Vec3 right = quat_rotate(head.orientation, Vec3{1.f, 0.f, 0.f});
-  const Vec3 up = quat_rotate(head.orientation, Vec3{0.f, 1.f, 0.f});
-  const Vec3 forward = quat_rotate(head.orientation, Vec3{0.f, 0.f, -1.f});
+  // Yaw-only basis: +X right, world +Y up, -Z forward (OpenXR).
+  const Quat yaw = yaw_only_from_orientation(head.orientation);
+  const Vec3 right = quat_rotate(yaw, Vec3{1.f, 0.f, 0.f});
+  const Vec3 up{0.f, 1.f, 0.f};
+  const Vec3 forward = quat_rotate(yaw, Vec3{0.f, 0.f, -1.f});
   const Vec3 center = vec_add(head.position, vec_scale(forward, 1.f));
 
   const float spacing = field_spacing_m_;
@@ -208,7 +222,7 @@ void Workspace::layout_demo_field(const Pose& head) {
     const float lz = static_cast<float>(iz) * spacing - extent;
     items[i]->pose.position = vec_add(
         center, vec_add(vec_add(vec_scale(right, lx), vec_scale(up, ly)), vec_scale(forward, lz)));
-    items[i]->pose.orientation = head.orientation;
+    items[i]->pose.orientation = yaw;
   }
 }
 
@@ -371,6 +385,26 @@ bool Workspace::update_snap(EntityId object_id, const Pose& pose) {
     const bool was = snap_.pending;
     clear_snap();
     return was;
+  }
+
+  // Sticky snap: once pending, ignore every other Box until the free/escape
+  // pose leaves *this* box's radius. Hold sits above the target, which in a
+  // tight vertical matrix is closer to the Box above — without stickiness
+  // nearest-neighbor would cascade up the stack. On exit, do not retarget
+  // another Box in the same call (host also suppresses snap during lerp escape).
+  if (snap_.pending && snap_.object_id == object_id && snap_.box_id != 0) {
+    const WorkspaceEntry* box = find(snap_.box_id);
+    if (box != nullptr && box->kind == StorageKind::Box && box->in_field &&
+        dist(pose.position, box->pose.position) < kSnapDistanceM) {
+      Pose hold = box->pose;
+      hold.position.y += kHoldAboveBoxM;
+      snap_.hold_pose = hold;
+      obj->pose = hold;
+      return false;
+    }
+    clear_snap();
+    obj->pose = pose;
+    return true;
   }
 
   EntityId best_box = 0;

@@ -105,7 +105,8 @@ class KinematicsEngine {
 
   void set_pose(const Pose& pose) { state_.pose = pose; }
 
-  /// Snap enter/exit: clear drive and treat current hand as new grab origin.
+  /// Snap enter only: clear drive and treat current hand as new grab origin.
+  /// Do not call on snap escape — escape keeps stick-built velocity.
   void reanchor_hand(const Pose& hand_pose);
   void zero_velocity() { state_.velocity = {}; }
   bool have_start_hand() const { return have_start_hand_; }

@@ -163,26 +163,68 @@ While dragging an Object **or Box** near another in-field Box within snap distan
 ---
 
 ### ✋ Phase 0.5: Hand & Controller Integration (v0.5.0)
-**Goal:** Make interaction input first-class: tracked hands and Quest controllers drive the same semantic actions (hover, select/pinch, possess/grip, release) through a stable ABI, so later phases (frustum, voodoo look polish, layouts) are not stuck on Quest Trigger-only hacks.
+**Goal:** Make interaction input first-class: tracked hands and Quest controllers drive the same semantic actions through a stable ABI — including **primary / secondary / ternary** pinches and **palm-orientation** modes — so later phases are not stuck on Quest Trigger-only hacks.
 
-**Scope note:** Phase 0.1–0.4 already marshal a thin `InteropInputFrame` and Quest trigger/grip paths enough for storage demos. 0.5 hardens **parity** (hands ↔ controllers), richer pose/button semantics, and headless coverage — not a greenfield rewrite of kinematics.
+**Scope note:** Phase 0.1–0.4 already marshal a thin `InteropInputFrame` and Quest trigger/grip paths enough for storage demos. 0.5 hardens **parity** (hands ↔ controllers), richer pose/button semantics, and headless coverage — not a greenfield rewrite of kinematics. Host hand/controller **meshes** are a Unity/Meta concern (see Unity U5.0); core only needs joints/poses and mapped actions.
 
-- [ ] **Task 5.1: Input ABI — hands + controllers**
-  - [ ] Extend blittable input (append-only after 0.1 freeze): per-hand / per-controller pose, tracking confidence / lost flags, and discrete action bits (hover probe, select/pinch, possess/grip, menu/secondary as needed).
-  - [ ] Document units, handedness, and OpenXR ↔ Unity convention parity for palm vs pinch tip vs controller tip.
-  - [ ] Keep device transport out of core: hosts fill frames; core consumes semantics.
-- [ ] **Task 5.2: Facade action mapping**
-  - [ ] Map pinch (hands) and trigger/A (controllers) onto the same select / commit paths used by selection + storage.
-  - [ ] Map grip (or documented controller equivalent) onto possess / telekinesis start-stop consistently with 0.3–0.4 stick law.
-  - [ ] Dual-source policy: prefer hands when confidently tracked; fall back to controllers without double-firing the same action.
-- [ ] **Task 5.3: Interaction-point policy**
-  - [ ] Define the driving interaction point (pinch tip / controller tip / offset cursor) used for hover volume tests and snap proximity — document default offset so the hand does not occlude the proxy (README point-cursor story).
-  - [ ] Soft-fail when tracking drops mid-possess (no crash; clear or coast per kinematics rules).
-- [ ] **Task 5.4: Headless verification**
-  - [ ] Inject mock hand and controller streams; assert select / possess / release semantics match.
-  - [ ] Assert tracking-lost mid-drag does not corrupt workspace or snap state.
+**Pinch channels (mouse analogue)** — per hand, three discrete pinch channels like LMB / RMB / MMB:
 
-**Headless / Quest gate (0.5):** Harness green for dual-source input mapping. Quest: storage + telekinesis demo completable with **controllers alone** and with **tracked hands alone** (select, drag, snap-insert, Box expand) without Trigger-only special cases.
+| Channel | Hands | Controllers (Quest Touch) |
+| --- | --- | --- |
+| **Primary** | Index–thumb pinch | **Trigger** |
+| **Secondary** | Middle–thumb pinch | **Grip** |
+| **Ternary** | Ring–thumb pinch | **A / X** (thumb face button) |
+
+Ternary on controllers has no ring-finger hardware; **A (right) / X (left)** is the closest equivalent because every hand pinch is thumb-opposed — the face button is the remaining thumb digital. Prefer A/X over stick-click (too easy to hit while steering) or B/Y (reserve for menu / cancel / mode unless remapped). Document B/Y as an optional host remap, not the default ternary.
+
+**Palm orientation (ulnar / forearm roll), quantized** — three modes from palm normal vs world up (hysteresis bands so it does not chatter):
+
+| Mode | Sense |
+| --- | --- |
+| **Palm up** | Palm faces roughly sky / ceiling |
+| **Palm sideways** | Palm faces roughly world horizontal (knife-hand) |
+| **Palm down** | Palm faces roughly floor |
+
+Orientation is a **modifier** on pinch channels: the facade may bind distinct actions to any pair `(pinch_channel × palm_mode)` per hand (up to 3×3×2 combinatorial slots; unused slots stay unbound). Controllers synthesize the same three palm modes from controller pose / grip orientation so hand and controller share one action table.
+
+**Locked 0.5 defaults**
+
+| Intent | Binding |
+| --- | --- |
+| **Select** | Primary press, **any** palm |
+| **Drag / telekinesis** | Primary **hold** + palm **down** or **sideways** |
+| **Voodoo volume** | Primary **hold** + palm **up** — map the intent in 0.5; full volume UX lands in **0.6** (stub / no-op or debug HUD ok until then) |
+
+**Cursor:** one white-sphere probe **per hand**. Scale lerp may follow primary, secondary, or ternary approach, but **only one finger pair at a time** — if multiple pairs are inside `d_thresh`, drive scale (and that frame’s pinch midpoint) from the pair with the **shortest** tip distance. Default `d_thresh` = **2.5 in (0.0635 m)**.
+
+**Devices:** Quest **2** is the smoke gate (hardware on hand); keep OpenXR paths Quest **3**-ready (no Quest-2-only APIs where a shared path exists).
+
+- [x] **Task 5.1: Input ABI — hands + controllers**
+  - [x] Extend blittable input (append-only after 0.1 freeze): per-hand / per-controller pose, tracking confidence / lost flags, **primary / secondary / ternary** press+release+hold, per-channel tip distances, and **palm_mode** enum (`Up` / `Sideways` / `Down`) with confidence.
+  - [x] Document units, handedness, and OpenXR ↔ Unity convention parity for palm normal, pinch tips, and controller tip; ternary = Unity/OpenXR **`primaryButton`** (Touch `a`/`x`).
+  - [x] Keep device transport out of core: hosts fill frames; core consumes semantics.
+- [x] **Task 5.2: Facade action mapping**
+  - [x] Action table: `(handedness, pinch_channel, palm_mode[, edge|hold])` → intents. Ship locked defaults above (select / drag / voodoo-volume stub).
+  - [x] Hands: primary = index–thumb, secondary = middle–thumb, ternary = ring–thumb.
+  - [x] Controllers: primary = trigger, secondary = grip, ternary = primaryButton (A/X); same palm_mode from controller orientation.
+  - [x] Dual-source policy: prefer hands when confidently tracked; fall back to controllers without double-firing the same action.
+- [x] **Task 5.3: Interaction-point / point-cursor policy**
+  - [x] **One** unparented world-space point cursor **per hand** (1:1 Euclidean — not a child of the hand transform).
+  - [x] **Driving pair:** among finger pairs with `d ≤ d_thresh`, pick shortest `d`; else default to index–thumb. `cursor0 = (fingerTip + thumbTip) * 0.5` for that pair. Controllers: tip/aim as `cursor0`.
+  - [x] **User-aligned offset (not hand-local):** from `cursor0`, add **4 in (0.1016 m)** along the user’s forward projected onto the floor plane (yaw-only / horizontal), plus **2 in (0.0508 m)** along world up → hover/select/snap probe.
+  - [x] Soft-fail when tracking drops mid-possess (no crash; clear or coast per kinematics rules).
+- [x] **Task 5.3b: Point-cursor sphere scale interpolation (Quest-OS-inspired)**
+  - [x] Default `d_thresh = 2.5 in`. Above threshold for all pairs → scale **100%**.
+  - [x] While approaching (pinch not yet triggered): use **only** the shortest in-threshold pair’s `d`; map `d_thresh → 0` linearly onto scale **100% → 50%**. Never blend multiple pairs’ lerps in one frame.
+  - [x] On **pinch trigger** for that channel: **fast-lerp** sphere scale back to **100%** (held pinch does not stay shrunken).
+  - [x] Controllers: approximate approach with trigger/grip/primaryButton value for the active channel, then same fast-lerp to 100% on press.
+- [x] **Task 5.4: Headless verification**
+  - [x] Inject mock hand and controller streams; assert primary/secondary/ternary edges and palm_mode quantization (incl. hysteresis).
+  - [x] Assert cursor probe = driving-pair midpoint + 4″ floor-forward + 2″ up; hover/select use that probe.
+  - [x] Assert scale: `d_thresh=2.5″`, shortest-pair wins, 100%→50% then fast-lerp to 100% on trigger; multi-pair fixture picks min `d`.
+  - [x] Assert select = primary+any; drag = primary-hold+down/sideways; palm-up+primary-hold routes to voodoo-volume intent (stub ok). Tracking-lost mid-drag does not corrupt workspace/snap.
+
+**Headless / Quest gate (0.5):** Harness green for dual-source mapping + pinch/palm/cursor ABI. **Quest 2** smoke (Quest 3–ready codepaths): storage path with hands-only and controllers-only; white-sphere cursors; select vs drag vs palm-up voodoo stub distinguishable on device.
 
 ---
 
