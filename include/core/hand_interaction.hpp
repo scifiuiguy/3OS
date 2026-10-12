@@ -23,10 +23,11 @@ enum class InteractionIntentFlags : uint32_t {
   None = 0,
   SelectPulse = 1u << 0,
   DragActive = 1u << 1,
-  VoodooHold = 1u << 2,
+  VoodooSnap = 1u << 2,  // primary + palm down
   PrimaryHeld = 1u << 3,
   SecondaryHeld = 1u << 4,
   TernaryHeld = 1u << 5,
+  VoodooFree = 1u << 6,  // secondary + palm down
 };
 
 inline InteractionIntentFlags operator|(InteractionIntentFlags a, InteractionIntentFlags b) {
@@ -96,6 +97,10 @@ class HandInteractionEngine {
     return hand < 2 ? cursors_[hand] : cursors_[0];
   }
   const InteractionIntents& intents() const { return intents_; }
+  /// Per-hand intents before preferred-hand aggregation (for dual voodoo sessions).
+  const InteractionIntents& pending_intents(uint32_t hand) const {
+    return hand < 2 ? hands_[hand].pending_intents : hands_[0].pending_intents;
+  }
 
   float pinch_thresh_m() const { return pinch_thresh_m_; }
   void set_pinch_thresh_m(float m) { pinch_thresh_m_ = m > 1e-4f ? m : kDefaultPinchThreshM; }

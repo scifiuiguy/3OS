@@ -46,12 +46,12 @@ PalmMode HandInteractionEngine::quantize_palm(const Vec3& palm_normal_world, Pal
                                               bool has_previous) {
   const Vec3 n = normalize_or(palm_normal_world, Vec3{0.f, 1.f, 0.f});
   const float y = n.y;
-  // Wider Sideways band: natural pinch-drag is rarely a perfect karate-chop, and
-  // the old ±0.55 enter + hysteresis trapped Down/Up for seconds.
-  constexpr float kEnterUp = 0.70f;
-  constexpr float kLeaveUp = 0.50f;
-  constexpr float kEnterDown = -0.70f;
-  constexpr float kLeaveDown = -0.50f;
+  // Palm-down while pinching is rarely a flat -Y; ±0.70 made Down almost
+  // unreachable and left pinches stuck in Sideways (or flickering dismiss).
+  constexpr float kEnterUp = 0.55f;
+  constexpr float kLeaveUp = 0.30f;
+  constexpr float kEnterDown = -0.40f;
+  constexpr float kLeaveDown = -0.20f;
 
   if (y >= kEnterUp) {
     return PalmMode::Up;
@@ -256,17 +256,20 @@ void HandInteractionEngine::tick_hand(uint32_t hand, const Pose& head, bool head
       local.flags |= InteractionIntentFlags::SelectPulse;
     }
     // Quest OS steals palm-up index pinch — leave Up unmapped for app intents.
-    // Sideways hold → telekinesis drag; palm-down hold → voodoo volume.
+    // Sideways hold → telekinesis drag; palm-down + primary → snap voodoo.
     if (palm == PalmMode::Sideways) {
       local.flags |= InteractionIntentFlags::DragActive;
     } else if (palm == PalmMode::Down) {
-      local.flags |= InteractionIntentFlags::VoodooHold;
+      local.flags |= InteractionIntentFlags::VoodooSnap;
     }
   }
   if (s.secondary_pressed) {
     local.flags |= InteractionIntentFlags::SecondaryHeld;
     if (local.active_channel == PinchChannel::None) {
       local.active_channel = PinchChannel::Secondary;
+    }
+    if (palm == PalmMode::Down) {
+      local.flags |= InteractionIntentFlags::VoodooFree;
     }
   }
   if (s.ternary_pressed) {

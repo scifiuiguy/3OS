@@ -3,9 +3,9 @@
 This roadmap moves **3OS_Core** from an empty repo to a production-grade, hardware-native volumetric OS module. Phases are dependency-ordered. Contiguous semver tracks real deliverables (no fake version gaps).
 
 ```text
-Core  0.0 → 0.1 → … → 0.5 (hands) → 0.6 (voodoo look) → 0.7 → 0.8 → 1.0 → 2.0 (collab room / VDI + edge)
-                │                 │                      │                 │     │     │
-Unity 0.0 → 0.1 → … → 0.5 (hands) → 0.6 (voodoo look) → 0.7 → 0.8 → 1.0 → 2.0 (enterprise host + room displays)
+Core  0.0 → 0.1 → … → 0.5 (hands) → 0.6 (voodoo volumes) → 0.7 (multi-select) → 0.8 → 0.9 → 1.0 → 2.0 (collab room / VDI + edge)
+                │                 │                           │                      │     │     │     │
+Unity 0.0 → 0.1 → … → 0.5 (hands) → 0.6 (voodoo volumes) → 0.7 (multi-select) → 0.8 → 0.9 → 1.0 → 2.0 (enterprise host + room displays)
 ```
 
 ### Companion repo (parallel track)
@@ -50,7 +50,7 @@ Unity 0.0 → 0.1 → … → 0.5 (hands) → 0.6 (voodoo look) → 0.7 → 0.8 
 ---
 
 ### 🕸 Phase 0.2: Topology, Proxies & Portals (v0.2.0)
-**Goal:** World Proxy Half-Dome, Double-Proxy Voxel Lattice, and Voodoo portal teleportation. Prove with **headless tests** here; prove on Quest via the paired **Unity 0.2** gate. *(Product look — translucent volumes, ghosts, bloom — is Phase 0.6.)*
+**Goal:** World Proxy Half-Dome, Double-Proxy Voxel Lattice, and Voodoo portal teleportation. Prove with **headless tests** here; prove on Quest via the paired **Unity 0.2** gate. *(Product voodoo volumes — far/near bounding boxes, ghosts, snap centroids — are Phase 0.6; Half-Dome stays imaginary / unrendered.)*
 
 - [x] **Task 2.1: Multiscale coordinate workspace (`src/topology.cpp`)**
   - [x] Voxel indexing for discrete ~3-inch spatial blocks (`std::array<int, 3>` or equivalent).
@@ -103,7 +103,7 @@ Operator stages **`Documents/3OS_Demo`** (see [`docs/QUEST_DEMO_DIR.md`](docs/QU
 
 **Generalized host listing (shipped):** every file under the demo root → Object; every subdirectory → Box (child count from folder contents). Content `.glb` must not be confused with glyph pack assets.
 
-**Demo field layout (0.4):** `threeos_storage_layout_demo` places all in-field roots in a **cubic matrix** 1 m in front of the head (side = ceil(cbrt(n)); 1–8 → 2³, 9–27 → 3³, …). Layout uses **yaw-only** heading with **world +Y up** so head roll/pitch at start does not tilt the field off the floor. Full Matrix/Cluster/Real-Anchor *mode toggles* remain Phase 0.7.
+**Demo field layout (0.4):** `threeos_storage_layout_demo` places all in-field roots in a **cubic matrix** 1 m in front of the head (side = ceil(cbrt(n)); 1–8 → 2³, 9–27 → 3³, …). Layout uses **yaw-only** heading with **world +Y up** so head roll/pitch at start does not tilt the field off the floor. Full Matrix/Cluster/Real-Anchor *mode toggles* remain Phase 0.8.
 
 Authored glyph sources (Blender → GLB → `.3glyph` with `THREEOS_glyph`): glTF-logo-like pack for `.glb`/`.gltf`; **`box.glb`** as the default closed Box glyph for all Boxes; **`box_open.glb`** as the open-state Box glyph (toggleable).
 
@@ -192,8 +192,8 @@ Orientation is a **modifier** on pinch channels: the facade may bind distinct ac
 | Intent | Binding |
 | --- | --- |
 | **Select** | Primary press, **any** palm |
-| **Drag / telekinesis** | Primary **hold** + palm **down** or **sideways** |
-| **Voodoo volume** | Primary **hold** + palm **up** — map the intent in 0.5; full volume UX lands in **0.6** (stub / no-op or debug HUD ok until then) |
+| **Drag / telekinesis** | Primary **hold** + palm **sideways** (0.5 shipped down∥sideways; **0.6** frees palm-down for voodoo) |
+| **Voodoo volume** | Stub in 0.5; **0.6** locks **snap** = primary-hold + palm-down, **free-range** = secondary-hold + palm-down |
 
 **Cursor:** one white-sphere probe **per hand**. Scale lerp may follow primary, secondary, or ternary approach, but **only one finger pair at a time** — if multiple pairs are inside `d_thresh`, drive scale (and that frame’s pinch midpoint) from the pair with the **shortest** tip distance. Default `d_thresh` = **2.5 in (0.0635 m)**.
 
@@ -222,63 +222,140 @@ Orientation is a **modifier** on pinch channels: the facade may bind distinct ac
   - [x] Inject mock hand and controller streams; assert primary/secondary/ternary edges and palm_mode quantization (incl. hysteresis).
   - [x] Assert cursor probe = driving-pair midpoint + 4″ floor-forward + 2″ up; hover/select use that probe.
   - [x] Assert scale: `d_thresh=2.5″`, shortest-pair wins, 100%→50% then fast-lerp to 100% on trigger; multi-pair fixture picks min `d`.
-  - [x] Assert select = primary+any; drag = primary-hold+down/sideways; palm-up+primary-hold routes to voodoo-volume intent (stub ok). Tracking-lost mid-drag does not corrupt workspace/snap.
+  - [x] Assert select = primary+any; drag = primary-hold+down/sideways; voodoo-volume stub distinguishable (bindings remapped in **0.6**). Tracking-lost mid-drag does not corrupt workspace/snap.
 
-**Headless / Quest gate (0.5):** Harness green for dual-source mapping + pinch/palm/cursor ABI. **Quest 2** smoke (Quest 3–ready codepaths): storage path with hands-only and controllers-only; white-sphere cursors; select vs drag vs palm-up voodoo stub distinguishable on device.
-
----
-
-### 🧿 Phase 0.6: Voodoo Volume Look Development (v0.6.0)
-**Goal:** Turn the Phase 0.2 functional Half-Dome / double-proxy / portal remaps into **readable, product-shaped voodoo volumes** — translucent near-field proxies, far-field ghosts, and clear portal affordances. Core exposes the state and bounds hosts need to draw; Unity owns materials/meshes/animation (paired Unity 0.6).
-
-**Scope note:** Topology math and portal teleport already shipped in 0.2. This phase is **look + draw contracts**, not new teleport algorithms. Full enclosure / wall-mask shaders stay in 0.8; layout mode toggles stay in 0.7.
-
-- [ ] **Task 6.1: Voodoo volume descriptors (ABI)**
-  - [ ] Blittable descriptors for World Proxy Half-Dome and Double-Proxy Lattice: center, extents, scale ratio, open/closed, linked far-field region, voxel cell size hint (default ~3").
-  - [ ] Query path so hosts can rebuild meshes/materials from kernel state each frame (or on dirty).
-  - [ ] Parameterize default near-field box from Trivariate / README navel-forward rest pose (host may override).
-- [ ] **Task 6.2: Ghost / proxy draw contract**
-  - [ ] Expose which far-field entities (and empty cells, if needed) participate in the open proxy so hosts can draw **ghost copies** in the near field and/or far-field hand/cursor ghosts.
-  - [ ] Keep mesh authorship in the host; core supplies ids, poses, and proxy remap transforms only.
-- [ ] **Task 6.3: Portal affordance state**
-  - [ ] Clear enter/hold/place/dismiss state for Half-Dome → lattice bloom so hosts can animate without inventing parallel state machines.
-  - [ ] Headless: open dome → select region → lattice open; descriptors match expected bounds/links.
-- [ ] **Task 6.4: Look-facing verification**
-  - [ ] Harness asserts descriptor fields and remap transforms for a fixture proxy session (no GPU in core).
-  - [ ] Document host look checklist (paired Unity Quest gate owns the visual pass).
-
-**Headless / Quest gate (0.6):** Harness green for descriptors + portal state. Quest: Half-Dome and double-proxy read as intentional translucent voodoo volumes (not debug wire cubes); ghosts/cursors convey near↔far linkage during a portal drag.
+**Headless / Quest gate (0.5):** Harness green for dual-source mapping + pinch/palm/cursor ABI. **Quest 2** smoke (Quest 3–ready codepaths): storage path with hands-only and controllers-only; white-sphere cursors; select vs drag vs voodoo stub distinguishable on device.
 
 ---
 
-### 🗂️ Phase 0.7: Layouts, Anchors & Selection Frustum (v0.7.0)
-**Goal:** Cover README workspace features deferred from the original 0.5 slot — toggleable layouts, anchor subordination, and dual-hand selection frustum. *(Global Box expand without dismissing parents remains seeded in 0.4; this phase owns the explicit global/local mode toggle.)*
+### 🧿 Phase 0.6: Voodoo Volumes (v0.6.0)
+**Goal:** Ship **snap** and **free-range** voodoo volumes as the product interaction for far↔near editing — floor-aligned far-field bounding boxes, yellow drag arrows, sibling **centroids**, near-field ghost portals, and bump-lerp field hygiene. Core owns centroids, snap gravity, scale/aspect math, and state; Unity draws boxes/arrows/ghosts (paired Unity 0.6).
 
-- [ ] **Task 7.1: Procedural volumetric layouts**
-  - [ ] **Matrix View** — packed 3D cubic grids as a **toggleable layout mode** (demo cubic matrix already seeded in 0.4 `layout_demo_field`; 0.7 owns mode switching + persistence).
+**Scope note:** Phase 0.2 topology/portal remaps remain available as math. The **Half-Dome is imaginary** — do **not** render it. Users see the far-field bounding box, yellow drag affordance, snap nodes (snap mode), and near-field ghost boxes. Multi-select across volumes and multi-volume object moves wait for **0.7**. Layouts/anchors → **0.8**; enclosure/shaders/AI → **0.9**.
+
+**Input remaps (supersede 0.5 voodoo stub)**
+
+| Mode | Binding | On activate |
+| --- | --- | --- |
+| **Snap voodoo** | Primary hold + palm **down** | Far-field BB + yellow drag arrow; snap-node cluster from open-box centroids |
+| **Free-range voodoo** | Secondary hold + palm **down** | Same BB + yellow drag arrow; no snap-node cluster / gravity |
+| **Drag / telekinesis** | Primary hold + palm **sideways** | Unchanged path (palm-down freed for snap voodoo) |
+
+**Parameterized field metrics (ABI get/set; host may override; clamps required)**
+
+| Parameter | Default | Notes |
+| --- | --- | --- |
+| `voxel_size_m` | **3″** (`0.0762 m`) | World voxel edge; BB counts are in these units |
+| `near_bb_voxels` | **4×6×4** (x,y,z = W,H,D) | Product size **W×D×H = 12″×12″×18″** → extents (W,H,D)=(12″,18″,12″) |
+| `field_radius_m` | **50 ft** (`15.24 m`) | Horizontal field limit; also full-scale radial gain target |
+| `field_height_m` | **30 ft** (`9.144 m`) | Vertical field limit; also full-scale height gain target |
+| `arm_reach_m` | **12″** (`0.3048 m`) | Hand travel that maps to full `field_radius_m` / `field_height_m` |
+
+Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). Far BB keeps that **aspect** while later scaling nominal size to fit snapped contents — never stretch axes independently. Changing `voxel_size_m` or `near_bb_voxels` updates derived extents and the far aspect lock together.
+
+**Dual hands:** Left and right may each hold an independent voodoo session (two far BBs, two arrows; two near BBs after release). Host draws boxes as **wireframes**, not solid prisms.
+
+**Far-field bounding box:** Instantiates at gesture start at the standardized **navel-forward rest pose**, floor-yaw facing the user. While the snap/free hold is active, position tracks the hand vector with field-scale gain: `far = rest + hand_delta * (field_radius/arm_reach)` on horizontal axes and `(field_height/arm_reach)` on vertical, clamped to field limits. On intentional release the far BB **parks** where dropped (does not dismiss). Tracking loss mid-hold cancels without opening near. Nominal size later scales to fit snapped centroid children while **preserving** aspect (Task 6.3).
+
+**Near-field bounding box:** On **any** intentional release of snap or free-range (even with no centroids, or dropped away from snap nodes), opens at a **short** navel-forward rest (~0.41 m / ≈16″, Quest-tuned) with 1× start extents; pose is box center so **bottom-center** sits on that anchor, **4″ below** navel height (cursors land there at neutral). Far spawn stays farther out (~1 m) for field placement. Ghost contents (Task 6.4+) use a shrink multiplier when the far BB has grown larger than near.
+
+**Yellow drag arrow:** Same geometry as the selection drag arrow, but **yellow**, with a translucent yellow deadzone sphere. **Deadzone arming (also fix selection arrow):** inactive on instantiate; arms only after the hand first **leaves** the threshold and later **re-enters**. Snap-node spheres (Task 6.3) use the **same** hand→field scale so tip contact places the far BB on the represented objects.
+
+- [x] **Task 6.1: Voodoo input + session ABI + far/near shell**
+  - [x] Map snap vs free-range intents; **per-hand** sessions (L and R concurrent); expose open/hold/release/park without a parallel host state machine.
+  - [x] Expose get/set for `voxel_size_m`, `near_bb_voxels` (ivec3 W,H,D = 4×6×4 default), `field_radius_m`, `field_height_m`, `arm_reach_m` with clamps; harness asserts defaults and extents = counts × voxel size → (12″,18″,12″).
+  - [x] Blittable far/near BB descriptors: pose (floor-yaw), extents, aspect lock, mode, linked centroid id(s), open/closed. Hand-indexed `get_session` / `get_drag_arrow`.
+  - [x] Far BB: navel-forward rest at activate at **2×** near start size; yaw-only billboard toward user while dragging (retained on park); subtle position damp; scaled hand-Δ motion; intentional release parks far and opens near at navel (1×, no ghosts yet); tracking-loss cancels drag only.
+  - [x] Yellow drag-arrow + deadzone state (origin, tip, armed flag) shared contract with selection drag (fix unarmed-on-spawn bug there too).
+  - [x] Unity: wireframe far + near BBs (not solid cubes); dual-hand viz.
+- [ ] **Task 6.2: Centroids (sibling groups + god parent)**
+  - [ ] Persistent centroid per open Box’s child group; update whenever any member’s pose changes (not only on voodoo activate).
+  - [ ] Nested rule: if an object’s parent Box is in-scene, that sibling set has its own centroid.
+  - [ ] Snap activation **samples current** centroid poses as snap targets (do not recompute-all as a freeze; keep live updates).
+  - [ ] **God parent** centroid for the field root (Quest `Documents/3OS_Demo` today): imaginary Box (no glyph), but centroid of top-level children is a snap node that can grab **all** root contents.
+  - [ ] Data model supports **multiple god nodes** concurrently (folders under Documents now; future shared drives later).
+  - [ ] **Quest snap-test Start layout (demo):** spawn **two** god nodes so voodoo drag shows two centroid snap targets — each **10 ft** from user, **±15°** azimuth from facing, and **10 ft** up. Pair with dual Documents folders (or equivalent) once multi-god spawn lands.
+- [ ] **Task 6.3: Snap-mode nodes + gravity** *(not in 6.1 — snap dots / gravity land here)*
+  - [ ] Around the yellow drag tip, render a cluster of spherical snap dots at **field-scaled** positions of every open-box centroid (plus god-root node) so the same gain that moves the far BB maps tip contact onto real objects.
+  - [ ] Tip gravity: when near multiple nodes, pull toward the **closest**; snap tip to that node and snap the far-field BB to the real centroid.
+  - [ ] On snap, interpolate BB size on all three axes to encapsulate that centroid’s children **without** breaking the parameterized aspect (`near_bb_voxels`).
+- [ ] **Task 6.4: Near-field ghosts + portal contents**
+  - [ ] Near BB shell already opens on any release in 6.1; here: ghost copies of the sibling group inside the near BB, scale-shrunk so far-field nominal size maps into the near box (when far has grown).
+  - [ ] Ghost of the **parent Box** at the near BB’s bottom-center node.
+  - [ ] Edits on ghosts (select, drag, …) apply **1:1 in real time** to far-field counterparts.
+  - [ ] Maintain two centroids while open: **persistent** (always tracks true sibling poses) and **temporary** (created at near-BB open; drives far↔near BB relationship; does **not** expand the far BB when objects are summoned into the near field).
+- [ ] **Task 6.5: Ghost drag, boundary, summon, insert**
+  - [ ] Ghost drag arrow magnitude maps to the **scaled** near copy (smaller proxy → faster effective far motion than a full-size drag).
+  - [ ] Dragging a ghost does **not** remove it from the near BB by default; crossing a planar face constrains the ghost at the plane hit while velocity from vector length still drives the far real object; near BB **scales/repositions** remaining ghosts to stay in sync; **both** centroids update as needed (persistent always; temp per portal rules).
+  - [ ] Selected ghost + primary pinch on **empty space inside** near BB → deselect ghost and real.
+  - [ ] Selected ghost + primary pinch **outside** near BB → fast-interpolate ghost + real to that point (**summon** real into near field). Persistent centroid updates for the new far pose; **temp centroid does not** grow the far BB to swallow the near field.
+  - [ ] Near-field real dragged **into** near BB: spawn far ghost at correct scale/offset during drag; real scales down to ghost differential; pull back out in same drag destroys far ghost and restores near scale (may cross boundary repeatedly). On release **inside** near BB: far ghost becomes real, near real becomes ghost at ghost scale (roles swap).
+- [ ] **Task 6.6: Near-field priority + bump-lerp**
+  - [ ] Near BB instantiation takes priority over near-field clutter: existing near objects bump-lerp out of the way and must **not** be sucked into the new BB.
+  - [ ] Near BBs bump-lerp each other; inserting a third between two side-by-side portals pushes neighbors left/right.
+  - [ ] Bump paths orbit the user’s body so volumes/objects still face the user at rest; duration **under 0.25 s**.
+  - [ ] If an object’s orbital slot is blocked, push it just beyond reach into the far field to finish the shift without collision.
+- [ ] **Task 6.7: Dismiss + collapse**
+  - [ ] Each near BB has an **X-close** sphere at top-right-back: dismiss both far+near BBs, destroy ghosts, bump-lerp return objects that were displaced for that portal.
+  - [ ] Activating X-close on the **parent Box ghost** collapses voodoo contents into that Box (except objects dragged in from the near field); destroy content ghosts; leave parent ghost at the base ready to reopen.
+- [ ] **Task 6.8: Multi god-node spawn**
+  - [ ] Instantiate contents from any number of local Documents folders (e.g. `3OS_Demo`, `3OS_Demo2`, …), each as a god node with collision avoidance at Start.
+  - [ ] One node → current forward-of-user layout; multiple → lateral orbit around the user; if orbit is full, spill to farther concentric ground orbits out to `field_radius_m` (default 50 ft), then fill upward to `field_height_m` (default 30 ft); if still no room, HUD error naming the directory that could not instantiate.
+  - [ ] **Snap-test fixture:** when ≥2 gods are configured for Quest demos, prefer the Task 6.2 dual layout (10 ft range, ±15° azimuth, 10 ft up) before falling back to generic orbit spill.
+  - [ ] Keep ABI open for future god nodes on network shares (Google Drive / PC `F:` over Wi‑Fi) — not required to ship in 0.6.
+- [ ] **Task 6.9: Headless + Quest gate**
+  - [ ] Harness: snap vs free-range intents; centroid updates; snap gravity picks nearest; BB aspect lock; parameterized voxel/near-BB/field limits; near open creates temp vs persistent centroids; summon does not expand far BB via temp; deadzone arms only after leave/re-enter.
+  - [ ] Quest: yellow arrow + far BB (no dome mesh); snap dots; near ghosts 1:1 with far; bump-lerp under 0.25 s; X-close dismiss/collapse; multi-folder god spawn when configured.
+
+**Headless / Quest gate (0.6):** Snap and free-range voodoo complete on device with centroids, yellow drag, near-field ghosts, and bump-lerp hygiene. Multi-select across volumes is **out of scope** (0.7).
+
+---
+
+### ⧉ Phase 0.7: Multi-Select (v0.7.0)
+**Goal:** 3D equivalents of PC **Ctrl** / **Shift** multi-selection, including selection that crosses **voodoo volume** boundaries, plus moving objects through **multiple** open voodoo volumes.
+
+**Scope note:** Task list intentionally thin — flesh out after 0.6 ships. Builds on 0.5 pinch parity and 0.6 portal/ghost rules.
+
+- [ ] **Task 7.1: Multi-select gestures & ABI**
+  - [ ] Define additive / range-style multi-select intents (Ctrl/Shift analogues) for hands and controllers.
+  - [ ] Selection sets that span near-field ghosts and far-field reals without double-counting.
+- [ ] **Task 7.2: Cross-volume multi-select**
+  - [ ] Multi-select across boundaries of one or more open voodoo volumes; clear rules for ghost vs real identity.
+- [ ] **Task 7.3: Multi-volume object moves**
+  - [ ] Move selected objects through multiple voodoo volumes in one interaction sequence (ordering, scale, centroid updates).
+
+**Headless / Quest gate (0.7):** Multi-select and multi-volume moves demonstrable on Quest with harness coverage for set membership across portal boundaries.
+
+---
+
+### 🗂️ Phase 0.8: Layouts, Anchors & Selection Frustum (v0.8.0)
+**Goal:** Cover README workspace features deferred from the original 0.5 slot — toggleable layouts, anchor subordination, and dual-hand selection frustum. *(Global Box expand without dismissing parents remains seeded in 0.4; this phase owns the explicit global/local mode toggle. Bumped from 0.7 to make room for multi-select.)*
+
+- [ ] **Task 8.1: Procedural volumetric layouts**
+  - [ ] **Matrix View** — packed 3D cubic grids as a **toggleable layout mode** (demo cubic matrix already seeded in 0.4 `layout_demo_field`; 0.8 owns mode switching + persistence).
   - [ ] **Cluster View** — metadata/semantic groupings.
   - [ ] **Real Anchor View** — snap back to world surfaces / custom origins.
-- [ ] **Task 7.2: Layered coordinate subordination**
+- [ ] **Task 8.2: Layered coordinate subordination**
   - [ ] Toggle **Egocentric** (user-locked), **Allocentric** (world-locked), **Object-locked** (parent asset) origins.
-- [ ] **Task 7.3: Selection frustum**
-  - [ ] Dual-pinch / dual-hand scaled bounding frustum inside a double-proxy; rigid group transforms preserve relative offsets. *(Builds on 0.5 hand/controller pinch parity.)*
-- [ ] **Task 7.4: Global vs local box drill-down**
-  - [ ] Global mode (default): open Box without dismissing parent contents. *(Seeded in 0.4 Task 4.8 / Unity U4.8 — 0.7 owns an explicit mode toggle.)*
+- [ ] **Task 8.3: Selection frustum**
+  - [ ] Dual-pinch / dual-hand scaled bounding frustum inside a double-proxy; rigid group transforms preserve relative offsets. *(Builds on 0.5 hand/controller pinch parity; multi-select sets from 0.7.)*
+- [ ] **Task 8.4: Global vs local box drill-down**
+  - [ ] Global mode (default): open Box without dismissing parent contents. *(Seeded in 0.4 Task 4.8 / Unity U4.8 — 0.8 owns an explicit mode toggle.)*
   - [ ] Local mode: dismiss parent level when opening a Box.
 
 ---
 
-### 🧱 Phase 0.8: Full Enclosure, Shader Adapters & AI Hooks (v0.8.0)
-**Goal:** Complete boundary policy; keep plane math in C++; treat shaders as **per-engine adapters**. Optional AI as typed commands, not speech hashes. *(Deferred from the original 0.6 slot.)*
+### 🧱 Phase 0.9: Full Enclosure, Shader Adapters & AI Hooks (v0.9.0)
+**Goal:** Complete boundary policy; keep plane math in C++; treat shaders as **per-engine adapters**. Optional AI as typed commands, not speech hashes. *(Bumped from 0.8.)*
 
-- [ ] **Task 8.1: Enclosure engine (`src/enclosure.cpp`)**
+- [ ] **Task 9.1: Enclosure engine (`src/enclosure.cpp`)**
   - [ ] Strict floor policy (already seeded in 0.3) plus wall/ceiling plane constraints.
   - [ ] Rigidbody matrix default `Disabled`; optional per-object gravity opt-in.
   - [ ] Semantic wall masking: core supplies plane equations; hosts clip meshes.
-- [ ] **Task 8.2: Shader adapters (not core-only HLSL)**
+- [ ] **Task 9.2: Shader adapters (not core-only HLSL)**
   - [ ] Reference plane → clip interface in core.
   - [ ] Ship example `SemanticWallMask.hlsl` for D3D/Unity-style hosts; document that Vulkan/GL/Unreal use equivalent adapters.
-- [ ] **Task 8.3: Agentic service layer (`src/ai/`)**
+- [ ] **Task 9.3: Agentic service layer (`src/ai/`)**
   - [ ] Accept **typed intent/commands** (string or enum) from the host OEM assistant via ABI.
   - [ ] Map commands onto facade actions (e.g. matrix layout, portal open) — no in-kernel “speech hashing.”
 
@@ -287,24 +364,23 @@ Orientation is a **modifier** on pinch channels: the facade may bind distinct ac
 ### 🚀 Phase 1.0: Native OpenXR Realization (v1.0.0)
 **Goal:** Run the kernel against real OpenXR handles, with a concrete acceptance checklist (not a single vague “certification” checkbox).
 
-- [ ] **Task 9.1: OpenXR lifecycle (`src/main.cpp` or dedicated runtime entry)**
+- [ ] **Task 10.1: OpenXR lifecycle (`src/main.cpp` or dedicated runtime entry)**
   - [ ] Replace mock telemetry with OpenXR session/instance/system handles.
   - [ ] Request `XR_EXT_hand_tracking` (and `XR_EXT_eye_gaze_interaction` when available).
   - [ ] Establish `XR_REFERENCE_SPACE_TYPE_STAGE` (allocentric) and `XR_REFERENCE_SPACE_TYPE_VIEW` (egocentric).
-- [ ] **Task 9.2: Multi-modal text router (`src/text/`) — host-injected**
+- [ ] **Task 10.2: Multi-modal text router (`src/text/`) — host-injected**
   - [ ] Priority router in `text_io_router.cpp` that accepts strings from a **host-supplied callback / ABI entry** (keyboard, IME, engine UI).
   - [ ] Do **not** embed Bluetooth/WiFi keyboard sockets in core; leave transport to the host OS or Unity/Unreal layer.
   - [ ] Hooks for volumetric **Lexting** (3D hand-in-voxel → text field) as a later input source on the same router.
   - [ ] `text_label.cpp` CRUD for Box/Object annotations (primary + secondary count strings).
-- [ ] **Task 9.3: Acceptance checklist**
-  - [ ] Macro-target via World Proxy Half-Dome on far-field empty space (product look from 0.6).
-  - [ ] Double-proxy micro-resolve + CRUD in empty voxels.
-  - [ ] Portal teleport near ↔ far and cross-proxy.
+- [ ] **Task 10.3: Acceptance checklist**
+  - [ ] Snap / free-range voodoo volumes with near-field ghosts (from 0.6).
+  - [ ] Multi-select across voodoo boundaries (from 0.7).
   - [ ] Hands **and** controllers complete the demo path (from 0.5).
   - [ ] Velocity glide with friction settle; floor clamp holds.
-  - [ ] Wall masking does not clip through partition planes incorrectly (from 0.8).
+  - [ ] Wall masking does not clip through partition planes incorrectly (from 0.9).
   - [ ] Storage glyphs + rename via host text injection.
-  - [ ] Layout mode toggle and at least one anchor-mode switch work in-session (from 0.7).
+  - [ ] Layout mode toggle and at least one anchor-mode switch work in-session (from 0.8).
 
 ---
 
@@ -329,30 +405,30 @@ Optimal layout: **20 ft × 20 ft**. Three walls are workstation walls; the fourt
 
 **Arrival flow (office):** Latch-release desk → face carpet → launch eyewear app → log into **3OS enterprise** on the VDI → land in **personal workspace** first; join or create **shared** workspaces (pairs, 3–4+, or **full-room**) as invited.
 
-- [ ] **Task 10.1: Multi-user session & workspace model**
+- [ ] **Task 11.1: Multi-user session & workspace model**
   - [ ] Session identity: authenticated user, device credentials, room/tenant binding (enterprise VDI vs home edge).
   - [ ] Workspace kinds: **personal** (default on login), **shared** (any invite size — pairs, trios, larger), **full-room** (everyone present; owns room-wide spectator routing).
   - [ ] Invite / join / leave ABI; presence list per workspace; host is not the source of truth for ACLs (server/session service is).
   - [ ] Solo-in-shared: other invitees’ volumetric content **masked** in eyewear until explicitly unmasked or co-possessed — personal focus without leaving the shared session.
-- [ ] **Task 10.2: Display registry (every 2D screen in the room)**
+- [ ] **Task 11.2: Display registry (every 2D screen in the room)**
   - [ ] First-class **Display** entities: wall monitors, large 4K guest screens, handheld tablets/phones once logged in.
   - [ ] Pose pipeline: per-display **IMU** (and/or camera-assisted localization for handhelds) fused into room coordinates; portrait/landscape from mount/IMU.
   - [ ] Static vs handheld lifecycle; hot-plug / battery / tracking-lost soft-fail without dropping the session.
   - [ ] Reference-room catalog helpers (optional): 3×8 workstation monitors + 4× 4K guest screens + N handhelds — parameterization, not a hardcode-only layout.
-- [ ] **Task 10.3: Spectator cameras & default monitor routing**
+- [ ] **Task 11.3: Spectator cameras & default monitor routing**
   - [ ] Four corner camera frustums as room-aligned virtual observers of the shared volumetric field.
   - [ ] Default binding: each camera feeds spectator views to monitors on the **opposite** wall; full-room workspace can reassign routing.
   - [ ] Large 4K pair on couch wall / opposite wall prioritized for guests without eyewear.
   - [ ] Compositor contract: server (VDI/edge) renders spectator frames; eyewear clients do not each re-render all wall feeds.
-- [ ] **Task 10.4: Snap-to-monitor & shared monitor possession**
+- [ ] **Task 11.4: Snap-to-monitor & shared monitor possession**
   - [ ] Extend standard 3OS transforms: snap any volumetric content onto any registered display → that display leaves default spectator mode and shows an **object-focused** view (3D asset render, video playback, image, text surface, etc. by content type).
   - [ ] Every monitor is **possessable** by any workspace member; possession is shared — any other invitee may interact or **release** possession, restoring default spectator view.
   - [ ] Legacy workstation mode: user faces wall, latches desk into console, possesses the **two monitors above their station**; those displays behave as a conventional dual-monitor desktop until released.
-- [ ] **Task 10.5: Logged-in device localization & pull-in**
+- [ ] **Task 11.5: Logged-in device localization & pull-in**
   - [ ] Cameras + session creds **semantically track** issued devices (e.g. tablet) in room space while logged in.
   - [ ] Gesture/ABI to **pull** that device’s live surface into the shared volumetric workspace (real-time mirror), using localized pose for placement.
   - [ ] Same localization authority used for wall displays (IMU → server) so handheld and bolted screens share one coordinate frame.
-- [ ] **Task 10.6: Asset references (flyweights) vs asset copies**
+- [ ] **Task 11.6: Asset references (flyweights) vs asset copies**
   - [ ] First-class open binding: each workspace open of an asset is either a **copy** (independent instance) or a **reference** (flyweight to one server-RAM object). Same filename / same path must not imply a mode by accident.
   - [ ] Flyweight: attribute edits and **object** transforms propagate immediately to every workspace holding that reference, even across parallel workspaces with different view angles. **No merge** — one singleton in RAM; durable save/commit of that singleton is ordinary persistence, not a collaboration merge path. Teams may choose flyweight specifically to avoid diff/merge (especially same-room).
   - [ ] Copy: edits and object transforms stay local to that instance; no cross-workspace mutation; reconciliation is VCS (10.6b).
@@ -362,22 +438,22 @@ Optimal layout: **20 ft × 20 ft**. Three walls are workstation walls; the fourt
   - [ ] **Roster actions:** in-3OS **VOIP conference** with selected co-editors (esp. other rooms on campus); **bidirectional avatar fly-in** — place remote co-editor avatars in the local room field and local avatars in theirs so deixis/gaze align with live flyweight edits.
   - [ ] Default staging: place document origin / primary content at **room center** when opening into a workspace (overridable); placement is not the same as copy-vs-reference choice.
   - [ ] Headless: two workspaces open one flyweight — object spin in A visible in B; camera flip in A leaves B’s object upright; presence list includes both. Two copies — object spin in A leaves B upright. Cross-domain open request cannot bind as flyweight.
-- [ ] **Task 10.6b: VCS integration for simultaneous copies**
+- [ ] **Task 11.6b: VCS integration for simultaneous copies**
   - [ ] Treat concurrent copies of the same logical asset as **divergent lineages** (branch-like): source revision identity, per-copy dirty state, commit/check-in, merge/rebase to trunk, conflict surfacing (including binary/DCC payloads). Required whenever flyweight is disallowed (cross-site) or teams choose isolation.
   - [ ] Session/ABI hooks for VCS actions as volumetric intents (checkout/open-as-copy, promote, get-latest, resolve conflict) — plumb Git/Perforce/Plastic/etc.; do not embed a full VCS engine in core.
   - [ ] Optional lock/lease policy when merge would be unsafe. True flyweight sessions have **no** merge UX for live edits.
   - [ ] Headless/fixture: two copy opens diverge → merge path reports conflict or clean promote; same-domain flyweight path has no merge step for live object spin.
-- [ ] **Task 10.7: View transform vs object transform**
+- [ ] **Task 11.7: View transform vs object transform**
   - [ ] Separate ABI/state: **view / camera** (per user or per workspace view rig) vs **object anchor** (coordinates / orientation relative to document or room origin).
   - [ ] Camera/view moves never write object attributes; object transforms never silently rewrite another user’s camera.
   - [ ] Spectator and snap-to-monitor focused views may follow a workspace camera into a flyweight without baking that orbit into the asset transform.
   - [ ] Host DCC ports (e.g. Maya-in-3OS thought experiment): scene edits = object/document; orbit/tumble/“flip upside down for looking” = view unless the user explicitly transforms the asset.
-- [ ] **Task 10.8: Real-time media sync**
+- [ ] **Task 11.8: Real-time media sync**
   - [ ] Sync text, images, video, and 3D assets across eyewear clients and possessed/spectator displays with session-scoped consistency (who sees what under mask/invite/copy-vs-reference rules).
   - [ ] Bandwidth/GPU policy hooks for 12-user VDI vs smaller edge nodes (quality ladders, spectator vs personal LOD; flyweight sharing vs duplicated instances) — policy in server/host; kernel exposes intent, not vendor codecs.
-- [ ] **Task 10.9: Deployment contracts (VDI + edge)**
+- [ ] **Task 11.9: Deployment contracts (VDI + edge)**
   - [ ] Document split: **session/display/compositor** on on-prem VDI or home edge server; **eyewear/host** as thin interactive clients.
-  - [ ] Headless tests: workspace invite graph; display pose update; snap → focused view → release → spectator restore; mask rules for solo-in-shared; flyweight vs copy + view vs object cases from 10.6/10.7; copy-divergence → VCS promote/merge hook from 10.6b.
+  - [ ] Headless tests: workspace invite graph; display pose update; snap → focused view → release → spectator restore; mask rules for solo-in-shared; flyweight vs copy + view vs object cases from 11.6/11.7; copy-divergence → VCS promote/merge hook from 11.6b.
   - [ ] No requirement that core embed a full VDI stack — define ABI + reference server responsibilities; implementations may be separate services.
 
 **Gate (2.0):** Reference-room (or scaled fixture) demo — 2+ authenticated users in a shared workspace; wall monitors show opposite-camera spectator views; snap content to a monitor → focused view; second user releases possession → spectator restored; logged-in handheld localized and pull-in works; masked solo presence hides peer content until unmasked; parallel workspaces prove **flyweight** object edits cross sessions while **camera** flips do not, and **copies** isolate object edits with a **VCS promote/merge** path (not silent overwrite). Home-edge path exercises the same contracts at smaller display counts.
@@ -406,8 +482,9 @@ Do not duplicate the full Unity checklist here. Use **[3OS_Unity/IMPLEMENTATION_
 | **0.1** ABI freeze | Thin harness: bridge, input router, plugin load/ping on Quest |
 | **0.2–0.4** | Proxies (functional), telekinesis, storage glyphs / FS cut |
 | **0.5** | Hands + controllers parity on device |
-| **0.6** | Voodoo volume product look (Half-Dome / lattice / ghosts) |
-| **0.7–0.8** | Layouts / frustum / anchors; enclosure mask + command hook |
+| **0.6** | Snap / free-range voodoo volumes (BB, centroids, near ghosts) |
+| **0.7** | Multi-select + multi-volume moves |
+| **0.8–0.9** | Layouts / frustum / anchors; enclosure mask + command hook |
 | **1.0** | UPM polish + full demo acceptance; core native OpenXR is parity, not a blocker |
 | **2.0** | Enterprise/edge collaborative host: room displays, spectator cams, shared workspaces |
 

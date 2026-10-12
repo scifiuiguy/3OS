@@ -226,6 +226,13 @@ Emulating the 2D File Explorer's view shifts, 3OS can instantly re-compute the s
 * **Cluster View:** Formulates structural groupings automatically based on shared metadata and semantic relationships.
 * **Real Anchor View:** Disperses layouts instantly, snapping elements back to their assigned real-world surfaces or custom coordinate origins.
 
+### 4. Field Subdivision and Layout
+The near field is defined as the capsule surrounding the user whose radius is approximately matched to the user's fingertip reach in any direction while standing on the same spot.
+
+The far field is non-uniform, but it can often be logically and conceptually subdivided especially during instantiation of large numbers of objects that must allign in matrices and also avoid collision with each other. The rule of thumb for incoming objects is to instantiate in the near field if the total number of objects is fewer than 6 and the near field is clear of potential collisions. Otherwise, priority instantiation happens at ground level, and matrices lay out isometrically relative to themselves but concentrically relative to each other. For example, if two dozen matrices each containing 125 objects must instantiate simultaneously, the would do so in a panorama of 5x5x5 matrices side by side in the far field as close as possible with adequate paddind and margins.
+
+Until extensive UX testing can be done on densely populated fields, it is assumed that the maximum number of objects that can occupy an entire single field is 1.5 million. We back into this napkin math by assuming a field of cylindrical shape could fill the ground level with matrices starting with concentric rings from the user out to the radial limit of the field, then stack multiple more layers of matrices on top until the field is full. At the ideal minium size of 3" for each voxel, we assume the objects should not be smaller, and we assume that ~90% of the voxel space is always dedicated to padding and margins between the objects. A field of 50' radius and 30' height can accomodate ~15 million voxels, thus ~1.5 million objects completely fill that field. It is less than ideal to fill an entire field and leave no breathing room to utilize extra empty space just as it is less than ideal to fill a 2D desktop with hundreds of icons until there is no room to move an icon anywhere. Thus, we assume, the functional working range of total number of objects in a field can be measured in six figures at maximum capacity, though most users will probably opt for sparse fields in the three-to-four figure range since they can jump from one field to another as easily as a change-directory command in a CLI.
+
 
 </details>
 

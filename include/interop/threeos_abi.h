@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * 3OS host ABI (Phase 0.5).
+ * 3OS host ABI (Phase 0.6).
  *
  * Units: meters.
  * Coordinates: OpenXR convention — right-handed, Y-up.
@@ -14,8 +14,8 @@
  *
  * Layout freeze (abi_version layout family):
  *   InteropInputFrame = 192 bytes, InteropTransformDelta = 48 bytes (Phase 0.1).
- * Topology (0.2), kinematics (0.3), storage/glyphs (0.4), hand interaction (0.5)
- * are additive; abi_version = 5. InteropInputFrame size remains frozen.
+ * Topology (0.2), kinematics (0.3), storage/glyphs (0.4), hand interaction (0.5),
+ * voodoo volumes (0.6) are additive; abi_version = 6. InteropInputFrame size remains frozen.
  */
 
 #include <stdint.h>
@@ -146,13 +146,13 @@ typedef struct ThreeOS_KineticState {
  */
 typedef struct ThreeOS_StickDebug {
   uint32_t active;      /* 1 while possessed with frozen start_hand */
-  uint32_t in_deadzone; /* 1 if |stick| < deadzone_m */
+  uint32_t in_deadzone; /* 1 if armed and |stick| < deadzone_m */
   float magnitude;      /* |stick| meters */
   float unused0;
   ThreeOS_Vec3 stick;      /* current_hand - start_hand */
   ThreeOS_Vec3 ray_origin; /* start_hand - flat_forward*4" + world +Y*2" */
   ThreeOS_Vec3 ray_tip;    /* ray_origin + stick */
-  uint32_t reserved0;
+  uint32_t deadzone_armed; /* 0 until leave then re-enter deadzone */
   uint32_t reserved1;
   uint32_t reserved2; /* pad to 64 bytes */
 } ThreeOS_StickDebug;
@@ -363,11 +363,71 @@ enum ThreeOS_InteractionIntentFlags : uint32_t {
   THREEOS_INTENT_NONE = 0,
   THREEOS_INTENT_SELECT_PULSE = 1u << 0,
   THREEOS_INTENT_DRAG_ACTIVE = 1u << 1,
-  THREEOS_INTENT_VOODOO_HOLD = 1u << 2,
+  THREEOS_INTENT_VOODOO_SNAP = 1u << 2,  /* primary hold + palm down (was VOODOO_HOLD) */
   THREEOS_INTENT_PRIMARY_HELD = 1u << 3,
   THREEOS_INTENT_SECONDARY_HELD = 1u << 4,
   THREEOS_INTENT_TERNARY_HELD = 1u << 5,
+  THREEOS_INTENT_VOODOO_FREE = 1u << 6, /* secondary hold + palm down */
 };
+
+enum ThreeOS_VoodooMode : uint32_t {
+  THREEOS_VOODOO_NONE = 0,
+  THREEOS_VOODOO_SNAP = 1,
+  THREEOS_VOODOO_FREE = 2,
+};
+
+typedef struct ThreeOS_IVec3 {
+  int32_t x;
+  int32_t y;
+  int32_t z;
+} ThreeOS_IVec3;
+
+/** Field metrics for voodoo volumes (32 bytes). */
+typedef struct ThreeOS_VoodooFieldParams {
+  float voxel_size_m;
+  ThreeOS_IVec3 near_bb_voxels; /* x,y,z = W,H,D counts; extents = counts * voxel_size */
+  float field_radius_m;
+  float field_height_m;
+  float arm_reach_m; /* hand travel mapping to full field radius/height; default 12" */
+  uint32_t reserved0; /* pad to 32 */
+} ThreeOS_VoodooFieldParams;
+
+/** Far or near bounding-box descriptor (80 bytes). */
+typedef struct ThreeOS_VoodooBoundingBox {
+  uint32_t open;
+  uint32_t reserved0;
+  ThreeOS_Pose pose;       /* floor-yaw; center */
+  ThreeOS_Vec3 extents;    /* full W×H×D meters (x,y,z) */
+  ThreeOS_IVec3 aspect_voxels;
+  uint32_t reserved1; /* pad so linked_centroid_id is 8-byte aligned */
+  uint64_t linked_centroid_id; /* 0 until Task 6.2 */
+  uint32_t reserved2;
+  uint32_t reserved3; /* pad to 80 */
+} ThreeOS_VoodooBoundingBox;
+
+/** Active voodoo session snapshot (176 bytes). */
+typedef struct ThreeOS_VoodooSession {
+  uint32_t mode; /* ThreeOS_VoodooMode */
+  uint32_t open;
+  uint32_t hand; /* 0 left, 1 right */
+  uint32_t reserved0;
+  ThreeOS_VoodooBoundingBox far_bb;
+  ThreeOS_VoodooBoundingBox near_bb; /* opens on intentional release */
+} ThreeOS_VoodooSession;
+
+/** Yellow voodoo drag arrow (64 bytes; same layout as StickDebug). */
+typedef struct ThreeOS_VoodooDragArrow {
+  uint32_t active;
+  uint32_t in_deadzone;
+  float magnitude;
+  float unused0;
+  ThreeOS_Vec3 stick;
+  ThreeOS_Vec3 ray_origin;
+  ThreeOS_Vec3 ray_tip;
+  uint32_t deadzone_armed;
+  uint32_t reserved1;
+  uint32_t reserved2;
+} ThreeOS_VoodooDragArrow;
 
 /**
  * Per-hand sample from host (128 bytes).
@@ -427,6 +487,19 @@ THREEOS_API int32_t threeos_interaction_get_cursor(uint32_t hand /*0 left, 1 rig
                                                    ThreeOS_PointCursor* out_cursor);
 THREEOS_API int32_t threeos_interaction_get_intents(ThreeOS_InteractionIntents* out_intents);
 THREEOS_API int32_t threeos_interaction_set_pinch_thresh_m(float meters);
+
+/* --- Voodoo volumes (Phase 0.6; additive) --- */
+
+THREEOS_API uint32_t threeos_sizeof_voodoo_field_params(void);
+THREEOS_API uint32_t threeos_sizeof_voodoo_bounding_box(void);
+THREEOS_API uint32_t threeos_sizeof_voodoo_session(void);
+THREEOS_API uint32_t threeos_sizeof_voodoo_drag_arrow(void);
+
+THREEOS_API int32_t threeos_voodoo_get_field_params(ThreeOS_VoodooFieldParams* out_params);
+THREEOS_API int32_t threeos_voodoo_set_field_params(const ThreeOS_VoodooFieldParams* params);
+/** hand: 0 left, 1 right — independent concurrent sessions. */
+THREEOS_API int32_t threeos_voodoo_get_session(uint32_t hand, ThreeOS_VoodooSession* out_session);
+THREEOS_API int32_t threeos_voodoo_get_drag_arrow(uint32_t hand, ThreeOS_VoodooDragArrow* out_arrow);
 
 #ifdef __cplusplus
 }

@@ -45,9 +45,9 @@ int main() {
   const uint32_t patch = version & 0xFFu;
   std::printf("threeos_version => %u.%u.%u (0x%08X)\n", major, minor, patch, version);
   ok = expect_eq("major", major, 0) && ok;
-  ok = expect_eq("minor", minor, 5) && ok;
+  ok = expect_eq("minor", minor, 6) && ok;
   ok = expect_eq("patch", patch, 0) && ok;
-  ok = expect_eq("abi_version", threeos_abi_version(), 5) && ok;
+  ok = expect_eq("abi_version", threeos_abi_version(), 6) && ok;
   ok = expect_eq("sizeof_input_frame", threeos_sizeof_input_frame(), 192) && ok;
   ok = expect_eq("sizeof_transform_delta", threeos_sizeof_transform_delta(), 48) && ok;
   ok = expect_eq("sizeof_dome_state", threeos_sizeof_dome_state(), 48) && ok;
@@ -60,6 +60,10 @@ int main() {
   ok = expect_eq("sizeof_hand_sample", threeos_sizeof_hand_sample(), 128) && ok;
   ok = expect_eq("sizeof_point_cursor", threeos_sizeof_point_cursor(), 32) && ok;
   ok = expect_eq("sizeof_interaction_intents", threeos_sizeof_interaction_intents(), 16) && ok;
+  ok = expect_eq("sizeof_voodoo_field_params", threeos_sizeof_voodoo_field_params(), 32) && ok;
+  ok = expect_eq("sizeof_voodoo_bounding_box", threeos_sizeof_voodoo_bounding_box(), 80) && ok;
+  ok = expect_eq("sizeof_voodoo_session", threeos_sizeof_voodoo_session(), 176) && ok;
+  ok = expect_eq("sizeof_voodoo_drag_arrow", threeos_sizeof_voodoo_drag_arrow(), 64) && ok;
 
   if (threeos_tick(nullptr, nullptr) != -1) {
     std::fprintf(stderr, "FAIL tick before init should return -1\n");
@@ -310,6 +314,7 @@ int main() {
     // Right cursor includes +4" OpenXR lateral (Unity shows left); tip.x = start.x + stick.x.
     ok = expect_near("stick_debug.tip_x", sd.ray_tip.x, kStickOutsideM + cursor_lat, 1e-4f) && ok;
     ok = expect_eq("stick_debug.in_deadzone", sd.in_deadzone, 0) && ok;
+    ok = expect_eq("stick_debug.armed_outside", sd.deadzone_armed, 0) && ok;
   }
 
   // Return hand to start → dampen toward halt (longer settle after ~1 m/s drive)
@@ -982,7 +987,7 @@ int main() {
       std::printf("OK   cursor probe + approach scale\n");
     }
 
-    // Primary press edge → SelectPulse; palm down → VoodooHold (not drag).
+    // Primary press edge → SelectPulse; palm down → VoodooSnap (not drag).
     R.primary_pressed = 1;
     threeos_interaction_set_hands(&L, &R);
     hf.frame_index++;
@@ -995,13 +1000,13 @@ int main() {
     } else {
       const bool select = (intents.flags & THREEOS_INTENT_SELECT_PULSE) != 0;
       const bool drag = (intents.flags & THREEOS_INTENT_DRAG_ACTIVE) != 0;
-      const bool voodoo = (intents.flags & THREEOS_INTENT_VOODOO_HOLD) != 0;
-      if (!select || drag || !voodoo) {
-        std::fprintf(stderr, "FAIL intents palm-down: flags=0x%X (want select+voodoo)\n",
+      const bool snap = (intents.flags & THREEOS_INTENT_VOODOO_SNAP) != 0;
+      if (!select || drag || !snap) {
+        std::fprintf(stderr, "FAIL intents palm-down: flags=0x%X (want select+snap)\n",
                      intents.flags);
         ok = false;
       } else {
-        std::printf("OK   select+voodoo intents (palm down)\n");
+        std::printf("OK   select+snap intents (palm down)\n");
       }
     }
 
@@ -1015,9 +1020,9 @@ int main() {
     threeos_interaction_get_intents(&intents);
     {
       const bool drag = (intents.flags & THREEOS_INTENT_DRAG_ACTIVE) != 0;
-      const bool voodoo = (intents.flags & THREEOS_INTENT_VOODOO_HOLD) != 0;
-      if (!drag || voodoo) {
-        std::fprintf(stderr, "FAIL intents palm-sideways: flags=0x%X (want drag, no voodoo)\n",
+      const bool snap = (intents.flags & THREEOS_INTENT_VOODOO_SNAP) != 0;
+      if (!drag || snap) {
+        std::fprintf(stderr, "FAIL intents palm-sideways: flags=0x%X (want drag, no snap)\n",
                      intents.flags);
         ok = false;
       } else {
@@ -1035,8 +1040,9 @@ int main() {
     threeos_interaction_get_intents(&intents);
     {
       const bool drag = (intents.flags & THREEOS_INTENT_DRAG_ACTIVE) != 0;
-      const bool voodoo = (intents.flags & THREEOS_INTENT_VOODOO_HOLD) != 0;
-      if (drag || voodoo) {
+      const bool snap = (intents.flags & THREEOS_INTENT_VOODOO_SNAP) != 0;
+      const bool freev = (intents.flags & THREEOS_INTENT_VOODOO_FREE) != 0;
+      if (drag || snap || freev) {
         std::fprintf(stderr, "FAIL intents palm-up: flags=0x%X (want no drag/voodoo)\n",
                      intents.flags);
         ok = false;
@@ -1100,6 +1106,186 @@ int main() {
     threeos_tick(&cf, &hd);
     threeos_interaction_get_cursor(1, &cur);
     ok = expect_eq("palm.hysteresis_up", cur.palm_mode, THREEOS_PALM_UP) && ok;
+  }
+
+  // --- Phase 0.6 Task 6.1: field params + dual sessions + scaled far + park/near ---
+  {
+    ThreeOS_VoodooFieldParams fp{};
+    if (threeos_voodoo_get_field_params(&fp) != 0) {
+      std::fprintf(stderr, "FAIL get field params\n");
+      ok = false;
+    } else {
+      ok = expect_near("voodoo.voxel_size", fp.voxel_size_m, 0.0762f, 1e-6f) && ok;
+      ok = expect_eq("voodoo.near_bb.x", static_cast<uint32_t>(fp.near_bb_voxels.x), 4u) && ok;
+      ok = expect_eq("voodoo.near_bb.y", static_cast<uint32_t>(fp.near_bb_voxels.y), 6u) && ok;
+      ok = expect_eq("voodoo.near_bb.z", static_cast<uint32_t>(fp.near_bb_voxels.z), 4u) && ok;
+      ok = expect_near("voodoo.field_radius", fp.field_radius_m, 15.24f, 1e-4f) && ok;
+      ok = expect_near("voodoo.field_height", fp.field_height_m, 9.144f, 1e-4f) && ok;
+      ok = expect_near("voodoo.arm_reach", fp.arm_reach_m, 0.3048f, 1e-4f) && ok;
+      const float ex = fp.near_bb_voxels.x * fp.voxel_size_m;
+      const float ey = fp.near_bb_voxels.y * fp.voxel_size_m;
+      const float ez = fp.near_bb_voxels.z * fp.voxel_size_m;
+      ok = expect_near("voodoo.near_extent.x", ex, 0.3048f, 1e-4f) && ok;
+      ok = expect_near("voodoo.near_extent.y", ey, 0.4572f, 1e-4f) && ok;
+      ok = expect_near("voodoo.near_extent.z", ez, 0.3048f, 1e-4f) && ok;
+      std::printf("OK   voodoo field param defaults\n");
+    }
+
+    auto fill_hand = [](ThreeOS_HandSample* h, float x, float y, float z) {
+      *h = ThreeOS_HandSample{};
+      h->tracked = 1;
+      h->tip_flags = 0x1Fu;
+      h->thumb_tip = {x, y, z};
+      h->index_tip = {x + 0.02f, y, z};
+      h->index_proximal = {x, y, z};
+      h->palm_mode = THREEOS_PALM_DOWN;
+      h->palm_mode_valid = 1;
+      h->primary_pressed = 1;
+      h->primary_value = 1.f;
+    };
+
+    ThreeOS_HandSample L{};
+    ThreeOS_HandSample R{};
+    fill_hand(&L, -0.2f, 1.2f, -0.3f);
+    fill_hand(&R, 0.2f, 1.2f, -0.3f);
+    threeos_interaction_set_hands(&L, &R);
+
+    ThreeOS_InteropInputFrame vf{};
+    vf.frame_index = 9200;
+    vf.time_seconds = 30.0;
+    vf.tracking_flags =
+        THREEOS_TRACK_HEAD | THREEOS_TRACK_LEFT_AIM | THREEOS_TRACK_RIGHT_AIM;
+    vf.head = identity_pose_at(0.f, 1.6f, 0.f);
+    vf.head.orientation = {0.f, 0.f, 0.f, 1.f};
+    vf.left_aim = identity_pose_at(-0.2f, 1.2f, -0.3f);
+    vf.right_aim = identity_pose_at(0.2f, 1.2f, -0.3f);
+    ThreeOS_InteropTransformDelta vd{};
+    threeos_tick(&vf, &vd);
+
+    ThreeOS_VoodooSession sessL{};
+    ThreeOS_VoodooSession sessR{};
+    ThreeOS_VoodooDragArrow arrowR{};
+    threeos_voodoo_get_session(0, &sessL);
+    threeos_voodoo_get_session(1, &sessR);
+    threeos_voodoo_get_drag_arrow(1, &arrowR);
+    if (sessL.open == 0 || sessR.open == 0 || sessR.mode != THREEOS_VOODOO_SNAP ||
+        sessR.far_bb.open == 0 || arrowR.active == 0) {
+      std::fprintf(stderr,
+                   "FAIL dual snap open L=%u R=%u modeR=%u farR=%u arrowR=%u\n", sessL.open,
+                   sessR.open, sessR.mode, sessR.far_bb.open, arrowR.active);
+      ok = false;
+    } else {
+      ok = expect_near("voodoo.far_extent.y", sessR.far_bb.extents.y, 0.9144f, 1e-3f) && ok;
+      ok = expect_eq("voodoo.arrow.armed_initial", arrowR.deadzone_armed, 0u) && ok;
+      std::printf("OK   dual snap voodoo sessions + yellow arrow\n");
+    }
+
+    // Scaled far motion: ~12" along +Z → full field_radius from user (clamped).
+    // Hold pose for several frames so subtle damp settles.
+    const float rest_z = sessR.far_bb.pose.position.z;
+    R.index_tip = {0.22f, 1.2f, -0.3f + 0.3048f};
+    R.thumb_tip = {0.2f, 1.2f, -0.3f + 0.3048f};
+    R.index_proximal = {0.2f, 1.2f, -0.3f + 0.3048f};
+    vf.right_aim = identity_pose_at(0.2f, 1.2f, -0.3f + 0.3048f);
+    for (int i = 0; i < 12; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    threeos_voodoo_get_session(1, &sessR);
+    {
+      const float dz = sessR.far_bb.pose.position.z - rest_z;
+      ok = expect_near("voodoo.far_gain_z", dz, 15.24f - 1.0f, 0.75f) && ok;
+      ok = expect_near("voodoo.far_abs_z", sessR.far_bb.pose.position.z, 15.24f, 0.75f) && ok;
+      std::printf("OK   far BB scaled gain (~12\" → field radius)\n");
+    }
+
+    // Release parks far + opens near (does not dismiss).
+    R.primary_pressed = 0;
+    R.secondary_pressed = 0;
+    L.primary_pressed = 0;
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    threeos_tick(&vf, &vd);
+    threeos_voodoo_get_session(1, &sessR);
+    threeos_voodoo_get_session(0, &sessL);
+    if (sessR.open == 0 || sessR.far_bb.open == 0 || sessR.near_bb.open == 0) {
+      std::fprintf(stderr, "FAIL park R open=%u far=%u near=%u\n", sessR.open, sessR.far_bb.open,
+                   sessR.near_bb.open);
+      ok = false;
+    } else {
+      ok = expect_near("voodoo.near_extent.y", sessR.near_bb.extents.y, 0.4572f, 1e-3f) && ok;
+      std::printf("OK   release parks far + opens near\n");
+    }
+    // Left also parked if it was holding; clear left hold already → should be parked too.
+    if (sessL.open != 0) {
+      ok = expect_eq("voodoo.L.near_open", sessL.near_bb.open, 1u) && ok;
+    }
+
+    // Fresh free-range on right after parked: re-activate replaces.
+    fill_hand(&R, 0.2f, 1.2f, -0.3f);
+    R.primary_pressed = 0;
+    R.secondary_pressed = 1;
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    vf.right_aim = identity_pose_at(0.2f, 1.2f, -0.3f);
+    threeos_tick(&vf, &vd);
+    threeos_voodoo_get_session(1, &sessR);
+    if (sessR.open == 0 || sessR.mode != THREEOS_VOODOO_FREE || sessR.near_bb.open != 0) {
+      std::fprintf(stderr, "FAIL free re-open mode=%u open=%u near=%u\n", sessR.mode, sessR.open,
+                   sessR.near_bb.open);
+      ok = false;
+    } else {
+      std::printf("OK   free-range voodoo session\n");
+    }
+
+    R.secondary_pressed = 0;
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    threeos_tick(&vf, &vd);
+    threeos_voodoo_get_session(1, &sessR);
+    ok = expect_eq("voodoo.free_parked_far", sessR.far_bb.open, 1u) && ok;
+    ok = expect_eq("voodoo.free_parked_near", sessR.near_bb.open, 1u) && ok;
+
+    // Deadzone arming on selection stick: unarmed until leave then re-enter.
+    threeos_kinematics_set_params(10.f, 0.015f, 3.5f, 0.f);
+    const uint64_t ent = 4242;
+    ThreeOS_Pose obj = identity_pose_at(0.f, 1.f, -1.f);
+    threeos_kinematics_possess(ent, &obj);
+    ThreeOS_InteropInputFrame kf{};
+    kf.frame_index = 9300;
+    kf.time_seconds = 40.0;
+    kf.tracking_flags = THREEOS_TRACK_HEAD | THREEOS_TRACK_RIGHT_AIM;
+    kf.head = identity_pose_at(0.f, 1.6f, 0.f);
+    kf.right_aim = identity_pose_at(0.f, 1.0f, -0.5f);
+    kf.right_trigger = 1.f;
+    kf.button_flags = THREEOS_BTN_RIGHT_SELECT;
+    threeos_tick(&kf, &vd);  // freeze start_hand
+    ThreeOS_StickDebug sd{};
+    threeos_kinematics_get_stick_debug(&sd);
+    ok = expect_eq("dz.armed_at_start", sd.deadzone_armed, 0u) && ok;
+    // Leave deadzone
+    kf.frame_index++;
+    kf.time_seconds += 1.0 / 72.0;
+    kf.right_aim = identity_pose_at(0.05f, 1.0f, -0.5f);
+    threeos_tick(&kf, &vd);
+    threeos_kinematics_get_stick_debug(&sd);
+    ok = expect_eq("dz.armed_while_out", sd.deadzone_armed, 0u) && ok;
+    ok = expect_eq("dz.in_while_out", sd.in_deadzone, 0u) && ok;
+    // Re-enter → arm
+    kf.frame_index++;
+    kf.time_seconds += 1.0 / 72.0;
+    kf.right_aim = identity_pose_at(0.005f, 1.0f, -0.5f);
+    threeos_tick(&kf, &vd);
+    threeos_kinematics_get_stick_debug(&sd);
+    ok = expect_eq("dz.armed_reenter", sd.deadzone_armed, 1u) && ok;
+    ok = expect_eq("dz.in_after_arm", sd.in_deadzone, 1u) && ok;
+    std::printf("OK   stick deadzone arming\n");
+    threeos_kinematics_release();
   }
 
   threeos_shutdown();

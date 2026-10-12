@@ -73,6 +73,7 @@ struct KineticState {
 struct StickDebug {
   bool active = false;
   bool in_deadzone = false;
+  bool deadzone_armed = false;
   float magnitude = 0.f;
   Vec3 stick{};
   Vec3 ray_origin{};
@@ -124,6 +125,8 @@ class KinematicsEngine {
   Pose start_hand_{};
   bool have_prev_time_ = false;
   double prev_time_ = 0.0;
+  bool deadzone_armed_ = false;
+  bool deadzone_left_once_ = false;
 };
 
 inline float vec3_length(const Vec3& v) {

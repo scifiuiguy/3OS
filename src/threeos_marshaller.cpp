@@ -4,6 +4,7 @@
 #include "core/interaction_facade.hpp"
 #include "core/kinematics.hpp"
 #include "core/topology.hpp"
+#include "core/voodoo_volume.hpp"
 #include "storage/glyph_registry.hpp"
 #include "storage/workspace.hpp"
 
@@ -16,9 +17,9 @@
 namespace {
 
 constexpr uint32_t kMajor = 0;
-constexpr uint32_t kMinor = 5;
+constexpr uint32_t kMinor = 6;
 constexpr uint32_t kPatch = 0;
-constexpr uint32_t kAbiVersion = 5;
+constexpr uint32_t kAbiVersion = 6;
 
 std::mutex g_mu;
 bool g_initialized = false;
@@ -29,6 +30,7 @@ threeos::KinematicsEngine g_kinematics;
 threeos::GlyphRegistry g_glyphs;
 threeos::Workspace g_workspace;
 threeos::HandInteractionEngine g_hands;
+threeos::VoodooVolumeEngine g_voodoo;
 bool g_hands_pushed_this_frame = false;
 uint64_t g_tick_count = 0;
 std::optional<threeos::Pose> g_pending_portal_pose;
@@ -119,6 +121,10 @@ static_assert(sizeof(ThreeOS_StorageEvent) == 344, "StorageEvent size");
 static_assert(sizeof(ThreeOS_HandSample) == 128, "HandSample size");
 static_assert(sizeof(ThreeOS_PointCursor) == 32, "PointCursor size");
 static_assert(sizeof(ThreeOS_InteractionIntents) == 16, "InteractionIntents size");
+static_assert(sizeof(ThreeOS_VoodooFieldParams) == 32, "VoodooFieldParams size");
+static_assert(sizeof(ThreeOS_VoodooBoundingBox) == 80, "VoodooBoundingBox size");
+static_assert(sizeof(ThreeOS_VoodooSession) == 176, "VoodooSession size");
+static_assert(sizeof(ThreeOS_VoodooDragArrow) == 64, "VoodooDragArrow size");
 
 extern "C" THREEOS_API uint32_t threeos_version(void) {
   return (kMajor << 16) | (kMinor << 8) | kPatch;
@@ -175,6 +181,7 @@ extern "C" THREEOS_API int32_t threeos_init(void) {
   g_pending_portal_pose.reset();
   g_pending_portal_entity = 0;
   g_hands.reset();
+  g_voodoo.reset();
   g_hands_pushed_this_frame = false;
   set_error("");
   return 0;
@@ -251,6 +258,35 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
   }
   g_hands.tick(from_c(frame->head), head_valid, frame->time_seconds);
   g_hands_pushed_this_frame = false;
+
+  // Voodoo: independent L/R sessions — scaled far drag; release parks + opens near.
+  {
+    static double s_prev_voodoo_t = -1.0;
+    float dt = 1.f / 72.f;
+    if (s_prev_voodoo_t >= 0.0) {
+      const double raw = frame->time_seconds - s_prev_voodoo_t;
+      if (raw > 1e-4 && raw < 0.25) {
+        dt = static_cast<float>(raw);
+      }
+    }
+    s_prev_voodoo_t = frame->time_seconds;
+
+    const threeos::Pose head_pose = from_c(frame->head);
+    for (uint32_t vh = 0; vh < 2u; ++vh) {
+      const bool aim_ok = (vh == 0u) ? left : right;
+      const bool cursor_ok = g_hands.cursor(vh).active;
+      threeos::Pose vhand{};
+      if (cursor_ok) {
+        vhand.position = g_hands.cursor(vh).position;
+      } else if (vh == 0u && left) {
+        vhand = from_c(frame->left_aim);
+      } else if (vh == 1u && right) {
+        vhand = from_c(frame->right_aim);
+      }
+      g_voodoo.tick_hand(vh, g_hands.pending_intents(vh), vhand, cursor_ok || aim_ok, head_pose,
+                         head_valid, dt);
+    }
+  }
 
   // Latch drive hand from host select bits / triggers (same signals as Unity _selectHand).
   auto pick_drive_hand = [&]() -> int {
@@ -859,6 +895,7 @@ extern "C" THREEOS_API int32_t threeos_kinematics_get_stick_debug(ThreeOS_StickD
   out_debug->stick = to_c(d.stick);
   out_debug->ray_origin = to_c(d.ray_origin);
   out_debug->ray_tip = to_c(d.ray_tip);
+  out_debug->deadzone_armed = d.deadzone_armed ? 1u : 0u;
   set_error("");
   return 0;
 }
@@ -1347,6 +1384,129 @@ extern "C" THREEOS_API int32_t threeos_interaction_set_pinch_thresh_m(float mete
     return -1;
   }
   g_hands.set_pinch_thresh_m(meters);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_voodoo_field_params(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_VoodooFieldParams));
+}
+extern "C" THREEOS_API uint32_t threeos_sizeof_voodoo_bounding_box(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_VoodooBoundingBox));
+}
+extern "C" THREEOS_API uint32_t threeos_sizeof_voodoo_session(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_VoodooSession));
+}
+extern "C" THREEOS_API uint32_t threeos_sizeof_voodoo_drag_arrow(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_VoodooDragArrow));
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_get_field_params(ThreeOS_VoodooFieldParams* out_params) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_params == nullptr) {
+    set_error("null params");
+    return -2;
+  }
+  const auto& p = g_voodoo.params();
+  std::memset(out_params, 0, sizeof(*out_params));
+  out_params->voxel_size_m = p.voxel_size_m;
+  out_params->near_bb_voxels = {p.near_bb_voxels_x, p.near_bb_voxels_y, p.near_bb_voxels_z};
+  out_params->field_radius_m = p.field_radius_m;
+  out_params->field_height_m = p.field_height_m;
+  out_params->arm_reach_m = p.arm_reach_m;
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_set_field_params(const ThreeOS_VoodooFieldParams* params) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (params == nullptr) {
+    set_error("null params");
+    return -2;
+  }
+  threeos::VoodooFieldParams p{};
+  p.voxel_size_m = params->voxel_size_m;
+  p.near_bb_voxels_x = params->near_bb_voxels.x;
+  p.near_bb_voxels_y = params->near_bb_voxels.y;
+  p.near_bb_voxels_z = params->near_bb_voxels.z;
+  p.field_radius_m = params->field_radius_m;
+  p.field_height_m = params->field_height_m;
+  p.arm_reach_m = params->arm_reach_m > 0.f ? params->arm_reach_m : 0.3048f;
+  if (!g_voodoo.set_params(p)) {
+    set_error("voodoo field params out of range");
+    return -3;
+  }
+  set_error("");
+  return 0;
+}
+
+static void fill_voodoo_bb(ThreeOS_VoodooBoundingBox* out, const threeos::VoodooBoundingBox& b) {
+  std::memset(out, 0, sizeof(*out));
+  out->open = b.open ? 1u : 0u;
+  out->pose = to_c(b.pose);
+  out->extents = to_c(b.extents);
+  out->aspect_voxels = {b.aspect_x, b.aspect_y, b.aspect_z};
+  out->linked_centroid_id = b.linked_centroid_id;
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_get_session(uint32_t hand,
+                                                          ThreeOS_VoodooSession* out_session) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (hand > 1u) {
+    set_error("hand out of range");
+    return -3;
+  }
+  if (out_session == nullptr) {
+    set_error("null session");
+    return -2;
+  }
+  const auto& s = g_voodoo.session(hand);
+  std::memset(out_session, 0, sizeof(*out_session));
+  out_session->mode = static_cast<uint32_t>(s.mode);
+  out_session->open = s.open ? 1u : 0u;
+  out_session->hand = s.hand;
+  fill_voodoo_bb(&out_session->far_bb, s.far_bb);
+  fill_voodoo_bb(&out_session->near_bb, s.near_bb);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_get_drag_arrow(uint32_t hand,
+                                                             ThreeOS_VoodooDragArrow* out_arrow) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (hand > 1u) {
+    set_error("hand out of range");
+    return -3;
+  }
+  if (out_arrow == nullptr) {
+    set_error("null arrow");
+    return -2;
+  }
+  const auto& a = g_voodoo.session(hand).arrow;
+  std::memset(out_arrow, 0, sizeof(*out_arrow));
+  out_arrow->active = a.active ? 1u : 0u;
+  out_arrow->in_deadzone = a.in_deadzone ? 1u : 0u;
+  out_arrow->magnitude = a.magnitude;
+  out_arrow->stick = to_c(a.stick);
+  out_arrow->ray_origin = to_c(a.ray_origin);
+  out_arrow->ray_tip = to_c(a.ray_tip);
+  out_arrow->deadzone_armed = a.deadzone_armed ? 1u : 0u;
   set_error("");
   return 0;
 }

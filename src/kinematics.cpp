@@ -40,6 +40,8 @@ void KinematicsEngine::possess(EntityId id, const Pose& object_pose) {
   state_.velocity = {};
   have_start_hand_ = false;
   have_prev_time_ = false;
+  deadzone_armed_ = false;
+  deadzone_left_once_ = false;
   stick_debug_ = {};
 }
 
@@ -48,6 +50,8 @@ void KinematicsEngine::release() {
     state_.phase = KineticPhase::Coasting;
   }
   have_start_hand_ = false;
+  deadzone_armed_ = false;
+  deadzone_left_once_ = false;
   stick_debug_ = {};
 }
 
@@ -56,12 +60,16 @@ void KinematicsEngine::clear() {
   stick_debug_ = {};
   have_start_hand_ = false;
   have_prev_time_ = false;
+  deadzone_armed_ = false;
+  deadzone_left_once_ = false;
 }
 
 void KinematicsEngine::reanchor_hand(const Pose& hand_pose) {
   start_hand_ = hand_pose;
   have_start_hand_ = true;
   state_.velocity = {};
+  deadzone_armed_ = false;
+  deadzone_left_once_ = false;
 }
 
 void KinematicsEngine::apply_floor_clamp() {
@@ -121,7 +129,9 @@ void KinematicsEngine::update_stick_debug(const Pose& hand_pose, const Pose& hea
   };
 
   stick_debug_.active = true;
-  stick_debug_.in_deadzone = mag < params_.deadzone_m;
+  stick_debug_.deadzone_armed = deadzone_armed_;
+  // Host shows the translucent sphere only once armed (after leave/re-enter).
+  stick_debug_.in_deadzone = deadzone_armed_ && mag < params_.deadzone_m;
   stick_debug_.magnitude = mag;
   stick_debug_.stick = stick;
   stick_debug_.ray_origin = origin;
@@ -157,6 +167,8 @@ bool KinematicsEngine::tick(const Pose& hand_pose, const Pose& head_pose, bool h
       start_hand_ = hand_pose;
       have_start_hand_ = true;
       state_.velocity = {};
+      deadzone_armed_ = false;
+      deadzone_left_once_ = false;
       update_stick_debug(hand_pose, head_pose, head_valid);
       return true;
     }
@@ -167,6 +179,17 @@ bool KinematicsEngine::tick(const Pose& hand_pose, const Pose& head_pose, bool h
         hand_pose.position.z - start_hand_.position.z,
     };
     const float mag = vec3_length(stick);
+
+    // Sphere / in_deadzone viz arms only after leave then re-enter. Hard-stop
+    // still applies whenever |stick| < deadzone (including spawn at origin).
+    if (!deadzone_armed_) {
+      if (mag >= params_.deadzone_m) {
+        deadzone_left_once_ = true;
+      }
+      if (deadzone_left_once_ && mag < params_.deadzone_m) {
+        deadzone_armed_ = true;
+      }
+    }
 
     if (mag < params_.deadzone_m) {
       // Inside deadzone: hard-stop. No creep, no residual coast.

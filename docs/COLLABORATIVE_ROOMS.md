@@ -22,16 +22,16 @@ The design target is a **20 ft × 20 ft** room. Three walls are workstation wall
 ### Displays
 
 - **Workstation walls:** **8× 24"** monitors per wall on a **single rail**, ball joint for quick **portrait ↔ landscape**, with padding for rotation. **Each monitor has an IMU on the back** feeding pose to the server so 3OS always knows where that screen lives in room space.
-- **Guest / spectator walls:** The couch wall **and** the wall opposite it each add **two large 4K screens** on top of the workstation monitors, for clearer viewing by anyone without eyewear.
+- **Guest / spectator walls:** The couch wall **and** the three workstation walls each add **two large 4K screens** (above the workstation monitors), for clearer viewing by anyone without eyewear.
 - **Handhelds:** Any issued touchscreen, laptop, or similar device with login credentials joins the same display registry once localized (see cameras below).
 
 ### Cameras
 
-Four cameras, one in each corner, aimed at the carpet. Each captures **virtual content** in the shared 3D workspace and, by default, drives the monitors on the **opposite** side of the room as wide-angle **spectator** views. Cameras also help **semantically track** logged-in devices (for example a tablet) so their room coordinates stay authoritative alongside IMU-backed wall monitors.
+Four cameras, one in each corner, aimed at the carpet. Each captures **virtual content** in the shared 3D workspace and, by default, drives the monitors on the **opposite** side of the room as wide-angle **spectator** views. Cameras also help **semantically track** logged-in devices (for example a tablet) so their room coordinates stay authoritative alongside the IMU-backed wall monitors.
 
 ## Arrival & workspace model
 
-1. Unlatch desk → face carpet → launch the eyewear app.  
+1. Unlatch desk → roll and turn to face center carpet → launch the eyewear app.  
 2. Log into the **3OS enterprise** interface on the VDI (or home edge session).  
 3. Land in a **personal workspace** first.  
 4. Join or create **shared workspaces** as invited: pairs of teammates, groups of three or four (or more), and a **full-room** workspace that can include everyone present and **control all room monitors** as spectator surfaces.
