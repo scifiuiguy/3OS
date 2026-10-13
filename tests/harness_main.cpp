@@ -65,6 +65,8 @@ int main() {
   ok = expect_eq("sizeof_voodoo_session", threeos_sizeof_voodoo_session(), 176) && ok;
   ok = expect_eq("sizeof_voodoo_drag_arrow", threeos_sizeof_voodoo_drag_arrow(), 64) && ok;
   ok = expect_eq("sizeof_voodoo_snap_node", threeos_sizeof_voodoo_snap_node(), 48) && ok;
+  ok = expect_eq("sizeof_voodoo_portal", threeos_sizeof_voodoo_portal(), 200) && ok;
+  ok = expect_eq("sizeof_voodoo_ghost", threeos_sizeof_voodoo_ghost(), 88) && ok;
 
   if (threeos_tick(nullptr, nullptr) != -1) {
     std::fprintf(stderr, "FAIL tick before init should return -1\n");
@@ -1182,13 +1184,13 @@ int main() {
     }
 
     // Scaled far motion: ~12" along +Z → full field_radius from user (clamped).
-    // Hold pose for several frames so subtle damp settles.
+    // Hold ≥ 0.25 s so release parks (shorter holds cancel).
     const float rest_z = sessR.far_bb.pose.position.z;
     R.index_tip = {0.22f, 1.2f, -0.3f + 0.3048f};
     R.thumb_tip = {0.2f, 1.2f, -0.3f + 0.3048f};
     R.index_proximal = {0.2f, 1.2f, -0.3f + 0.3048f};
     vf.right_aim = identity_pose_at(0.2f, 1.2f, -0.3f + 0.3048f);
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 22; ++i) {
       threeos_interaction_set_hands(&L, &R);
       vf.frame_index++;
       vf.time_seconds += 1.0 / 72.0;
@@ -1225,14 +1227,14 @@ int main() {
       ok = expect_eq("voodoo.L.near_open", sessL.near_bb.open, 1u) && ok;
     }
 
-    // Fresh free-range on right after parked: re-activate replaces.
-    fill_hand(&R, 0.2f, 1.2f, -0.3f);
+    // Fresh free-range on right after parked: re-activate replaces (start clear of near BB).
+    fill_hand(&R, 0.95f, 1.55f, 0.95f);
     R.primary_pressed = 0;
     R.secondary_pressed = 1;
     threeos_interaction_set_hands(&L, &R);
     vf.frame_index++;
     vf.time_seconds += 0.016;
-    vf.right_aim = identity_pose_at(0.2f, 1.2f, -0.3f);
+    vf.right_aim = identity_pose_at(0.95f, 1.55f, 0.95f);
     threeos_tick(&vf, &vd);
     threeos_voodoo_get_session(1, &sessR);
     if (sessR.open == 0 || sessR.mode != THREEOS_VOODOO_FREE || sessR.near_bb.open != 0) {
@@ -1243,6 +1245,12 @@ int main() {
       std::printf("OK   free-range voodoo session\n");
     }
 
+    for (int i = 0; i < 22; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
     R.secondary_pressed = 0;
     threeos_interaction_set_hands(&L, &R);
     vf.frame_index++;
@@ -1447,8 +1455,17 @@ int main() {
     threeos_tick(&vf, &vd);
 
     ok = expect_eq("snap.centroid_count", threeos_centroid_count() >= 2u ? 1u : 0u, 1u) && ok;
-    ok = expect_eq("snap.node_count", threeos_voodoo_snap_node_count(1), threeos_centroid_count()) &&
-         ok;
+    {
+      uint32_t persistent = 0;
+      for (uint32_t i = 0; i < threeos_centroid_count(); ++i) {
+        ThreeOS_Centroid cx{};
+        threeos_centroid_get(i, &cx);
+        if (cx.kind != THREEOS_CENTROID_TEMPORARY) {
+          ++persistent;
+        }
+      }
+      ok = expect_eq("snap.node_count", threeos_voodoo_snap_node_count(1), persistent) && ok;
+    }
     ok = expect_eq("snap.free_nodes_L", threeos_voodoo_snap_node_count(0), 0u) && ok;
 
     ThreeOS_VoodooSession sess{};
@@ -1525,7 +1542,7 @@ int main() {
       std::printf("OK   snap nodes + tip lock + aspect-locked fit\n");
     }
 
-    // Release parks, then free-range re-open: no snap-node cluster.
+    // Release parks, then free-range re-open outside the near BB (hover blocks create).
     R.primary_pressed = 0;
     R.secondary_pressed = 0;
     threeos_interaction_set_hands(&L, &R);
@@ -1533,18 +1550,285 @@ int main() {
     vf.time_seconds += 0.016;
     threeos_tick(&vf, &vd);
 
-    fill_hand(&R, 0.2f, 1.2f, -0.3f);
+    fill_hand(&R, 0.55f, 1.35f, 0.55f);  // clear of near-BB orbit
     R.primary_pressed = 0;
     R.secondary_pressed = 1;
     threeos_interaction_set_hands(&L, &R);
     vf.frame_index++;
     vf.time_seconds += 0.016;
-    vf.right_aim = identity_pose_at(0.2f, 1.2f, -0.3f);
+    vf.right_aim = identity_pose_at(0.55f, 1.35f, 0.55f);
     threeos_tick(&vf, &vd);
     threeos_voodoo_get_session(1, &sess);
     ok = expect_eq("snap.free_mode", sess.mode, THREEOS_VOODOO_FREE) && ok;
     ok = expect_eq("snap.free_node_count", threeos_voodoo_snap_node_count(1), 0u) && ok;
     std::printf("OK   free-range has no snap nodes\n");
+  }
+
+  // --- Phase 0.6 Task 6.4: portals, ghosts, orbit, bump, capacity ---
+  {
+    threeos_storage_clear();
+    threeos_god_clear();
+    ok = expect_eq("portal.empty", threeos_voodoo_portal_count(), 0u) && ok;
+    ok = expect_eq("portal.creation_allowed", threeos_voodoo_creation_allowed(), 1u) && ok;
+
+    ThreeOS_Pose anchor{};
+    anchor.orientation = {0.f, 0.f, 0.f, 1.f};
+    uint64_t godA = 0;
+    threeos_god_register("PortalA", &anchor, &godA);
+    uint64_t o1 = 0;
+    uint64_t o2 = 0;
+    threeos_storage_add_object("p1.glb", "p1.glb", &o1);
+    threeos_storage_add_object("p2.glb", "p2.glb", &o2);
+    threeos_storage_set_god_root(o1, godA);
+    threeos_storage_set_god_root(o2, godA);
+    ThreeOS_Pose lay = identity_pose_at(0.f, 1.4f, 2.0f);
+    threeos_storage_layout_god(godA, &lay);
+
+    auto fill_hand = [](ThreeOS_HandSample* h, float x, float y, float z, int primary) {
+      *h = ThreeOS_HandSample{};
+      h->tracked = 1;
+      h->tip_flags = 0x1Fu;
+      h->thumb_tip = {x, y, z};
+      h->index_tip = {x + 0.02f, y, z};
+      h->index_proximal = {x, y, z};
+      h->palm_mode = THREEOS_PALM_DOWN;
+      h->palm_mode_valid = 1;
+      h->primary_pressed = primary ? 1u : 0u;
+      h->primary_value = primary ? 1.f : 0.f;
+    };
+
+    ThreeOS_HandSample L{};
+    ThreeOS_HandSample R{};
+    fill_hand(&R, 0.25f, 1.2f, -0.25f, 1);
+    threeos_interaction_set_hands(&L, &R);
+
+    ThreeOS_InteropInputFrame vf{};
+    vf.frame_index = 9600;
+    vf.time_seconds = 70.0;
+    vf.tracking_flags =
+        THREEOS_TRACK_HEAD | THREEOS_TRACK_LEFT_AIM | THREEOS_TRACK_RIGHT_AIM;
+    vf.head = identity_pose_at(0.f, 1.6f, 0.f);
+    vf.head.orientation = {0.f, 0.f, 0.f, 1.f};
+    vf.right_aim = identity_pose_at(0.25f, 1.2f, -0.25f);
+    ThreeOS_InteropTransformDelta vd{};
+    threeos_tick(&vf, &vd);
+
+    // Snap to god then park → portal with ghosts.
+    ThreeOS_VoodooFieldParams fp{};
+    threeos_voodoo_get_field_params(&fp);
+    ThreeOS_VoodooSession sess{};
+    threeos_voodoo_get_session(1, &sess);
+    const float rest_x = sess.far_bb.pose.position.x;
+    const float rest_y = sess.far_bb.pose.position.y;
+    const float rest_z = sess.far_bb.pose.position.z;
+    ThreeOS_Centroid ca{};
+    for (uint32_t i = 0; i < threeos_centroid_count(); ++i) {
+      ThreeOS_Centroid cx{};
+      threeos_centroid_get(i, &cx);
+      if (cx.id == godA) {
+        ca = cx;
+        break;
+      }
+    }
+    const float gain_h = fp.field_radius_m / fp.arm_reach_m;
+    const float gain_v = fp.field_height_m / fp.arm_reach_m;
+    const float sx = (ca.position.x - rest_x) / gain_h;
+    const float sy = (ca.position.y - rest_y) / gain_v;
+    const float sz = (ca.position.z - rest_z) / gain_h;
+    fill_hand(&R, 0.25f + sx, 1.2f + sy, -0.25f + sz, 1);
+    vf.right_aim = identity_pose_at(0.25f + sx, 1.2f + sy, -0.25f + sz);
+    for (int i = 0; i < 22; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    fill_hand(&R, 0.25f + sx, 1.2f + sy, -0.25f + sz, 0);
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    threeos_tick(&vf, &vd);
+
+    ok = expect_eq("portal.count1", threeos_voodoo_portal_count(), 1u) && ok;
+    ThreeOS_VoodooPortal portal{};
+    threeos_voodoo_get_portal(0, &portal);
+    ok = expect_eq("portal.near_open", portal.near_bb.open, 1u) && ok;
+    ok = expect_eq("portal.mode_snap", portal.mode, THREEOS_VOODOO_SNAP) && ok;
+    ok = expect_eq("portal.hand_R", portal.creating_hand, 1u) && ok;
+    ok = expect_eq("portal.has_temp", portal.temporary_centroid_id != 0 ? 1u : 0u, 1u) && ok;
+    // Orbit bias: near BB should be on the right side of head (+X for right hand).
+    ok = expect_eq("portal.orbit_right", portal.near_bb.pose.position.x > 0.f ? 1u : 0u, 1u) && ok;
+    ok = expect_eq("portal.ghosts_ge2", portal.ghost_count >= 2u ? 1u : 0u, 1u) && ok;
+
+    // Free-range park — start clear of the existing near BB (hover refuses create).
+    fill_hand(&R, 0.95f, 1.55f, 0.95f, 0);
+    R.secondary_pressed = 1;
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    vf.right_aim = identity_pose_at(0.95f, 1.55f, 0.95f);
+    threeos_tick(&vf, &vd);
+    // Move far toward objects then park.
+    R.index_tip = {0.97f, 1.58f, 0.95f + 0.04f};
+    R.thumb_tip = {0.95f, 1.58f, 0.95f + 0.04f};
+    R.index_proximal = {0.95f, 1.58f, 0.95f + 0.04f};
+    vf.right_aim = identity_pose_at(0.95f, 1.58f, 0.95f + 0.04f);
+    for (int i = 0; i < 22; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    R.secondary_pressed = 0;
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    threeos_tick(&vf, &vd);
+    ok = expect_eq("portal.count2", threeos_voodoo_portal_count(), 2u) && ok;
+
+    // Settle bump, then assert orbit radius never dips below near-rest (~0.406 m).
+    for (int i = 0; i < 24; ++i) {
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    {
+      constexpr float kNearRest = 0.33f + 5.f * 0.0254f;  // +2" vs prior 16"
+      const float hx = vf.head.position.x;
+      const float hz = vf.head.position.z;
+      for (uint32_t pi = 0; pi < threeos_voodoo_portal_count(); ++pi) {
+        ThreeOS_VoodooPortal pp{};
+        threeos_voodoo_get_portal(pi, &pp);
+        const float dx = pp.near_bb.pose.position.x - hx;
+        const float dz = pp.near_bb.pose.position.z - hz;
+        const float r = std::sqrt(dx * dx + dz * dz);
+        ok = expect_eq("portal.orbit_radius_ok", r + 1e-3f >= kNearRest ? 1u : 0u, 1u) && ok;
+      }
+    }
+
+    // Cursor tint query: near BB interior vs exterior.
+    threeos_voodoo_get_portal(0, &portal);
+    const float nx = portal.near_bb.pose.position.x;
+    const float ny = portal.near_bb.pose.position.y;
+    const float nz = portal.near_bb.pose.position.z;
+    ok = expect_eq("portal.point_inside", threeos_voodoo_point_in_near_bb(nx, ny, nz), 1u) && ok;
+    ok = expect_eq("portal.point_outside", threeos_voodoo_point_in_near_bb(nx + 5.f, ny, nz), 0u) &&
+         ok;
+
+    // Hover inside near BB refuses a new snap session.
+    // Tip is offset so the point-cursor probe lands at the near BB center.
+    const float tip_x = nx - 0.1016f;  // −lateral (right hand)
+    const float tip_y = ny - 0.0762f;  // −up
+    const float tip_z = nz - 0.1778f;  // −forward
+    fill_hand(&R, tip_x, tip_y, tip_z, 1);
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    vf.right_aim = identity_pose_at(tip_x, tip_y, tip_z);
+    threeos_tick(&vf, &vd);
+    threeos_voodoo_get_session(1, &sess);
+    ok = expect_eq("portal.hover_blocks_create", sess.open == 0 ? 1u : 0u, 1u) && ok;
+    ok = expect_eq("portal.count_still2", threeos_voodoo_portal_count(), 2u) && ok;
+
+    ok = (threeos_voodoo_dismiss_portal(portal.id) == 0) && ok;
+    ok = expect_eq("portal.after_dismiss", threeos_voodoo_portal_count(), 1u) && ok;
+
+    // Short hold (< 0.25 s) cancels both BBs — no new portal.
+    const uint32_t before_short = threeos_voodoo_portal_count();
+    fill_hand(&R, 0.6f, 1.35f, 0.6f, 0);
+    R.secondary_pressed = 1;
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    vf.right_aim = identity_pose_at(0.6f, 1.35f, 0.6f);
+    threeos_tick(&vf, &vd);
+    for (int i = 0; i < 4; ++i) {  // ~0.07 s total hold with open frame
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    R.secondary_pressed = 0;
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    threeos_tick(&vf, &vd);
+    threeos_voodoo_get_session(1, &sess);
+    ok = expect_eq("portal.short_hold_cancels", sess.open == 0 ? 1u : 0u, 1u) && ok;
+    ok = expect_eq("portal.short_hold_count", threeos_voodoo_portal_count(), before_short) && ok;
+
+    // Fill orbit until capacity; further creates must refuse (no overlap dump).
+    auto park_free_at = [&](float x, float y, float z) {
+      fill_hand(&R, x, y, z, 0);
+      R.secondary_pressed = 1;
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 0.016;
+      vf.right_aim = identity_pose_at(x, y, z);
+      threeos_tick(&vf, &vd);
+      for (int i = 0; i < 22; ++i) {
+        threeos_interaction_set_hands(&L, &R);
+        vf.frame_index++;
+        vf.time_seconds += 1.0 / 72.0;
+        threeos_tick(&vf, &vd);
+      }
+      R.secondary_pressed = 0;
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 0.016;
+      threeos_tick(&vf, &vd);
+    };
+    // Hands well outside near-BB radius so hover refuse does not mask capacity.
+    const float ring[8][3] = {
+        {0.90f, 1.55f, 0.35f},  {-0.90f, 1.55f, 0.35f}, {0.35f, 1.55f, 0.90f},
+        {-0.35f, 1.55f, 0.90f}, {0.90f, 1.55f, -0.35f}, {-0.90f, 1.55f, -0.35f},
+        {0.0f, 1.55f, 0.95f},   {0.0f, 1.55f, -0.90f},
+    };
+    // Pack around the body; ellipse arc should allow several before refuse.
+    for (int i = 0; i < 8; ++i) {
+      park_free_at(ring[i][0], ring[i][1], ring[i][2]);
+      for (int s = 0; s < 20; ++s) {
+        vf.frame_index++;
+        vf.time_seconds += 1.0 / 72.0;
+        threeos_tick(&vf, &vd);
+      }
+    }
+    const uint32_t packed = threeos_voodoo_portal_count();
+    ok = expect_eq("portal.orbit_packed_ge3", packed >= 3u ? 1u : 0u, 1u) && ok;
+    // Further create into a dense cluster: count must not exceed hard cap.
+    ok = expect_eq("portal.creation_under_hardcap",
+                   threeos_voodoo_creation_allowed() == 1u || packed >= 12u ? 1u : 0u, 1u) &&
+         ok;
+    const uint32_t full_count = packed;
+    // Let bump lerps settle before overlap audit.
+    for (int i = 0; i < 24; ++i) {
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    ThreeOS_VoodooPortal pa{};
+    ThreeOS_VoodooPortal pb{};
+    bool any_overlap = false;
+    for (uint32_t i = 0; i < full_count && !any_overlap; ++i) {
+      threeos_voodoo_get_portal(i, &pa);
+      for (uint32_t j = i + 1; j < full_count; ++j) {
+        threeos_voodoo_get_portal(j, &pb);
+        const float dx = pa.near_bb.pose.position.x - pb.near_bb.pose.position.x;
+        const float dz = pa.near_bb.pose.position.z - pb.near_bb.pose.position.z;
+        const float ra =
+            0.5f * std::sqrt(pa.near_bb.extents.x * pa.near_bb.extents.x +
+                             pa.near_bb.extents.z * pa.near_bb.extents.z);
+        const float rb =
+            0.5f * std::sqrt(pb.near_bb.extents.x * pb.near_bb.extents.x +
+                             pb.near_bb.extents.z * pb.near_bb.extents.z);
+        if ((dx * dx + dz * dz) < (ra + rb + 0.04f) * (ra + rb + 0.04f)) {
+          any_overlap = true;
+          break;
+        }
+      }
+    }
+    ok = expect_eq("portal.orbit_no_overlap", any_overlap ? 0u : 1u, 1u) && ok;
+    std::printf("OK   portals ghosts orbit tint dismiss hold-gate capacity\n");
   }
 
   threeos_shutdown();

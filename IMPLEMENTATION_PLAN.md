@@ -257,7 +257,7 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 
 **Far-field bounding box:** Instantiates at gesture start at the standardized **navel-forward rest pose**, floor-yaw facing the user. While the snap/free hold is active, position tracks the hand vector with field-scale gain: `far = rest + hand_delta * (field_radius/arm_reach)` on horizontal axes and `(field_height/arm_reach)` on vertical, clamped to field limits. On intentional release the far BB **parks** where dropped (does not dismiss). Tracking loss mid-hold cancels without opening near. Nominal size later scales to fit snapped centroid children while **preserving** aspect (Task 6.3).
 
-**Near-field bounding box:** On **any** intentional release of snap or free-range (even with no centroids, or dropped away from snap nodes), opens at a **short** navel-forward rest (~0.41 m / ≈16″, Quest-tuned) with 1× start extents; pose is box center so **bottom-center** sits on that anchor, **4″ below** navel height (cursors land there at neutral). Far spawn stays farther out (~1 m) for field placement. Ghost contents (Task 6.4+) use a shrink multiplier when the far BB has grown larger than near.
+**Near-field bounding box:** On **any** intentional release of snap or free-range (even with no centroids, or dropped away from snap nodes), opens with 1× start extents. **Seed** at today’s short navel-forward rest (~0.41 m / ≈16″, Quest-tuned; box center so **bottom-center** sits on that anchor, **4″ below** navel height), then **orbit** to the creating hand’s cursor (L/R bias) before bump-lerp (Task 6.4). Far spawn stays farther out (~1 m) for field placement. Ghost contents (Task 6.4+) use a shrink multiplier when the far BB has grown larger than near; free-range ghosts = objects encapsulated by the parked far BB.
 
 **Yellow drag arrow:** Same geometry as the selection drag arrow, but **yellow**, with a translucent yellow deadzone sphere. **Deadzone arming (also fix selection arrow):** inactive on instantiate; arms only after the hand first **leaves** the threshold and later **re-enters**. Snap-node spheres (Task 6.3) use the **same** hand→field scale so tip contact places the far BB on the represented objects.
 
@@ -279,21 +279,23 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
   - [x] Around the yellow drag tip, render a cluster of spherical snap dots at **field-scaled** positions of every open-box centroid (plus god-root node) so the same gain that moves the far BB maps tip contact onto real objects.
   - [x] Tip gravity: when near multiple nodes, pull toward the **closest**; snap tip to that node and snap the far-field BB to the real centroid.
   - [x] On snap, interpolate BB size on all three axes to encapsulate that centroid’s children **without** breaking the parameterized aspect (`near_bb_voxels`).
-- [ ] **Task 6.4: Near-field ghosts + portal contents**
-  - [ ] Near BB shell already opens on any release in 6.1; here: ghost copies of the sibling group inside the near BB, scale-shrunk so far-field nominal size maps into the near box (when far has grown).
-  - [ ] Ghost of the **parent Box** at the near BB’s bottom-center node.
-  - [ ] Edits on ghosts (select, drag, …) apply **1:1 in real time** to far-field counterparts.
-  - [ ] Maintain two centroids while open: **persistent** (always tracks true sibling poses) and **temporary** (created at near-BB open; drives far↔near BB relationship; does **not** expand the far BB when objects are summoned into the near field).
+- [x] **Task 6.4: Near-field ghosts + portal contents**
+  - [x] **Near-BB place + bump-lerp first (before ghosts):** keep today’s navel-forward rest as the **seed** pose, then **orbit** the new near BB around the user until it aligns with the **creating hand’s** cursor (L→left bias, R→right bias) — that orbit-aligned pose is the instantiation target (does not warp the current navel offset math, only reassigns the rest target after seed). Existing near BBs bump-lerp clear so volumes never overlap (no cursor-in-two-portals Venn); if flanked on both sides, bump **both** directions and cascade through all open near BBs. Paths orbit the body; duration **under 0.25 s**. Capacity ≈ **12** near BBs; if a new open would not fit, **refuse** new voodoo volume creation until the user dismisses a near BB. Non-voodoo near objects can wait for 6.6.
+  - [x] Near BB shell already opens on any intentional release in 6.1; here: ghost copies inside the near BB, scale-shrunk so far-field nominal size maps into the near box (when far has grown).
+  - [x] **Ghost membership:** **Snap** → sibling group of the linked centroid (as today). **Free-range** → every **literal in-field object whose bounds are encapsulated by the parked far BB** gets a corresponding near ghost (not “empty until snapped”).
+  - [x] Ghost of the **parent Box** at the near BB’s bottom-center node when the linked centroid is a **Box**; **skip** for god / free-range with no parent Box (no marker substitute).
+  - [x] **Select on ghosts** works (highlight / selection state mirrors the far counterpart). **No ghost drag in 6.4** — motion waits for 6.5; summon can be validated later once select is in.
+  - [x] Maintain two centroids while open: **persistent** (always tracks true sibling poses) and **temporary** (created at near-BB open; drives far↔near BB relationship; does **not** expand the far BB when objects are summoned into the near field).
+  - [x] **Cursor tint:** when the point cursor enters a near BB, match the near wireframe blue; restore white on exit.
 - [ ] **Task 6.5: Ghost drag, boundary, summon, insert**
-  - [ ] Ghost drag arrow magnitude maps to the **scaled** near copy (smaller proxy → faster effective far motion than a full-size drag).
+  - [ ] Ghost drag (and all motion edits) apply **1:1 in real time** to far counterparts; drag arrow magnitude maps to the **scaled** near copy (smaller proxy → faster effective far motion than a full-size drag).
   - [ ] Dragging a ghost does **not** remove it from the near BB by default; crossing a planar face constrains the ghost at the plane hit while velocity from vector length still drives the far real object; near BB **scales/repositions** remaining ghosts to stay in sync; **both** centroids update as needed (persistent always; temp per portal rules).
   - [ ] Selected ghost + primary pinch on **empty space inside** near BB → deselect ghost and real.
   - [ ] Selected ghost + primary pinch **outside** near BB → fast-interpolate ghost + real to that point (**summon** real into near field). Persistent centroid updates for the new far pose; **temp centroid does not** grow the far BB to swallow the near field.
   - [ ] Near-field real dragged **into** near BB: spawn far ghost at correct scale/offset during drag; real scales down to ghost differential; pull back out in same drag destroys far ghost and restores near scale (may cross boundary repeatedly). On release **inside** near BB: far ghost becomes real, near real becomes ghost at ghost scale (roles swap).
-- [ ] **Task 6.6: Near-field priority + bump-lerp**
-  - [ ] Near BB instantiation takes priority over near-field clutter: existing near objects bump-lerp out of the way and must **not** be sucked into the new BB.
-  - [ ] Near BBs bump-lerp each other; inserting a third between two side-by-side portals pushes neighbors left/right.
-  - [ ] Bump paths orbit the user’s body so volumes/objects still face the user at rest; duration **under 0.25 s**.
+- [ ] **Task 6.6: Near-field object priority + bump-lerp**
+  - [ ] Near BB instantiation takes priority over near-field clutter: existing **non-voodoo** near objects bump-lerp out of the way and must **not** be sucked into the new BB (near-BB↔near-BB clearance already in 6.4).
+  - [ ] Inserting a portal among cluttered near objects pushes neighbors left/right on body-orbit paths; duration **under 0.25 s**.
   - [ ] If an object’s orbital slot is blocked, push it just beyond reach into the far field to finish the shift without collision.
 - [ ] **Task 6.7: Dismiss + collapse**
   - [ ] Each near BB has an **X-close** sphere at top-right-back: dismiss both far+near BBs, destroy ghosts, bump-lerp return objects that were displaced for that portal.
@@ -305,9 +307,9 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
   - [ ] Keep ABI open for future god nodes on network shares (Google Drive / PC `F:` over Wi‑Fi) — not required to ship in 0.6.
 - [ ] **Task 6.9: Headless + Quest gate**
   - [ ] Harness: snap vs free-range intents; centroid updates; snap gravity picks nearest; BB aspect lock; parameterized voxel/near-BB/field limits; near open creates temp vs persistent centroids; summon does not expand far BB via temp; deadzone arms only after leave/re-enter.
-  - [ ] Quest: yellow arrow + far BB (no dome mesh); snap dots; near ghosts 1:1 with far; bump-lerp under 0.25 s; X-close dismiss/collapse; multi-folder god spawn when configured.
+  - [ ] Quest: yellow arrow + far BB (no dome mesh); snap dots; near ghosts 1:1 with far; near-BB bump-lerp (no overlap) + cursor blue-in-portal; object bump-lerp under 0.25 s; X-close dismiss/collapse; multi-folder god spawn when configured.
 
-**Headless / Quest gate (0.6):** Snap and free-range voodoo complete on device with centroids, yellow drag, near-field ghosts, and bump-lerp hygiene. Multi-select across volumes is **out of scope** (0.7).
+**Headless / Quest gate (0.6):** Snap and free-range voodoo complete on device with centroids, yellow drag, non-overlapping near BBs + ghosts, cursor portal tint, and object bump-lerp hygiene. Multi-select across volumes is **out of scope** (0.7).
 
 ---
 

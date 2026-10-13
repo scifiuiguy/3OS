@@ -1,18 +1,65 @@
 #include "core/centroid_registry.hpp"
 
 #include <algorithm>
+#include <string>
 
 namespace threeos {
 
 void CentroidRegistry::clear() {
   gods_.clear();
+  temps_.clear();
   centroids_.clear();
   next_god_id_ = 100;
+  next_temp_id_ = 50;
 }
 
 void CentroidRegistry::clear_gods() {
   gods_.clear();
   next_god_id_ = 100;
+}
+
+EntityId CentroidRegistry::register_temporary(const std::string& name, const Vec3& position) {
+  CentroidState c;
+  c.id = next_temp_id_++;
+  c.kind = CentroidKind::Temporary;
+  c.linked_entity_id = c.id;
+  c.member_count = 0;
+  c.position = position;
+  c.name = name.empty() ? "temp" : name;
+  if (c.name.size() > 15) {
+    c.name.resize(15);
+  }
+  temps_.push_back(c);
+  centroids_.push_back(c);
+  return c.id;
+}
+
+bool CentroidRegistry::set_temporary_position(EntityId id, const Vec3& position) {
+  for (auto& t : temps_) {
+    if (t.id == id) {
+      t.position = position;
+      for (auto& c : centroids_) {
+        if (c.id == id) {
+          c.position = position;
+        }
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+bool CentroidRegistry::clear_temporary(EntityId id) {
+  const auto it = std::remove_if(temps_.begin(), temps_.end(),
+                                 [id](const CentroidState& t) { return t.id == id; });
+  if (it == temps_.end()) {
+    return false;
+  }
+  temps_.erase(it, temps_.end());
+  centroids_.erase(std::remove_if(centroids_.begin(), centroids_.end(),
+                                  [id](const CentroidState& c) { return c.id == id; }),
+                   centroids_.end());
+  return true;
 }
 
 EntityId CentroidRegistry::register_god(const std::string& name, const Pose& anchor) {
@@ -99,6 +146,10 @@ bool CentroidRegistry::members_aabb(const Workspace& workspace, EntityId centroi
 
 void CentroidRegistry::rebuild(const Workspace& workspace) {
   centroids_.clear();
+  // Preserve temporary near-portal centroids.
+  for (const auto& t : temps_) {
+    centroids_.push_back(t);
+  }
   const auto& entries = workspace.entries();
 
   // God centroids: average of in-field root children tagged with this god.

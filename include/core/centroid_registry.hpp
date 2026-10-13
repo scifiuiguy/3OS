@@ -13,6 +13,7 @@ enum class CentroidKind : uint32_t {
   None = 0,
   God = 1,
   Box = 2,
+  Temporary = 3,  // near-portal temp centroid (Task 6.4)
 };
 
 struct GodRoot {
@@ -42,7 +43,13 @@ class CentroidRegistry {
   const GodRoot* find_god(EntityId god_id) const;
   const std::vector<GodRoot>& gods() const { return gods_; }
 
+  /// Temporary centroid for a near portal (survives rebuild until cleared).
+  EntityId register_temporary(const std::string& name, const Vec3& position);
+  bool set_temporary_position(EntityId id, const Vec3& position);
+  bool clear_temporary(EntityId id);
+
   /// Rebuild from workspace: god roots + expanded boxes with in-field children.
+  /// Temporary centroids are preserved across rebuild.
   void rebuild(const Workspace& workspace);
 
   const std::vector<CentroidState>& centroids() const { return centroids_; }
@@ -53,8 +60,10 @@ class CentroidRegistry {
                     Vec3* out_max) const;
 
  private:
-  EntityId next_god_id_ = 100;  // below workspace ids (2000+)
+  EntityId next_god_id_ = 100;       // below workspace ids (2000+)
+  EntityId next_temp_id_ = 50;       // below gods
   std::vector<GodRoot> gods_;
+  std::vector<CentroidState> temps_;
   std::vector<CentroidState> centroids_;
 };
 

@@ -507,6 +507,7 @@ enum ThreeOS_CentroidKind : uint32_t {
   THREEOS_CENTROID_NONE = 0,
   THREEOS_CENTROID_GOD = 1,
   THREEOS_CENTROID_BOX = 2,
+  THREEOS_CENTROID_TEMPORARY = 3,
 };
 
 /** Live centroid snapshot (64 bytes). Empty sets are omitted from the list. */
@@ -549,6 +550,45 @@ THREEOS_API uint32_t threeos_sizeof_voodoo_snap_node(void);
 THREEOS_API uint32_t threeos_voodoo_snap_node_count(uint32_t hand);
 THREEOS_API int32_t threeos_voodoo_get_snap_node(uint32_t hand, uint32_t index,
                                                  ThreeOS_VoodooSnapNode* out_node);
+
+/* --- Voodoo portals / ghosts (Phase 0.6 Task 6.4; additive) --- */
+
+/** Parked far+near portal snapshot (200 bytes). */
+typedef struct ThreeOS_VoodooPortal {
+  uint64_t id;
+  uint32_t mode; /* ThreeOS_VoodooMode */
+  uint32_t creating_hand;
+  ThreeOS_VoodooBoundingBox far_bb;
+  ThreeOS_VoodooBoundingBox near_bb;
+  uint64_t persistent_centroid_id;
+  uint64_t temporary_centroid_id;
+  uint32_t ghost_count;
+  uint32_t reserved0;
+} ThreeOS_VoodooPortal;
+
+/** Near-portal ghost of a far entity (88 bytes). */
+typedef struct ThreeOS_VoodooGhost {
+  uint64_t entity_id;
+  uint32_t is_parent_box;
+  uint32_t reserved0;
+  ThreeOS_Pose far_pose;
+  ThreeOS_Pose near_pose;
+  float scale;
+  float unused0;
+  float unused1;
+  float unused2;
+} ThreeOS_VoodooGhost;
+
+THREEOS_API uint32_t threeos_sizeof_voodoo_portal(void);
+THREEOS_API uint32_t threeos_sizeof_voodoo_ghost(void);
+THREEOS_API uint32_t threeos_voodoo_portal_count(void);
+THREEOS_API int32_t threeos_voodoo_get_portal(uint32_t index, ThreeOS_VoodooPortal* out_portal);
+THREEOS_API uint32_t threeos_voodoo_portal_ghost_count(uint64_t portal_id);
+THREEOS_API int32_t threeos_voodoo_get_portal_ghost(uint64_t portal_id, uint32_t index,
+                                                    ThreeOS_VoodooGhost* out_ghost);
+THREEOS_API int32_t threeos_voodoo_dismiss_portal(uint64_t portal_id);
+THREEOS_API uint32_t threeos_voodoo_creation_allowed(void);
+THREEOS_API uint32_t threeos_voodoo_point_in_near_bb(float x, float y, float z);
 
 #ifdef __cplusplus
 }

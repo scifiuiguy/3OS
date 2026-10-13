@@ -197,6 +197,7 @@ extern "C" THREEOS_API void threeos_shutdown(void) {
   g_kinematics.clear();
   g_workspace.clear();
   g_glyphs.clear();
+  g_voodoo.reset();
   g_centroids.clear();
   g_pending_portal_pose.reset();
   set_error("");
@@ -459,6 +460,18 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
       }
       g_voodoo.tick_hand(vh, g_hands.pending_intents(vh), vhand, cursor_ok || aim_ok, head_pose,
                          head_valid, dt, g_centroids, g_workspace);
+    }
+    g_voodoo.tick_portals(dt, head_pose, head_valid);
+    // Keep temp centroid poses on near BB centers; mirror latest portal into hand session.
+    for (const auto& portal : g_voodoo.portals()) {
+      if (portal.temporary_centroid_id != 0) {
+        // Parent-node seat: center-bottom-center of the near BB.
+        const auto& bb = portal.near_bb;
+        g_centroids.set_temporary_position(
+            portal.temporary_centroid_id,
+            threeos::Vec3{bb.pose.position.x, bb.pose.position.y - bb.extents.y * 0.5f,
+                          bb.pose.position.z});
+      }
     }
   }
 
@@ -983,7 +996,8 @@ extern "C" THREEOS_API void threeos_storage_clear(void) {
   }
   g_workspace.clear();
   g_workspace.set_glyph_registry(&g_glyphs);
-  g_centroids.clear_gods();
+  g_voodoo.reset();  // portals + temp centroids tied to workspace
+  g_centroids.clear();
   g_centroids.rebuild(g_workspace);
 }
 
@@ -1651,6 +1665,8 @@ extern "C" THREEOS_API int32_t threeos_centroid_get(uint32_t index, ThreeOS_Cent
 }
 
 static_assert(sizeof(ThreeOS_VoodooSnapNode) == 48, "VoodooSnapNode size");
+static_assert(sizeof(ThreeOS_VoodooPortal) == 200, "VoodooPortal size");
+static_assert(sizeof(ThreeOS_VoodooGhost) == 88, "VoodooGhost size");
 
 extern "C" THREEOS_API uint32_t threeos_sizeof_voodoo_snap_node(void) {
   return static_cast<uint32_t>(sizeof(ThreeOS_VoodooSnapNode));
@@ -1694,4 +1710,139 @@ extern "C" THREEOS_API int32_t threeos_voodoo_get_snap_node(uint32_t hand, uint3
   out_node->field_position = to_c(n.field_position);
   set_error("");
   return 0;
+}
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_voodoo_portal(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_VoodooPortal));
+}
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_voodoo_ghost(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_VoodooGhost));
+}
+
+extern "C" THREEOS_API uint32_t threeos_voodoo_portal_count(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return static_cast<uint32_t>(g_voodoo.portals().size());
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_get_portal(uint32_t index,
+                                                         ThreeOS_VoodooPortal* out_portal) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_portal == nullptr) {
+    set_error("null portal");
+    return -2;
+  }
+  if (index >= g_voodoo.portals().size()) {
+    set_error("portal index oob");
+    return -3;
+  }
+  const auto& p = g_voodoo.portals()[index];
+  std::memset(out_portal, 0, sizeof(*out_portal));
+  out_portal->id = p.id;
+  out_portal->mode = static_cast<uint32_t>(p.mode);
+  out_portal->creating_hand = p.creating_hand;
+  fill_voodoo_bb(&out_portal->far_bb, p.far_bb);
+  fill_voodoo_bb(&out_portal->near_bb, p.near_bb);
+  out_portal->persistent_centroid_id = p.persistent_centroid_id;
+  out_portal->temporary_centroid_id = p.temporary_centroid_id;
+  out_portal->ghost_count = static_cast<uint32_t>(p.ghosts.size());
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API uint32_t threeos_voodoo_portal_ghost_count(uint64_t portal_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  for (const auto& p : g_voodoo.portals()) {
+    if (p.id == portal_id) {
+      return static_cast<uint32_t>(p.ghosts.size());
+    }
+  }
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_get_portal_ghost(uint64_t portal_id, uint32_t index,
+                                                               ThreeOS_VoodooGhost* out_ghost) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_ghost == nullptr) {
+    set_error("null ghost");
+    return -2;
+  }
+  const threeos::VoodooPortal* portal = nullptr;
+  for (const auto& p : g_voodoo.portals()) {
+    if (p.id == portal_id) {
+      portal = &p;
+      break;
+    }
+  }
+  if (portal == nullptr) {
+    set_error("portal not found");
+    return -3;
+  }
+  if (index >= portal->ghosts.size()) {
+    set_error("ghost index oob");
+    return -4;
+  }
+  const auto& g = portal->ghosts[index];
+  std::memset(out_ghost, 0, sizeof(*out_ghost));
+  out_ghost->entity_id = g.entity_id;
+  out_ghost->is_parent_box = g.is_parent_box ? 1u : 0u;
+  out_ghost->far_pose = to_c(g.far_pose);
+  out_ghost->near_pose = to_c(g.near_pose);
+  out_ghost->scale = g.scale;
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_dismiss_portal(uint64_t portal_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  uint64_t temp = 0;
+  for (const auto& p : g_voodoo.portals()) {
+    if (p.id == portal_id) {
+      temp = p.temporary_centroid_id;
+      break;
+    }
+  }
+  if (!g_voodoo.dismiss_portal(portal_id)) {
+    set_error("portal not found");
+    return -2;
+  }
+  if (temp != 0) {
+    g_centroids.clear_temporary(temp);
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API uint32_t threeos_voodoo_creation_allowed(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return g_voodoo.creation_allowed() ? 1u : 0u;
+}
+
+extern "C" THREEOS_API uint32_t threeos_voodoo_point_in_near_bb(float x, float y, float z) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return g_voodoo.point_in_any_near_bb(threeos::Vec3{x, y, z}) ? 1u : 0u;
 }
