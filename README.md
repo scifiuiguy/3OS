@@ -18,9 +18,11 @@ Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop P
 <details>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧊 What is 3OS?</summary>
 
-3OS (pronounced **"three-oh-ess"**) is a voxel-first operating system interface that attempts to take us back to our roots by drawing upon incredible 90s research (not Hollywood but actual excellent-yet-rarely-utilized university work - see the Prior Art section). It aims to be the first 3D interface that's faster than desktop PCs for enterprise teams. Target hardware is HMDs, holographic displays, edge VDIs, and any other future hardware that enables stereoscopic depth visibility plus integration with legacy 2D screens. Primary target user demographic is office workers who already engage in lots of 3D content creation, including product designers and engineers using CAD software, game devs using game engines, VFX artists/programmers, etc. 
+3OS (pronounced **"three-oh-ess"**) is a voxel-first operating system interface that attempts to take us back to our roots by drawing upon incredible 90s research (not Hollywood but actual excellent-yet-rarely-utilized university work - see the Prior Art section). It aims to be the first 3D interface that's faster than desktop PCs for enterprise teams. Target hardware is HMDs, holographic displays, on-prem edge VDI servers running surround-spectator monitors, and any other future hardware that enables stereoscopic depth visibility plus integration with legacy 2D screens.
 
-3OS endgame is to allow file management, version control, communication, and all forms of complex multimedia development to coexist within a single 3D interface. 3OS rejects the default bias of legacy WIMP (Windows, Icons, Menus, and Pointers) and multi-touch paradigms that have been a crutch in modern XR for far too long. It aims to knock the dust off of the works of HCI giants whose volumetric contributions got buried by the mobile era. It's time to finally prove that 90s optimism was not misplaced.
+The 3OS endgame is to allow file management, version control, collaboration, communication, presentation, and all forms of complex multimedia development to coexist within a single 3D field supporting multiple simultaneous workspaces in the same room, controlled by one interface, powered by an on-prem server supporting up to 12 simultaneous users in any number of workspace groups as they all face the center of the room. 
+
+The 3OS Enterprise prototype is very specifically <b>NOT</b> a conference room. It's not for meetings. It's for simultaneous collaborative and solo development. One user can work in a solo workspace using the same space as 11 other users who are in a separate shared workspace. Target early adopters are teams of developers and artists in product dev, engineering, VFX, game dev, architecture, auto, aerospace, etc. 
 
 
 </details>
@@ -30,6 +32,8 @@ Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop P
 <a id="wimp-is-wimpy"></a>
 <details>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🪟 WIMP is wimpy</summary>
+
+3OS rejects the default bias of legacy WIMP (Windows, Icons, Menus, and Pointers) and multi-touch paradigms that have been a crutch in modern XR for far too long. It aims to knock the dust off of the works of HCI giants whose volumetric contributions fly circles around WIMP, yet they got buried by the fervor of mobile era's obsession with minimalism. Minimalism has its place in consumer software. For enterprise, it's time to finally prove 90s 3D UI optimism was not misplaced.
 
 The WIMP paradigm is a backwards compatibility tool in XR. It should not be front-and-center in any spatial computing OS. A VR or MR HMD that uses WIMP as its default metaphor set is like Windows 95 launching into a command line with no Desktop, no Start button, and no File Explorer, except at least the command line still brought extra speed for power users. WIMP interfaces do the opposite in XR, yet they're the ONLY OS interface in 2026, rather than a background legacy option. We cannot expect enterprise software suite companies to consider porting their robust systems into XR using stone tools.
 
@@ -309,6 +313,9 @@ Until extensive UX testing can be done on densely populated fields, it is assume
 ### 5) Voodoo Widgets
   These are peripheral remote control devices. They appear temporarily just forward of the hand that engages the associated action, and they disappear as soon as the action is complete. The most common use is for remote transformations (dragging/rotating far-field objects). These widgets visualize the hand's current action state e.g. a vector arrow to confirm drag is currently active at a specific velocity. For rotation, the widget is a miniature voodoo copy the object so that any tumbling action can happen accurately even if the actual object is too distant to make out.
 
+### 6) Focus Anchors
+  These are the invisible backbone enabling voodoo snapping to work so rapidly. At the top level of 3OS, each open directory has contents potentially strewn about in a matrix or cluster, but a voodoo volume can latch onto that entire cluster instantly because it contains an invisible centroid, a Focus Anchor. Every directory has a focus anchor allowing voodoo volumes to snap to them and summon a voodoo doll of their contents into the near field for easy control. Focus Anchors are a key feature that will be available in the 3OS 3rd party SDK as well. When a 3rd party app launches, it is in multitasking mode by default, meaning it shares the same global field as everything else, including the file system and other open apps. But if the user sends a voodoo volume into the 3rd party app's bounding box, the OS won't have any default anchors to snap to, leaving the user to fish around the app's volume manually. Thus, it is important for 3rd party apps to define focus anchors early on because it enables the user to instantly summon access to any collection of elements within the app. This is a key advantage of 3OS because it enables the app content to BE the interface. If, for example, it's a CAD program, it can be designed such that every part automatically has a focus anchor, thus the developer can allow the user to pull/inspect/edit any part instantly without needing to code a custom UI. The OS already enables it.
+
 ### 6) 3D Buttons
   In 3OS, buttons are typically depicted as translucent cubes or other simple volumetric prisms, often with smoothed edges. Text labels may hover near, above, below, or inside the geometry, typically shaded over the top of their geo to enable clear legibility even if geo occludes any part of the text. Buttons in 3OS are volumetric, meaning cursors don't hover ONTO them; they hover INTO them. If touched directly by virtual hands, the button surface has no physics properties. The hand travels through it as though it is a ghost. We call it a button to avoid confusion around functionality. It is an event trigger handler just like any other button, but it does not reside on a surface, nor is it to be pressed. It floats in mid air, needing no flat panel to rest upon. A cursor enters into it from any vector and triggers a hover-state glow effect or other visual cue. During hover, the user performs a gesture, usually index-to-thumb pinch, to activate the button.
 
@@ -325,6 +332,48 @@ Until extensive UX testing can be done on densely populated fields, it is assume
 </details>
 
 ---
+<a id="collaborative-rooms-vdi-enterprise-edge-compute-phase-20"></a>
+<details>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 The Application Layer</summary>
+
+3OS is designed first-and-foremost for professionals who are already working in 3D editing software (CAD, VFX, and Gaming), but it is also designed to be able to grow into mass market adoption after establishing 3D professionals as early adopters. To approach early adopters, 3OS must natively supoprt ports of a few dozen professional software suites.
+
+At the advent of modern VR with the Oculus Kickstarter, millions of us dreamed of being able to use Maya or Fusion or Unreal from inside a VR headset, but so far to date, these systems don't feel compatible with HMDs for productive eight-hour work yet because there is always some part of the task flow that requires constant removal of the HMD for fallback to a desktop interface, not to mention the ergonomic issues of bulky headsets worn all day.
+
+Hardware engineers are doing their part to shrink the technology to near-sunglasses form factor. As we approach elimination of this ergo bottlneck, it's well-past time for the OS layer to have provided a uniform 3D UI paradigm capable of enabling all 3D software compatibility, including CAD, VFX modelling/animation/texturing/shading/etc., and game engines to run in a cohesive single environment with multitasking (i.e. Maya and Unreal running in a shared field). 3OS aims to support XR app multitasking despite its immense perf op challenges. The first professional deployments of 3OS are intended to run on on-prem VDI servers with plenty of horsepower to handle the job, and 3OS aims to provide an SDK for enterprise 3rd parties to finally port their apps natively into XR.
+
+</details>
+
+---
+
+<a id="collaborative-rooms-vdi-enterprise-edge-compute-phase-20"></a>
+<details>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 Basic Transformation</summary>
+
+The greatest challenge in resolving the chicken-egg problem of enterprise users having no natively supported XR enterprise apps and enterprise app companies (Adobe, Autodesk, etc.) having no enterprise XR-only users is...
+
+* ### Basic 3D UI for transform gizmos
+
+In desktop interfaces, transform gizmos have become somewhat uniform and standardized across most 3D software, but they're not as standardized as "mouse left-click always causes selection." The gizmos are designed for the quirks of translating 2D mouse motion to 3D virtual space, and each has their flavor. 
+
+With 6DOF control, the complexity of that 2D-to-3D mapping becomes unnecessary in most cases. Instead, control designers can focus on deciding whether to map motion 1-to-1, snap to specific angles/positions, or constrain certain axes in certain situations as is already common in their 2D software. They simply have more DOFs to work with in 3D, but more options often leads to more chaos.
+
+3OS aims to offer a basic initial transformation standard below the app layer to encourage control uniformity. The nuances of DOF constraints and scalar quantizations must be available to professionals, but by default, 3OS aims also to make basic transformation palatable to all laypeople as well. Desktop gizmos are not palatable to laypeople. They look like a math equation to newbies. It's an instant turnoff. Laypeople need to be able to transform 3D objects via telekinesis just as laypeople in Windows 95 needed to know how to drag an icon across a desktop and drop it into the Recycle Bin.
+
+As part of the 3rd party SDK, 3OS will offer a Transformation UI framework that includes...
+
+* ### Telekinesis (remote translation)
+* ### Tumbling (remote quaternion-based rotation)
+* ### Scale
+* ### Basic Bimanual Controls for axis constraint and motion quantization
+
+For example, the user could spin the object with one hand and optionally constrain the spin to a specific axis with the other.
+
+In most cases, rendering complex gizmos on the object will be unnecessary, whereas some controls will instantiate simple OS-level widgets floating in front of the hand to indicate which action is currently active, and some widgets will be anchorable to a desktop or other world anchor so that users can configure virtual consoles anchored in front of their bodies or to a desk. These widget mappings will be override-able for 3rd party apps, but 3rd party app developers should remember that, in 3OS, their app is running in tandem in a shared environment with the OS interface and with other 3rd party apps unless they configure it for viewport exclusivity (i.e. disable multitasking). If they override an OS transform widget to create their own in a multitasked app, they may confuse the user when every element in the same field operates one way and theirs operates another.
+
+</details>
+
+---
 
 <a id="collaborative-rooms-vdi-enterprise-edge-compute-phase-20"></a>
 <details>
@@ -332,6 +381,43 @@ Until extensive UX testing can be done on densely populated fields, it is assume
 
 Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handheld screen joins a shared volumetric field, sessions run on on-prem **VDI** or home **edge** compute, and collaboration semantics cover personal/shared/full-room workspaces, flyweight vs copy assets, view vs object transforms, spectator cameras, and optional site-to-site sync. The full design — reference 20×20 office fixture, desk docks, IMU monitors, co-editor VOIP/avatars, and VCS for simultaneous copies — is in [docs/COLLABORATIVE_ROOMS.md](docs/COLLABORATIVE_ROOMS.md); task checklists are Phase 2.0 in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
+
+</details>
+
+---
+
+<a id="collaborative-rooms-vdi-enterprise-edge-compute-phase-20"></a>
+<details>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 Reserved and Supported Gestures</summary>
+
+3OS supports cross-compatilibity of all input actions for 10-finger hand tracking first and foremost, but 6DOF controllers as well. The OS interface defines the following universal event triggers:
+
+* ### Primary
+  * Index-to-thumb pinch for hands
+  * Trigger button for controllers
+  * Equivalent to 2D mouse left-click
+* ### Secondary 
+  * Middle-to-thumb pinch for hands
+  * Grab button for controllers
+  * Equivalent to 2D mouse right-click
+* ### Ternary
+  * Ring-to-thumb pinch for hands
+  * X button for right controller or A button for left controller
+  * Equivalent to 2D mouse middle-click
+
+3OS also defines three ulnar wrist rotation modes:
+* ### Palm up
+* ### Palm down
+* ### Palm sideways
+
+Each ulnar write mode has option to modify the primary, secondary, or ternary event trigger, yielding a total of nine event combinations for each hand:
+* ### Primary-palm-up
+* ### Primary-palm-down
+* ### Primary-palm-sideways
+* ### Secondary-palm-up
+etc.
+
+The 3OS interface layer reserves all primary event triggers and secondary-palm-down for selection, voodoo control, and other OS actions everywhere in the field outside the bounding box of a 3rd party app, and 3rd party devs are encouraged to implement these features similarly within their app bounds via the 3OS SDK.
 
 </details>
 
@@ -384,7 +470,13 @@ Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handhel
 
 ```
 
-### 🏛️ 3OS_Core: Academic Lineage & Prior Art
+</details>
+
+---
+
+<a id="prior-art"></a>
+<details>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏛️ Academic Lineage & Prior Art</summary>
 
 Piles of incredible Human-Computer Interaction (HCI) literature have been left to languish by the modern spatial computing industry. In 2026, the following papers do not currently influence OS interfaces running on Meta Quest, Meta VR Glasses, Apple Vision Pro, Snap Specs, XReal Aura, Vive, Pico, Playstation VR, Lynx, Varjo, Bigscreen, or Steam Frame. They should.
 
@@ -418,7 +510,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 ### 6. The Poros Framework — 2021
 *   **Citation:** Pohl, H., Lilija, K., McIntosh, J., & Hornbæk, K. (2021). "Poros: Configurable Proxies for Distant Interactions in VR." *Proceedings of the 2021 CHI Conference on Human Factors in Computing Systems (CHI '21)*, Article 357, 1–13.
-*   **Significance to 3OS:** The direct conceptual and geometric peer to 3OS. This paper broke the legacy "Flatland" window paradigm by showing that users can select arbitrary volumetric bounding regions in the far field and mirror them as non-Euclidean near-field workspace portals. 3OS adapts this concept for bimanual selection frustums that are cubic instead of spherical. The most salient difference between Poros and 3OS is that Poros still used raycasting to generate portals, whereas 3OS engages world-in-miniature as the creation model for portals, yielding rapid cross-proxy multi-portal manipulation intended as a competitive 3D corollary to a 2D desktop File Explorer.
+*   **Significance to 3OS:** The direct conceptual and geometric peer to 3OS. This paper broke the legacy "Flatland" window paradigm by showing that users can select arbitrary volumetric bounding regions in the far field and mirror them as non-Euclidean near-field workspace portals. 3OS adapts this concept for bimanual selection frustums that are cubic instead of spherical. The most salient difference between Poros and 3OS voodoo volumes is that Poros still used raycasting to generate portals, whereas 3OS engages a modified world-in-miniature technique as its creation model, yielding rapid cross-proxy multi-portal manipulation intended as a competitive volumetric corollary to a 2D desktop File Explorer.
 
 ### 7. Reality Proxy — 2025
 *   **Citation:** Al-Sadoun, A., et al. (2025). "Reality Proxy: Fluid Interactions with Real-World Objects in MR." *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.

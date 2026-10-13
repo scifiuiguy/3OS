@@ -7,6 +7,9 @@ GLOBAL_ATTRIBUTES.md
 # marketing copy and media
 marketing/
 
+# Local research notes / papers (not versioned)
+research/
+
 # Local Unity Editor host project (created via Unity CLI; not part of core)
 3OS_Unity_Sample_Project/
 unity-create-sample.log

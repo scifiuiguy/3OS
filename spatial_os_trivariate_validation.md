@@ -54,7 +54,6 @@ $$S_{cube} = \frac{24.74\text{ in}}{2^{3.2} - 1} = \frac{24.74\text{ in}}{9.19 -
 
 A **3-inch symmetrical voxel** is the ideal lowest common denominator size that can accomodate rapid hand motion with minimal overshoot. Obviously, interactive elements can be smaller if the developer does not intend the user to dart between them rapidly, but 3" voxel targets is the min volume when designing for fastest hand motion. It ensures that a user can execute a blind, maximum-velocity swipe across the entire canvas, and their internal motor control loop will naturally halt their finger inside the target volume error-free.
 
-* 3OS also supports easy creation of spherical interfaces which are similar to desktop radio button lists in that a list alternate OR choices are arranged near each other, but in 3OS they occupy equal angular space around a center point, and the hand's vector relative to that center point changes hover state and/selection of a given element. This interface style is the highest-perforcmance voxel-based multiple-choise option because it eliminates any possibility of overshoot.
 
 ### Resulting Matrix Resolution for the Voodoo Volume
 Dividing the 12" $\times$ 12" $\times$ 18" bounding box by the 3-inch ideal voxel size yields a discrete, non-overlapping interaction matrix:
