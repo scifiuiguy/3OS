@@ -118,6 +118,14 @@ class KinematicsEngine {
   void apply_friction(float dt);
   void update_stick_debug(const Pose& hand_pose, const Pose& head_pose, bool head_valid);
 
+  float compute_dt(double time_seconds);
+  void clear_transient();
+  bool tick_possessed(const Pose& hand_pose, const Pose& head_pose, bool head_valid, float dt,
+                      bool hand_valid);
+  void arm_deadzone(float mag);
+  void apply_stick_velocity(const Vec3& stick, float mag);
+  bool tick_coasting(float dt);
+
   KinematicsParams params_{};
   KineticState state_{};
   StickDebug stick_debug_{};

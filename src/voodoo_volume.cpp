@@ -1417,6 +1417,9 @@ bool VoodooVolumeEngine::apply_near_ghost_snap_hold(EntityId object_id, EntityId
                                                     float hold_above_m, Workspace& workspace) {
   return ghost_drag_.apply_near_ghost_snap_hold(object_id, box_id, hold_above_m, workspace);
 }
+void VoodooVolumeEngine::update_ghost_matrix_snap(uint32_t hand, Workspace& workspace) {
+  ghost_drag_.update_matrix_snap(hand, workspace);
+}
 
 }  // namespace threeos
 

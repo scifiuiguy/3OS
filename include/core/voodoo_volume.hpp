@@ -247,6 +247,9 @@ class VoodooVolumeEngine {
   bool apply_near_ghost_snap_hold(EntityId object_id, EntityId box_id, float hold_above_m,
                                   Workspace& workspace);
 
+  /// Portal/near-real Box snap while ghost-dragging `hand` (after ghost_drag_tick).
+  void update_ghost_matrix_snap(uint32_t hand, Workspace& workspace);
+
   /// Keep ghost far poses aligned with workspace; prune/alloc by far-BB membership.
   void sync_ghosts_from_workspace(const Workspace& workspace);
 

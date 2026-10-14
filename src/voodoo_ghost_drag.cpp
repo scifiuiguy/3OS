@@ -539,6 +539,146 @@ const VoodooDragArrow& GhostDragController::far_arrow(uint32_t hand) const {
 }
 
 
+void GhostDragController::update_matrix_snap(uint32_t hand, Workspace& workspace) {
+  if (hand >= 2u || !engine_.ghost_drags_[hand].active) {
+    return;
+  }
+  const EntityId gid = engine_.ghost_drags_[hand].entity_id;
+  if (gid == 0) {
+    return;
+  }
+
+  Pose snap_pose{};
+  bool have_snap_pose = false;
+  if (const uint64_t pid = engine_.portal_for_ghost_entity(gid); pid != 0) {
+    for (const auto& portal : engine_.portals_) {
+      if (portal.id != pid) {
+        continue;
+      }
+      for (const auto& g : portal.ghosts) {
+        if (!g.is_parent_box && g.entity_id == gid) {
+          snap_pose = g.near_pose;
+          have_snap_pose = true;
+          break;
+        }
+      }
+      break;
+    }
+  }
+  if (!have_snap_pose) {
+    if (const auto* we = workspace.find(gid)) {
+      snap_pose = we->pose;
+      have_snap_pose = true;
+    }
+  }
+  if (!have_snap_pose) {
+    return;
+  }
+
+  // Near BB is ~0.3 m — far-field 0.2 m radius armed almost every pair.
+  // Portal ghosts: snap to sibling ghost Boxes (tight near-space radius).
+  // Near-field reals (audition / no portal ghost): snap to in-field Boxes via
+  // workspace poses. Committed drag with no ghost (pulled to far) must NOT
+  // fall back to far update_snap (distant false inserts + FS thrash).
+  const uint64_t snap_portal = engine_.portal_for_ghost_entity(gid);
+  const GhostDragKind drag_kind = engine_.ghost_drags_[hand].kind;
+  if (snap_portal == 0) {
+    if (drag_kind != GhostDragKind::Audition) {
+      // Matrix snap (seat + re-anchor) runs inside tick for audition outside a
+      // portal. Do not clear here — tick already armed/updated snap.
+      workspace.clear_snap();
+    }
+    return;
+  }
+
+  EntityId best_box = 0;
+  float best_d = kNearRealSnapM;
+  bool best_is_ghost = false;
+  const VoodooPortal* snap_portal_ptr = nullptr;
+  for (const auto& portal : engine_.portals_) {
+    if (portal.id == snap_portal) {
+      snap_portal_ptr = &portal;
+      break;
+    }
+  }
+  if (snap_portal_ptr == nullptr) {
+    return;
+  }
+
+  auto near_dist_to_ghost = [&](EntityId box_id) -> float {
+    for (const auto& g : snap_portal_ptr->ghosts) {
+      if (!g.is_parent_box && g.entity_id == box_id) {
+        return dist3(snap_pose.position, g.near_pose.position);
+      }
+    }
+    return 1e9f;
+  };
+
+  if (workspace.snap().pending && workspace.snap().object_id == gid &&
+      workspace.snap().box_id != 0) {
+    const float d_ghost = near_dist_to_ghost(workspace.snap().box_id);
+    if (d_ghost < kGhostStickyM) {
+      best_box = workspace.snap().box_id;
+      best_d = d_ghost;
+      best_is_ghost = true;
+    } else if (engine_.portal_for_ghost_entity(workspace.snap().box_id) == 0) {
+      if (const auto* box = workspace.find(workspace.snap().box_id)) {
+        const Vec3 hold{box->pose.position.x,
+                        box->pose.position.y + Workspace::kHoldAboveBoxM,
+                        box->pose.position.z};
+        const float d = dist3(snap_pose.position, hold);
+        if (d < Workspace::kSnapEscapeBufferM) {
+          best_box = workspace.snap().box_id;
+          best_d = d;
+          best_is_ghost = false;
+        }
+      }
+    }
+  }
+
+  if (best_box == 0) {
+    for (const auto& g : snap_portal_ptr->ghosts) {
+      if (g.is_parent_box || g.entity_id == gid) {
+        continue;
+      }
+      const auto* we = workspace.find(g.entity_id);
+      if (we == nullptr || !we->in_field || we->kind != StorageKind::Box) {
+        continue;
+      }
+      const float d = dist3(snap_pose.position, g.near_pose.position);
+      if (d < kGhostSnapM && d < best_d) {
+        best_d = d;
+        best_box = g.entity_id;
+        best_is_ghost = true;
+      }
+    }
+    // Near-field real Boxes (not portal ghosts) — workspace pose is near.
+    for (const auto& e : workspace.entries()) {
+      if (e.kind != StorageKind::Box || !e.in_field || e.id == gid) {
+        continue;
+      }
+      if (engine_.portal_for_ghost_entity(e.id) != 0) {
+        continue;
+      }
+      const float d = dist3(snap_pose.position, e.pose.position);
+      if (d < best_d) {
+        best_d = d;
+        best_box = e.id;
+        best_is_ghost = false;
+      }
+    }
+  }
+
+  if (best_box != 0 && workspace.arm_snap_to_box(gid, best_box)) {
+    if (best_is_ghost) {
+      (void)apply_near_ghost_snap_hold(gid, best_box, kGhostHoldAboveM, workspace);
+    }
+  } else {
+    workspace.clear_snap();
+  }
+}
+
+
 bool GhostDragController::apply_near_ghost_snap_hold(EntityId object_id, EntityId box_id,
                                                     float /*hold_above_m*/, Workspace& workspace) {
   if (object_id == 0 || box_id == 0 || object_id == box_id) {

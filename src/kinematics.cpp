@@ -1,5 +1,7 @@
 #include "core/kinematics.hpp"
 
+#include "core/voodoo_stick_viz.hpp"
+
 #include <algorithm>
 #include <cmath>
 
@@ -138,80 +140,78 @@ void KinematicsEngine::update_stick_debug(const Pose& hand_pose, const Pose& hea
   stick_debug_.ray_tip = Vec3{origin.x + stick.x, origin.y + stick.y, origin.z + stick.z};
 }
 
-bool KinematicsEngine::tick(const Pose& hand_pose, const Pose& head_pose, bool head_valid,
-                            double time_seconds, bool hand_valid) {
-  if (state_.phase == KineticPhase::Idle || state_.entity_id == 0) {
-    have_start_hand_ = false;
-    have_prev_time_ = false;
-    stick_debug_ = {};
-    return false;
-  }
-
+float KinematicsEngine::compute_dt(double time_seconds) {
   float dt = 1.f / 72.f;
   if (have_prev_time_) {
     dt = static_cast<float>(time_seconds - prev_time_);
   }
   prev_time_ = time_seconds;
   have_prev_time_ = true;
-  dt = std::clamp(dt, 1.f / 240.f, 0.1f);
+  return std::clamp(dt, 1.f / 240.f, 0.1f);
+}
 
-  if (state_.phase == KineticPhase::Possessed) {
-    if (!hand_valid) {
-      apply_friction(dt);
-      integrate(dt);
-      stick_debug_ = {};
-      return true;
-    }
+void KinematicsEngine::clear_transient() {
+  have_start_hand_ = false;
+  have_prev_time_ = false;
+  stick_debug_ = {};
+}
 
-    if (!have_start_hand_) {
-      start_hand_ = hand_pose;
-      have_start_hand_ = true;
-      state_.velocity = {};
-      deadzone_armed_ = false;
-      deadzone_left_once_ = false;
-      update_stick_debug(hand_pose, head_pose, head_valid);
-      return true;
-    }
+void KinematicsEngine::arm_deadzone(float mag) {
+  StickViz::arm_deadzone(deadzone_armed_, deadzone_left_once_, mag, params_.deadzone_m);
+}
 
-    const Vec3 stick{
-        hand_pose.position.x - start_hand_.position.x,
-        hand_pose.position.y - start_hand_.position.y,
-        hand_pose.position.z - start_hand_.position.z,
-    };
-    const float mag = vec3_length(stick);
+void KinematicsEngine::apply_stick_velocity(const Vec3& stick, float mag) {
+  // Radial remap: drive from (|stick| - deadzone) so velocity rises from 0
+  // at the deadzone boundary instead of jumping to gain * deadzone.
+  const float eff = (mag - params_.deadzone_m) / mag;
+  state_.velocity = Vec3{
+      params_.gain * stick.x * eff,
+      params_.gain * stick.y * eff,
+      params_.gain * stick.z * eff,
+  };
+}
 
-    // Sphere / in_deadzone viz arms only after leave then re-enter. Hard-stop
-    // still applies whenever |stick| < deadzone (including spawn at origin).
-    if (!deadzone_armed_) {
-      if (mag >= params_.deadzone_m) {
-        deadzone_left_once_ = true;
-      }
-      if (deadzone_left_once_ && mag < params_.deadzone_m) {
-        deadzone_armed_ = true;
-      }
-    }
-
-    if (mag < params_.deadzone_m) {
-      // Inside deadzone: hard-stop. No creep, no residual coast.
-      state_.velocity = {};
-      update_stick_debug(hand_pose, head_pose, head_valid);
-      return true;
-    }
-
-    // Radial remap: drive from (|stick| - deadzone) so velocity rises from 0
-    // at the deadzone boundary instead of jumping to gain * deadzone.
-    const float eff = (mag - params_.deadzone_m) / mag;
-    state_.velocity = Vec3{
-        params_.gain * stick.x * eff,
-        params_.gain * stick.y * eff,
-        params_.gain * stick.z * eff,
-    };
+bool KinematicsEngine::tick_possessed(const Pose& hand_pose, const Pose& head_pose,
+                                      bool head_valid, float dt, bool hand_valid) {
+  if (!hand_valid) {
+    apply_friction(dt);
     integrate(dt);
+    stick_debug_ = {};
+    return true;
+  }
+
+  if (!have_start_hand_) {
+    start_hand_ = hand_pose;
+    have_start_hand_ = true;
+    state_.velocity = {};
+    deadzone_armed_ = false;
+    deadzone_left_once_ = false;
     update_stick_debug(hand_pose, head_pose, head_valid);
     return true;
   }
 
-  // Coasting after release
+  const Vec3 stick{
+      hand_pose.position.x - start_hand_.position.x,
+      hand_pose.position.y - start_hand_.position.y,
+      hand_pose.position.z - start_hand_.position.z,
+  };
+  const float mag = vec3_length(stick);
+  arm_deadzone(mag);
+
+  if (mag < params_.deadzone_m) {
+    // Inside deadzone: hard-stop. No creep, no residual coast.
+    state_.velocity = {};
+    update_stick_debug(hand_pose, head_pose, head_valid);
+    return true;
+  }
+
+  apply_stick_velocity(stick, mag);
+  integrate(dt);
+  update_stick_debug(hand_pose, head_pose, head_valid);
+  return true;
+}
+
+bool KinematicsEngine::tick_coasting(float dt) {
   stick_debug_ = {};
   apply_friction(dt);
   if (vec3_length(state_.velocity) < params_.settle_epsilon) {
@@ -222,6 +222,19 @@ bool KinematicsEngine::tick(const Pose& hand_pose, const Pose& head_pose, bool h
   }
   integrate(dt);
   return true;
+}
+
+bool KinematicsEngine::tick(const Pose& hand_pose, const Pose& head_pose, bool head_valid,
+                            double time_seconds, bool hand_valid) {
+  if (state_.phase == KineticPhase::Idle || state_.entity_id == 0) {
+    clear_transient();
+    return false;
+  }
+  const float dt = compute_dt(time_seconds);
+  if (state_.phase == KineticPhase::Possessed) {
+    return tick_possessed(hand_pose, head_pose, head_valid, dt, hand_valid);
+  }
+  return tick_coasting(dt);
 }
 
 }  // namespace threeos

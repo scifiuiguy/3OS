@@ -42,7 +42,18 @@ class GhostDragController {
   bool apply_near_ghost_snap_hold(EntityId object_id, EntityId box_id, float hold_above_m,
                                   Workspace& workspace);
 
+  /// Portal/near-real Box snap while a ghost-scale drag is active on `hand`.
+  void update_matrix_snap(uint32_t hand, Workspace& workspace);
+
  private:
+  static constexpr float kGhostSnapM = 0.07f;
+  // Midway between the clipped 0.04 m seat and the gappy 0.14 m far hold.
+  static constexpr float kGhostHoldAboveM = 0.09f;
+  // After hold, centers sit ~holdAbove apart — sticky must allow that gap.
+  static constexpr float kGhostStickyM = kGhostHoldAboveM + 0.03f;
+  // Near-field real Boxes use the wider workspace snap radius.
+  static constexpr float kNearRealSnapM = 0.2f;
+
   VoodooVolumeEngine& engine_;
 };
 
