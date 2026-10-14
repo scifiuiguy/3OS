@@ -1014,6 +1014,12 @@ int main() {
     }
 
     // Palm sideways + primary hold → DragActive (no voodoo).
+    // Release first: intent palm is latched at press edge for the whole hold.
+    R.primary_pressed = 0;
+    threeos_interaction_set_hands(&L, &R);
+    hf.frame_index++;
+    hf.time_seconds += 0.016;
+    threeos_tick(&hf, &hd);
     R.palm_mode = THREEOS_PALM_SIDEWAYS;
     R.primary_pressed = 1;
     threeos_interaction_set_hands(&L, &R);
@@ -1033,7 +1039,32 @@ int main() {
       }
     }
 
+    // Mid-hold palm flip must not switch DragActive → VoodooSnap.
+    R.palm_mode = THREEOS_PALM_DOWN;
+    R.primary_pressed = 1;
+    threeos_interaction_set_hands(&L, &R);
+    hf.frame_index++;
+    hf.time_seconds += 0.016;
+    threeos_tick(&hf, &hd);
+    threeos_interaction_get_intents(&intents);
+    {
+      const bool drag = (intents.flags & THREEOS_INTENT_DRAG_ACTIVE) != 0;
+      const bool snap = (intents.flags & THREEOS_INTENT_VOODOO_SNAP) != 0;
+      if (!drag || snap) {
+        std::fprintf(stderr, "FAIL intents palm-latch: flags=0x%X (want drag, no snap)\n",
+                     intents.flags);
+        ok = false;
+      } else {
+        std::printf("OK   palm latched for hold (no mid-gesture voodoo)\n");
+      }
+    }
+
     // Palm up + primary hold → neither drag nor voodoo (Quest OS reserves the gesture).
+    R.primary_pressed = 0;
+    threeos_interaction_set_hands(&L, &R);
+    hf.frame_index++;
+    hf.time_seconds += 0.016;
+    threeos_tick(&hf, &hd);
     R.palm_mode = THREEOS_PALM_UP;
     R.primary_pressed = 1;
     threeos_interaction_set_hands(&L, &R);
@@ -1113,6 +1144,7 @@ int main() {
 
   // --- Phase 0.6 Task 6.1: field params + dual sessions + scaled far + park/near ---
   {
+    threeos_selection_clear();
     ThreeOS_VoodooFieldParams fp{};
     if (threeos_voodoo_get_field_params(&fp) != 0) {
       std::fprintf(stderr, "FAIL get field params\n");
@@ -1402,6 +1434,8 @@ int main() {
   {
     threeos_storage_clear();
     threeos_god_clear();
+    threeos_selection_clear();
+    threeos_kinematics_release();
 
     ThreeOS_Pose anchor{};
     anchor.orientation = {0.f, 0.f, 0.f, 1.f};
@@ -1829,6 +1863,398 @@ int main() {
     }
     ok = expect_eq("portal.orbit_no_overlap", any_overlap ? 0u : 1u, 1u) && ok;
     std::printf("OK   portals ghosts orbit tint dismiss hold-gate capacity\n");
+  }
+
+  // --- Phase 0.6 Task 6.5: ghost drag, summon, temp BB unchanged ---
+  {
+    threeos_storage_clear();
+    threeos_god_clear();
+
+    ThreeOS_Pose anchor{};
+    anchor.orientation = {0.f, 0.f, 0.f, 1.f};
+    uint64_t godA = 0;
+    threeos_god_register("DragA", &anchor, &godA);
+    uint64_t o1 = 0;
+    uint64_t o2 = 0;
+    threeos_storage_add_object("d1.glb", "d1.glb", &o1);
+    threeos_storage_add_object("d2.glb", "d2.glb", &o2);
+    threeos_storage_set_god_root(o1, godA);
+    threeos_storage_set_god_root(o2, godA);
+    ThreeOS_Pose lay = identity_pose_at(0.f, 1.4f, 2.0f);
+    threeos_storage_layout_god(godA, &lay);
+
+    auto fill_hand = [](ThreeOS_HandSample* h, float x, float y, float z, int primary) {
+      *h = ThreeOS_HandSample{};
+      h->tracked = 1;
+      h->tip_flags = 0x1Fu;
+      h->thumb_tip = {x, y, z};
+      h->index_tip = {x + 0.02f, y, z};
+      h->index_proximal = {x, y, z};
+      h->palm_mode = THREEOS_PALM_DOWN;
+      h->palm_mode_valid = 1;
+      h->primary_pressed = primary ? 1u : 0u;
+      h->primary_value = primary ? 1.f : 0.f;
+    };
+
+    ThreeOS_HandSample L{};
+    ThreeOS_HandSample R{};
+    fill_hand(&R, 0.25f, 1.2f, -0.25f, 1);
+    threeos_interaction_set_hands(&L, &R);
+
+    ThreeOS_InteropInputFrame vf{};
+    vf.frame_index = 11000;
+    vf.time_seconds = 90.0;
+    vf.tracking_flags =
+        THREEOS_TRACK_HEAD | THREEOS_TRACK_LEFT_AIM | THREEOS_TRACK_RIGHT_AIM;
+    vf.head = identity_pose_at(0.f, 1.6f, 0.f);
+    vf.head.orientation = {0.f, 0.f, 0.f, 1.f};
+    vf.right_aim = identity_pose_at(0.25f, 1.2f, -0.25f);
+    ThreeOS_InteropTransformDelta vd{};
+    threeos_tick(&vf, &vd);
+
+    ThreeOS_VoodooFieldParams fp{};
+    threeos_voodoo_get_field_params(&fp);
+    ThreeOS_VoodooSession sess{};
+    threeos_voodoo_get_session(1, &sess);
+    const float rest_x = sess.far_bb.pose.position.x;
+    const float rest_y = sess.far_bb.pose.position.y;
+    const float rest_z = sess.far_bb.pose.position.z;
+    ThreeOS_Centroid ca{};
+    for (uint32_t i = 0; i < threeos_centroid_count(); ++i) {
+      ThreeOS_Centroid cx{};
+      threeos_centroid_get(i, &cx);
+      if (cx.id == godA) {
+        ca = cx;
+        break;
+      }
+    }
+    const float gain_h = fp.field_radius_m / fp.arm_reach_m;
+    const float gain_v = fp.field_height_m / fp.arm_reach_m;
+    const float sx = (ca.position.x - rest_x) / gain_h;
+    const float sy = (ca.position.y - rest_y) / gain_v;
+    const float sz = (ca.position.z - rest_z) / gain_h;
+    fill_hand(&R, 0.25f + sx, 1.2f + sy, -0.25f + sz, 1);
+    vf.right_aim = identity_pose_at(0.25f + sx, 1.2f + sy, -0.25f + sz);
+    for (int i = 0; i < 22; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    fill_hand(&R, 0.25f + sx, 1.2f + sy, -0.25f + sz, 0);
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    threeos_tick(&vf, &vd);
+
+    ok = expect_eq("gdrag.portal1", threeos_voodoo_portal_count(), 1u) && ok;
+    ThreeOS_VoodooPortal portal{};
+    threeos_voodoo_get_portal(0, &portal);
+    ok = expect_eq("gdrag.ghosts", portal.ghost_count >= 2u ? 1u : 0u, 1u) && ok;
+
+    uint64_t ghost_ent = 0;
+    float ghost_scale = 1.f;
+    ThreeOS_Pose far0{};
+    ThreeOS_Pose ghost_near0{};
+    for (uint32_t gi = 0; gi < portal.ghost_count; ++gi) {
+      ThreeOS_VoodooGhost g{};
+      threeos_voodoo_get_portal_ghost(portal.id, gi, &g);
+      if (g.is_parent_box == 0) {
+        ghost_ent = g.entity_id;
+        ghost_scale = g.scale;
+        far0 = g.far_pose;
+        ghost_near0 = g.near_pose;
+        break;
+      }
+    }
+    ok = expect_eq("gdrag.has_ent", ghost_ent != 0 ? 1u : 0u, 1u) && ok;
+    threeos_selection_set(ghost_ent);
+
+    const float nx = portal.near_bb.pose.position.x;
+    const float ny = portal.near_bb.pose.position.y;
+    const float nz = portal.near_bb.pose.position.z;
+    ok = expect_eq("gdrag.portal_at",
+                   threeos_voodoo_portal_at_near_point(nx, ny, nz) == portal.id ? 1u : 0u, 1u) &&
+         ok;
+    ok = expect_eq("gdrag.portal_for",
+                   threeos_voodoo_portal_for_ghost(ghost_ent) == portal.id ? 1u : 0u, 1u) &&
+         ok;
+
+    // Cursor = tip + forward(7") + up(3") + right-hand lateral(4"). With identity head
+    // (floor fwd +Z, right +X): tip = target_cursor - (0.1016, 0.0762, 0.1778).
+    const float tip_dx = 0.1016f;
+    const float tip_dy = 0.0762f;
+    const float tip_dz = 0.1778f;
+
+    // --- Direct grab: cursor on the near ghost → 1:1 follow; no velocity sticks ---
+    {
+      const float dtip_x = ghost_near0.position.x - tip_dx;
+      const float dtip_y = ghost_near0.position.y - tip_dy;
+      const float dtip_z = ghost_near0.position.z - tip_dz;
+      fill_hand(&R, dtip_x, dtip_y, dtip_z, 1);
+      threeos_interaction_set_hands(&L, &R);
+      vf.right_aim = identity_pose_at(dtip_x, dtip_y, dtip_z);
+      vf.frame_index++;
+      vf.time_seconds += 0.016;
+      threeos_tick(&vf, &vd);
+      ok = expect_eq("gdrag.direct_begin",
+                     threeos_voodoo_ghost_drag_begin(1, ghost_ent) == 0 ? 1u : 0u, 1u) &&
+           ok;
+      const float move = 0.04f;
+      fill_hand(&R, dtip_x + move, dtip_y, dtip_z, 1);
+      vf.right_aim = identity_pose_at(dtip_x + move, dtip_y, dtip_z);
+      for (int i = 0; i < 8; ++i) {
+        threeos_interaction_set_hands(&L, &R);
+        vf.frame_index++;
+        vf.time_seconds += 1.0 / 72.0;
+        threeos_tick(&vf, &vd);
+      }
+      ThreeOS_VoodooDragArrow darrow{};
+      threeos_voodoo_get_ghost_drag_arrow(1, &darrow);
+      ok = expect_eq("gdrag.direct_no_arrow", darrow.active, 0u) && ok;
+      ThreeOS_VoodooGhost g_direct{};
+      for (uint32_t gi = 0; gi < threeos_voodoo_portal_ghost_count(portal.id); ++gi) {
+        ThreeOS_VoodooGhost g{};
+        threeos_voodoo_get_portal_ghost(portal.id, gi, &g);
+        if (g.entity_id == ghost_ent) {
+          g_direct = g;
+          break;
+        }
+      }
+      ok = expect_eq("gdrag.direct_follow_x",
+                     std::fabs(g_direct.near_pose.position.x - (ghost_near0.position.x + move)) <
+                             0.015f
+                         ? 1u
+                         : 0u,
+                     1u) &&
+           ok;
+      // Snap targeting uses near ghost pose but must not teleport the far real onto the ghost.
+      {
+        ThreeOS_WorkspaceItem wi{};
+        bool found = false;
+        for (uint32_t ii = 0; ii < threeos_storage_item_count(); ++ii) {
+          threeos_storage_get_item(ii, &wi);
+          if (wi.entity_id == ghost_ent) {
+            found = true;
+            break;
+          }
+        }
+        const float dxn = wi.pose.position.x - portal.near_bb.pose.position.x;
+        const float dzn = wi.pose.position.z - portal.near_bb.pose.position.z;
+        const float dxf = wi.pose.position.x - portal.far_bb.pose.position.x;
+        const float dzf = wi.pose.position.z - portal.far_bb.pose.position.z;
+        const float near_d = std::sqrt(dxn * dxn + dzn * dzn);
+        const float far_d = std::sqrt(dxf * dxf + dzf * dzf);
+        ok = expect_eq("gdrag.direct_far_stays_far",
+                       (found && far_d + 0.05f < near_d) ? 1u : 0u, 1u) &&
+             ok;
+        ok = expect_eq("gdrag.direct_far_pose_ok",
+                       (std::fabs(g_direct.far_pose.position.x - wi.pose.position.x) < 0.02f &&
+                        std::fabs(g_direct.far_pose.position.z - wi.pose.position.z) < 0.02f)
+                           ? 1u
+                           : 0u,
+                       1u) &&
+             ok;
+      }
+      threeos_voodoo_ghost_drag_end(1, 1);
+      // Refresh ghost_near0 / far0 after direct drag.
+      for (uint32_t gi = 0; gi < threeos_voodoo_portal_ghost_count(portal.id); ++gi) {
+        ThreeOS_VoodooGhost g{};
+        threeos_voodoo_get_portal_ghost(portal.id, gi, &g);
+        if (g.entity_id == ghost_ent) {
+          ghost_near0 = g.near_pose;
+          far0 = g.far_pose;
+          ghost_scale = g.scale;
+          break;
+        }
+      }
+    }
+
+    // --- Velocity stick: cursor inside near BB but outside the ghost glyph ---
+    float stick_cx = nx;
+    float stick_cy = ny;
+    float stick_cz = nz;
+    {
+      const float gdx = stick_cx - ghost_near0.position.x;
+      const float gdy = stick_cy - ghost_near0.position.y;
+      const float gdz = stick_cz - ghost_near0.position.z;
+      const float gd = std::sqrt(gdx * gdx + gdy * gdy + gdz * gdz);
+      const float grab_r = 0.09f * std::max(ghost_scale, 0.15f) + 0.02f;
+      if (gd < grab_r) {
+        // Nudge toward a near-BB corner so we are clearly outside the glyph.
+        stick_cx = nx + portal.near_bb.extents.x * 0.35f;
+        stick_cy = ny + portal.near_bb.extents.y * 0.25f;
+        stick_cz = nz;
+      }
+    }
+    const float tip_x = stick_cx - tip_dx;
+    const float tip_y = stick_cy - tip_dy;
+    const float tip_z = stick_cz - tip_dz;
+    fill_hand(&R, tip_x, tip_y, tip_z, 1);
+    threeos_interaction_set_hands(&L, &R);
+    vf.right_aim = identity_pose_at(tip_x, tip_y, tip_z);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    threeos_tick(&vf, &vd);
+    ThreeOS_PointCursor cur{};
+    threeos_interaction_get_cursor(1, &cur);
+    ok = expect_eq("gdrag.cursor_in",
+                   threeos_voodoo_point_in_near_bb(cur.position.x, cur.position.y, cur.position.z),
+                   1u) &&
+         ok;
+    ok = expect_eq("gdrag.begin", threeos_voodoo_ghost_drag_begin(1, ghost_ent) == 0 ? 1u : 0u,
+                   1u) &&
+         ok;
+    ok = expect_eq("gdrag.active", threeos_voodoo_ghost_drag_active(1), 1u) && ok;
+
+    threeos_voodoo_get_portal(0, &portal);
+    const float far_ext_x_park = portal.far_bb.extents.x;
+    const float near_ext_x_park = portal.near_bb.extents.x;
+    const float scale_park = ghost_scale;
+
+    // Stick +0.08 m in X (past deadzone) for several frames → far should move ~stick/scale.
+    fill_hand(&R, tip_x + 0.08f, tip_y, tip_z, 1);
+    vf.right_aim = identity_pose_at(tip_x + 0.08f, tip_y, tip_z);
+    for (int i = 0; i < 36; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+
+    ThreeOS_VoodooDragArrow blue{};
+    threeos_voodoo_get_ghost_drag_arrow(1, &blue);
+    ok = expect_eq("gdrag.arrow_active", blue.active, 1u) && ok;
+
+    ThreeOS_VoodooGhost g_after{};
+    for (uint32_t gi = 0; gi < threeos_voodoo_portal_ghost_count(portal.id); ++gi) {
+      ThreeOS_VoodooGhost g{};
+      threeos_voodoo_get_portal_ghost(portal.id, gi, &g);
+      if (g.entity_id == ghost_ent) {
+        g_after = g;
+        break;
+      }
+    }
+    const float far_dx = g_after.far_pose.position.x - far0.position.x;
+    ok = expect_eq("gdrag.far_moved", std::fabs(far_dx) > 0.02f ? 1u : 0u, 1u) && ok;
+    // Ghost scale < 1 → far travel exceeds near stick (~0.08); allow some slack.
+    if (ghost_scale < 0.95f) {
+      ok = expect_eq("gdrag.far_amplified", std::fabs(far_dx) > 0.05f ? 1u : 0u, 1u) && ok;
+    }
+
+    // Drive further so the real would leave the parked far BB — far+near grow at
+    // lock ratio; ghost scale stays put; near pose stays inside the near OBB.
+    fill_hand(&R, tip_x + 0.35f, tip_y, tip_z, 1);
+    vf.right_aim = identity_pose_at(tip_x + 0.35f, tip_y, tip_z);
+    for (int i = 0; i < 72; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    threeos_voodoo_get_portal(0, &portal);
+    for (uint32_t gi = 0; gi < threeos_voodoo_portal_ghost_count(portal.id); ++gi) {
+      ThreeOS_VoodooGhost g{};
+      threeos_voodoo_get_portal_ghost(portal.id, gi, &g);
+      if (g.entity_id == ghost_ent) {
+        g_after = g;
+        break;
+      }
+    }
+    ok = expect_eq("gdrag.far_bb_grew",
+                   portal.far_bb.extents.x > far_ext_x_park + 1e-3f ? 1u : 0u, 1u) &&
+         ok;
+    ok = expect_eq("gdrag.scale_locked",
+                   std::fabs(g_after.scale - scale_park) < 1e-3f ? 1u : 0u, 1u) &&
+         ok;
+    ok = expect_eq("gdrag.near_bb_grew",
+                   portal.near_bb.extents.x > near_ext_x_park + 1e-4f ? 1u : 0u, 1u) &&
+         ok;
+    ok = expect_eq("gdrag.near_in_bb",
+                   threeos_voodoo_point_in_near_bb(g_after.near_pose.position.x,
+                                                  g_after.near_pose.position.y,
+                                                  g_after.near_pose.position.z),
+                   1u) &&
+         ok;
+
+    // Yellow far twin + blue near arrow both active during velocity ghost drag.
+    ThreeOS_VoodooDragArrow yellow{};
+    threeos_voodoo_get_drag_arrow(1, &yellow);
+    threeos_voodoo_get_ghost_drag_arrow(1, &blue);
+    ok = expect_eq("gdrag.yellow_far_arrow", yellow.active, 1u) && ok;
+    ok = expect_eq("gdrag.blue_near_arrow", blue.active, 1u) && ok;
+
+    threeos_voodoo_ghost_drag_end(1, 1);
+    ok = expect_eq("gdrag.ended", threeos_voodoo_ghost_drag_active(1), 0u) && ok;
+    threeos_voodoo_get_portal(0, &portal);
+    for (uint32_t gi = 0; gi < threeos_voodoo_portal_ghost_count(portal.id); ++gi) {
+      ThreeOS_VoodooGhost g{};
+      threeos_voodoo_get_portal_ghost(portal.id, gi, &g);
+      if (g.entity_id == ghost_ent) {
+        g_after = g;
+        break;
+      }
+    }
+    ok = expect_eq("gdrag.near_in_bb_after_end",
+                   threeos_voodoo_point_in_near_bb(g_after.near_pose.position.x,
+                                                  g_after.near_pose.position.y,
+                                                  g_after.near_pose.position.z),
+                   1u) &&
+         ok;
+
+    // Open-air summon: pinch outside near BB; far extents stay put.
+    const float far_ext_x0 = portal.far_bb.extents.x;
+    const float far_ext_y0 = portal.far_bb.extents.y;
+    const float far_ext_z0 = portal.far_bb.extents.z;
+    const float pinch_x = portal.near_bb.pose.position.x + portal.near_bb.extents.x * 0.5f + 0.35f;
+    const float pinch_y = portal.near_bb.pose.position.y;
+    const float pinch_z = portal.near_bb.pose.position.z;
+    ok = expect_eq("gdrag.summon_out",
+                   threeos_voodoo_point_in_near_bb(pinch_x, pinch_y, pinch_z) == 0u ? 1u : 0u,
+                   1u) &&
+         ok;
+    ok = expect_eq("gdrag.summon_ok",
+                   threeos_voodoo_summon(ghost_ent, pinch_x, pinch_y, pinch_z) == 0 ? 1u : 0u,
+                   1u) &&
+         ok;
+    ok = expect_eq("gdrag.summon_gone",
+                   threeos_voodoo_portal_for_ghost(ghost_ent) == 0 ? 1u : 0u, 1u) &&
+         ok;
+    threeos_voodoo_get_portal(0, &portal);
+    ok = expect_eq("gdrag.temp_no_grow_x",
+                   std::fabs(portal.far_bb.extents.x - far_ext_x0) < 1e-4f ? 1u : 0u, 1u) &&
+         ok;
+    ok = expect_eq("gdrag.temp_no_grow_y",
+                   std::fabs(portal.far_bb.extents.y - far_ext_y0) < 1e-4f ? 1u : 0u, 1u) &&
+         ok;
+    ok = expect_eq("gdrag.temp_no_grow_z",
+                   std::fabs(portal.far_bb.extents.z - far_ext_z0) < 1e-4f ? 1u : 0u, 1u) &&
+         ok;
+
+    // Fast-lerp (~0.20 s) to pinch — advance ticks then check destination.
+    for (int i = 0; i < 24; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    ThreeOS_WorkspaceItem item{};
+    bool found = false;
+    for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+      threeos_storage_get_item(i, &item);
+      if (item.entity_id == ghost_ent) {
+        found = true;
+        break;
+      }
+    }
+    ok = expect_eq("gdrag.summon_pose", found ? 1u : 0u, 1u) && ok;
+    if (found) {
+      ok = expect_eq("gdrag.summon_x",
+                     std::fabs(item.pose.position.x - pinch_x) < 0.02f ? 1u : 0u, 1u) &&
+           ok;
+    }
+
+    std::printf("OK   ghost drag summon temp-no-grow\n");
   }
 
   threeos_shutdown();

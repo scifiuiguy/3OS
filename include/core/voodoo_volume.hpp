@@ -85,10 +85,58 @@ struct VoodooPortal {
   EntityId temporary_centroid_id = 0;
   /// Collision cohort: non-overlapping parks start alone; bumps merge groups.
   uint64_t group_id = 0;
+  /// Park-time near_w/far_w; kept constant so near grows with far (no live ghost shrink).
+  float lock_scale = 1.f;
   std::vector<VoodooGhost> ghosts{};
   Vec3 bump_from{};
   Vec3 bump_to{};
   float bump_t = 1.f;  // 0..1; 1 = settled
+};
+
+/// Task 6.5: live ghost-scale drag (blue stick channel, independent of yellow voodoo session).
+enum class GhostDragKind : uint32_t {
+  /// Already a portal ghost — clamp to near BB + expand far BB.
+  Committed = 0,
+  /// Near-field real auditioning: ghost only while inside; exit destroys ghost; release commits.
+  Audition = 1,
+};
+
+struct GhostDragState {
+  bool active = false;
+  GhostDragKind kind = GhostDragKind::Committed;
+  /// Audition only: currently showing a ghost inside a portal (false = outside, no ghost).
+  bool audition_inside = false;
+  /// Cursor was inside the glyph (near real or near ghost) at grab → 1:1 translation sync.
+  bool direct_follow = false;
+  /// Object position − cursor at grab (preserved so the glyph does not snap to the tip).
+  Vec3 grab_offset{};
+  uint32_t hand = 0;
+  EntityId entity_id = 0;
+  uint64_t portal_id = 0;
+  float scale = 1.f;
+  Pose start_hand{};
+  Pose start_far{};
+  Vec3 velocity{};
+  bool have_start_hand = false;
+  bool deadzone_armed = false;
+  bool deadzone_left_once = false;
+  bool clamped = false;
+  /// Near-BB (blue) stick viz — hand-space stick at the near grab origin.
+  VoodooDragArrow arrow{};
+  /// Far-BB (yellow) twin — same stick mapped through portal scale into far space.
+  VoodooDragArrow far_arrow{};
+  /// Host policy: blue velocity stick only while auditioning inside a near BB or
+  /// committed with a live portal ghost (not after pull-out / far-only drag).
+  bool near_stick_visible = false;
+};
+
+/// Fast visual travel for summon / insert / cross-portal.
+struct PoseLerpState {
+  bool active = false;
+  EntityId entity_id = 0;
+  Pose from{};
+  Pose to{};
+  float t = 0.f;  // 0..1
 };
 
 struct VoodooSessionState {
@@ -127,6 +175,9 @@ class VoodooVolumeEngine {
   static constexpr float kBumpDurationS = 0.22f;
   static constexpr float kNearClearGapM = 0.04f;
   static constexpr float kGlyphHalfM = 0.05f;  // encapsulation pad (~GlyphSizeM/2)
+  /// Cursor-in-glyph radius for direct grab (near reals; ghosts multiply by max(scale, 0.15)).
+  static constexpr float kDirectGrabRadiusM = 0.09f;
+  static constexpr float kSummonLerpS = 0.20f;
 
   const VoodooFieldParams& params() const { return params_; }
   bool set_params(const VoodooFieldParams& p);
@@ -143,6 +194,47 @@ class VoodooVolumeEngine {
   bool dismiss_portal(uint64_t portal_id);
   /// Point-in-any-open-near-BB (for cursor tint).
   bool point_in_any_near_bb(const Vec3& p) const;
+  /// Portal whose open near BB contains `p`, or 0 if none.
+  uint64_t portal_at_near_point(const Vec3& p) const;
+  /// Portal that currently owns a non-parent ghost for `entity_id`, or 0.
+  uint64_t portal_for_ghost_entity(EntityId entity_id) const;
+
+  /// Task 6.5 ghost-scale / audition drag (palm ignored; host begins on selected hold).
+  bool ghost_drag_begin(uint32_t hand, EntityId entity_id, const Pose& hand_pose, Workspace& workspace);
+  void ghost_drag_tick(uint32_t hand, const Pose& hand_pose, bool hand_valid, const Pose& head,
+                       bool head_valid, float dt_seconds, Workspace& workspace);
+  /// After ghost_drag_tick: velocity stick arrows (direct / near / far policy).
+  void refresh_ghost_drag_arrows(uint32_t hand, const Pose& hand_pose, const Pose& head,
+                                 bool head_valid);
+  /// Commit audition when release is inside a near BB; cancel audition if outside.
+  void ghost_drag_end(uint32_t hand, bool release_inside_near_bb, Workspace& workspace);
+  bool ghost_drag_active(uint32_t hand) const;
+  const GhostDragState& ghost_drag_state(uint32_t hand) const {
+    static const GhostDragState kEmpty{};
+    return hand < 2u ? ghost_drags_[hand] : kEmpty;
+  }
+  const VoodooDragArrow& ghost_drag_arrow(uint32_t hand) const;
+  /// Far-space twin of the blue ghost-drag arrow (yellow host viz).
+  const VoodooDragArrow& ghost_drag_far_arrow(uint32_t hand) const;
+  EntityId ghost_drag_entity(uint32_t hand) const;
+  GhostDragKind ghost_drag_kind(uint32_t hand) const;
+
+  /// Selected ghost → open-air / cross-portal; selected near-real → insert into near BB.
+  /// Destination real pose fast-lerps; does not grow far BB via temp on open-air summon.
+  bool summon_selected(EntityId entity_id, const Vec3& pinch_world, Workspace& workspace);
+
+  /// Remove non-parent content ghosts for `entity_id` from all portals (e.g. after box insert).
+  void remove_content_ghost(EntityId entity_id);
+
+  /// Seat a content ghost just above another box ghost in the same portal (near snap hold).
+  bool apply_near_ghost_snap_hold(EntityId object_id, EntityId box_id, float hold_above_m,
+                                  Workspace& workspace);
+
+  /// Keep ghost far poses aligned with workspace; prune/alloc by far-BB membership.
+  void sync_ghosts_from_workspace(const Workspace& workspace);
+
+  void tick_pose_lerps(float dt_seconds, Workspace& workspace);
+  bool pose_lerp_active(EntityId entity_id) const;
 
   Vec3 near_extents_m() const {
     return Vec3{params_.near_bb_voxels_x * params_.voxel_size_m,
@@ -164,6 +256,13 @@ class VoodooVolumeEngine {
 
   /// Advance bump-lerps for all portals (call once per tick after hands).
   void tick_portals(float dt_seconds, const Pose& head, bool head_valid);
+
+  /// Abort an in-flight far/near create without parking (e.g. object drag took the hand).
+  void cancel_open_session(uint32_t hand);
+
+  /// After a workspace insert/put-away: drop ghosts/lerps for `entity_id` and dismiss
+  /// any portal whose snap root was that entity. Returns temporary centroid ids to clear.
+  std::vector<EntityId> on_entity_inserted(EntityId entity_id);
 
  private:
   struct HandRuntime {
@@ -196,9 +295,34 @@ class VoodooVolumeEngine {
   /// Recompute ghost near poses from current far/near BB (after seat / bump).
   void refresh_ghost_near_poses(VoodooPortal& portal) const;
   static Vec3 near_bb_bottom_center(const VoodooBoundingBox& bb);
-  /// Pin newest; bump its group along the front↔behind ellipse; merge groups on contact.
-  /// Returns false if the active group cannot clear (full ring) — caller rolls back.
+  bool find_ghost_mut(EntityId entity_id, VoodooPortal** out_portal, VoodooGhost** out_ghost);
+  bool find_ghost(EntityId entity_id, const VoodooPortal** out_portal,
+                  const VoodooGhost** out_ghost) const;
+  Pose map_far_to_near_pose(const VoodooPortal& portal, const Pose& far_pose, float scale) const;
+  Pose map_near_to_far_pose(const VoodooPortal& portal, const Pose& near_pose, float scale) const;
+  Vec3 clamp_point_to_near_obb(const VoodooPortal& portal, const Vec3& p) const;
+  void update_ghost_drag_arrow(uint32_t hand, const Pose& hand_pose, const Pose& head,
+                               bool head_valid, const Vec3& stick);
+  bool ensure_ghost_in_portal(VoodooPortal& portal, EntityId entity_id, const Workspace& workspace);
+  void remove_ghost_from_other_portals(uint64_t keep_portal_id, EntityId entity_id);
+  /// Grow/recenter far BB around content; grow near by lock_scale.
+  /// Always min-clears sibling near BBs (pinned bumper stays put). `settle_bump`
+  /// recenters the far BB; live drag expands about a fixed far center.
+  void refit_far_bb_to_content_ghosts(VoodooPortal& portal, Workspace& workspace,
+                                     bool settle_bump);
+  /// Push in-field objects out of an open near BB footprint (XZ).
+  void bump_near_field_clutter(const VoodooPortal& portal, Workspace& workspace);
+  static float portal_near_footprint_radius(const VoodooBoundingBox& near_bb);
+  void begin_pose_lerp(EntityId entity_id, const Pose& to, Workspace& workspace);
+  void audition_enter_portal(GhostDragState& gd, VoodooPortal& portal, const Pose& hand_pose,
+                             Workspace& workspace);
+  void audition_exit_portal(GhostDragState& gd, const Pose& hand_pose, Workspace& workspace);
+  /// Pin `pinned_index` as bumper (pose/yaw fixed); other near BBs in its group orbit clear.
+  /// Merge groups on contact. Returns false if the group cannot clear (full ring) — caller rolls back.
   bool bump_resolve(const Pose& head, bool head_valid, size_t pinned_index);
+  /// Resize hygiene: push overlapping siblings just far enough in XZ to clear the
+  /// pinned bumper's footprint. No ellipse snap / orbit walk (avoids mid-drag runaway).
+  void bump_siblings_min_clear(size_t pinned_index);
   Pose orbit_near_to_hand(const Pose& seed, const Pose& head, bool head_valid,
                           const Pose& hand_pose, bool hand_valid, uint32_t hand) const;
   float near_footprint_radius_m() const;
@@ -227,12 +351,18 @@ class VoodooVolumeEngine {
   static Vec3 quat_rotate_yaw(const Quat& q, const Vec3& v);
   static Quat quat_inverse_yaw(const Quat& q);
 
+  static constexpr float kGhostDragGain = 10.f;  // match kinematics gain (1/s)
+
   VoodooFieldParams params_{};
   HandRuntime hands_[2]{};
+  GhostDragState ghost_drags_[2]{};
+  std::vector<PoseLerpState> pose_lerps_{};
   float deadzone_m_ = kDefaultDeadzoneM;
   std::vector<VoodooPortal> portals_{};
   uint64_t next_portal_id_ = 1;
   uint64_t next_group_id_ = 1;
+  Pose last_head_{};
+  bool last_head_valid_ = false;
 };
 
 }  // namespace threeos

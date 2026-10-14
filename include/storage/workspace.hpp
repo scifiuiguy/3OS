@@ -105,14 +105,23 @@ class Workspace {
   /// `pose` should be the free/escape kinematic pose (not the display hold).
   /// Once snapped, stays on that Box until `pose` leaves its snap radius
   /// (ignores nearer neighbors — prevents hold-pose cascade in dense stacks).
+  /// When `apply_pose` is false, only snap state is updated (ghost-scale drag targets
+  /// with a near pose must not teleport the far workspace entry onto the ghost).
   /// Returns true if snap enter/exit edge occurred.
-  bool update_snap(EntityId object_id, const Pose& pose);
+  bool update_snap(EntityId object_id, const Pose& pose, bool apply_pose = true);
+
+  /// Arm snap to a concrete box without pose search (ghost near-field targeting).
+  /// Does not move the object pose. Returns false if the pair is invalid.
+  bool arm_snap_to_box(EntityId object_id, EntityId box_id);
 
   const SnapState& snap() const { return snap_; }
   void clear_snap();
 
   /// Commit insert if snap pending. Queues FS event; hides object from field.
   bool commit_insert(std::string* err);
+
+  /// Insert `object_id` into `box_id` without requiring a prior snap (cross-proxy select-drop).
+  bool insert_into(EntityId object_id, EntityId box_id, std::string* err);
 
   /// Roll back a failed FS ack (restore object to field).
   bool rollback_insert(EntityId object_id, EntityId box_id);

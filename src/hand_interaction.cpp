@@ -46,12 +46,13 @@ PalmMode HandInteractionEngine::quantize_palm(const Vec3& palm_normal_world, Pal
                                               bool has_previous) {
   const Vec3 n = normalize_or(palm_normal_world, Vec3{0.f, 1.f, 0.f});
   const float y = n.y;
-  // Palm-down while pinching is rarely a flat -Y; ±0.70 made Down almost
-  // unreachable and left pinches stuck in Sideways (or flickering dismiss).
+  // Palm-down while pinching is rarely a flat -Y; -0.40 was a false-positive magnet
+  // for ordinary sideways reaches. Enter Down only when clearly floor-facing; keep
+  // mild hysteresis so intentional Down does not flicker off mid-hold.
   constexpr float kEnterUp = 0.55f;
   constexpr float kLeaveUp = 0.30f;
-  constexpr float kEnterDown = -0.40f;
-  constexpr float kLeaveDown = -0.20f;
+  constexpr float kEnterDown = -0.55f;
+  constexpr float kLeaveDown = -0.35f;
 
   if (y >= kEnterUp) {
     return PalmMode::Up;
@@ -194,12 +195,16 @@ void HandInteractionEngine::tick_hand(uint32_t hand, const Pose& head, bool head
     rt.recovering_scale = false;
     rt.scale = 1.f;
     rt.last_time = time_seconds;
+    rt.have_intent_palm_latch = false;
+    rt.pending_intents = {};
     return;
   }
 
-  PalmMode palm = s.palm_mode_valid ? s.palm_mode
-                                    : quantize_palm(s.palm_normal, rt.last_palm, true);
+  PalmMode palm = s.palm_mode_valid
+                      ? s.palm_mode
+                      : quantize_palm(s.palm_normal, rt.last_palm, rt.have_palm_history);
   rt.last_palm = palm;
+  rt.have_palm_history = true;
 
   float d = pinch_thresh_m_;
   const PinchChannel drive = pick_driving_channel(s, pinch_thresh_m_, &d);
@@ -220,6 +225,17 @@ void HandInteractionEngine::tick_hand(uint32_t hand, const Pose& head, bool head
   const bool ternary_edge = s.ternary_pressed && !rt.prev_ternary;
   const bool any_pressed = s.primary_pressed || s.secondary_pressed || s.ternary_pressed;
   const bool press_edge = primary_edge || secondary_edge || ternary_edge;
+
+  // Freeze palm for intent routing at first press edge so mid-hold tilt cannot
+  // flip a telekinesis drag into VoodooSnap (or the reverse).
+  if (!any_pressed) {
+    rt.have_intent_palm_latch = false;
+  } else if (!rt.have_intent_palm_latch) {
+    rt.intent_palm_latched = palm;
+    rt.have_intent_palm_latch = true;
+  }
+  const PalmMode intent_palm =
+      rt.have_intent_palm_latch ? rt.intent_palm_latched : palm;
 
   double dt = 0.0;
   if (rt.last_time > 0.0) {
@@ -248,7 +264,7 @@ void HandInteractionEngine::tick_hand(uint32_t hand, const Pose& head, bool head
   // Intents: accumulate for this hand; tick() picks the preferred hand afterward.
   InteractionIntents local{};
   local.handedness = hand;
-  local.active_palm = palm;
+  local.active_palm = intent_palm;
   if (s.primary_pressed) {
     local.flags |= InteractionIntentFlags::PrimaryHeld;
     local.active_channel = PinchChannel::Primary;
@@ -257,9 +273,9 @@ void HandInteractionEngine::tick_hand(uint32_t hand, const Pose& head, bool head
     }
     // Quest OS steals palm-up index pinch — leave Up unmapped for app intents.
     // Sideways hold → telekinesis drag; palm-down + primary → snap voodoo.
-    if (palm == PalmMode::Sideways) {
+    if (intent_palm == PalmMode::Sideways) {
       local.flags |= InteractionIntentFlags::DragActive;
-    } else if (palm == PalmMode::Down) {
+    } else if (intent_palm == PalmMode::Down) {
       local.flags |= InteractionIntentFlags::VoodooSnap;
     }
   }
@@ -268,7 +284,7 @@ void HandInteractionEngine::tick_hand(uint32_t hand, const Pose& head, bool head
     if (local.active_channel == PinchChannel::None) {
       local.active_channel = PinchChannel::Secondary;
     }
-    if (palm == PalmMode::Down) {
+    if (intent_palm == PalmMode::Down) {
       local.flags |= InteractionIntentFlags::VoodooFree;
     }
   }

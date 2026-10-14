@@ -58,7 +58,8 @@ struct HandSample {
   Vec3 ring_tip{};
   Vec3 palm_normal{};  // OpenXR world; used if palm_mode_valid == false
   bool palm_mode_valid = false;
-  PalmMode palm_mode = PalmMode::Down;
+  /// Neutral default — Down as default + hysteresis caused false VoodooSnap.
+  PalmMode palm_mode = PalmMode::Sideways;
   float primary_value = 0.f;    // 0..1 approach / trigger
   float secondary_value = 0.f;
   float ternary_value = 0.f;
@@ -76,12 +77,12 @@ struct PointCursor {
   float scale = 1.f;
   PinchChannel driving_channel = PinchChannel::None;
   float driving_distance_m = 0.f;
-  PalmMode palm_mode = PalmMode::Down;
+  PalmMode palm_mode = PalmMode::Sideways;
 };
 
 struct InteractionIntents {
   InteractionIntentFlags flags = InteractionIntentFlags::None;
-  PalmMode active_palm = PalmMode::Down;
+  PalmMode active_palm = PalmMode::Sideways;
   PinchChannel active_channel = PinchChannel::None;
   uint32_t handedness = 0;  // 0 left, 1 right, 2 none / mixed
 };
@@ -124,7 +125,11 @@ class HandInteractionEngine {
     float scale = 1.f;
     double last_time = 0.0;
     InteractionIntents pending_intents{};
-    PalmMode last_palm = PalmMode::Down;
+    PalmMode last_palm = PalmMode::Sideways;
+    bool have_palm_history = false;
+    /// Palm mode frozen at primary/secondary press edge until release (no mid-hold flips).
+    bool have_intent_palm_latch = false;
+    PalmMode intent_palm_latched = PalmMode::Sideways;
   };
 
   void tick_hand(uint32_t hand, const Pose& head, bool head_valid, double time_seconds);

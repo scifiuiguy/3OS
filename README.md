@@ -10,7 +10,7 @@ Johnny Mnemonic showed a 3D VR internet in 1995:
 
 This movie was shy of the mark, but it hinted at a 1990s sense of optimism toward 3D computer interfaces eventually becoming better, faster, and more efficient than 2D desktop equivalents. Obviously that didn't happen. YET. What happened to that optimism though?
 
-Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop PCs? Or did we simply stop investing in the VR industry for a decade after the dot-com bust, allowing mountains of incredible university research to collect dust in SIGCHI archives, never to be drawn upon again by modern industry titans?
+Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop PCs? Or did we stop investing in the VR industry for a decade after the dot-com bust, allowing mountains of incredible university research to collect dust in SIGCHI archives, never to be drawn upon again by modern industry titans? Until...
 
 ---
 
@@ -18,11 +18,13 @@ Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop P
 <details>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧊 What is 3OS?</summary>
 
-3OS (pronounced **"three-oh-ess"**) is a voxel-first operating system interface that attempts to take us back to our roots by drawing upon incredible 90s research (not Hollywood but actual excellent-yet-rarely-utilized university work - see the Prior Art section). It aims to be the first 3D interface that's faster than desktop PCs for enterprise teams. Target hardware is HMDs, holographic displays, on-prem edge VDI servers running surround-spectator monitors, and any other future hardware that enables stereoscopic depth visibility plus integration with legacy 2D screens.
+3OS (pronounced **"three-oh-ess"**) is inspired by cult classic sci-fi flicks like Johnny Mnemonic, The Matrix, Minority Report, Iron Man, and The Expanse, but it also grounds its efficacy in our rich history of HCI research.
 
-The 3OS endgame is to allow file management, version control, collaboration, communication, presentation, and all forms of complex multimedia development to coexist within a single 3D field supporting multiple simultaneous workspaces in the same room, controlled by one interface, powered by an on-prem server supporting up to 12 simultaneous users in any number of workspace groups as they all face the center of the room. 
+3OS is a voxel-first operating system interface that attempts to take us back to our roots by drawing largely upon nearly-forgotten 90s HCI studies (see the Prior Art section). It aims to be the first 3D interface that's faster than desktop PCs for enterprise teams using the HCI road less traveled. Target hardware is HMDs, holographic displays, on-prem edge VDI servers running surround-spectator monitors, and any other future hardware that enables stereoscopic depth visibility plus integration with legacy 2D screens.
 
-The 3OS Enterprise prototype is very specifically <b>NOT</b> a conference room. It's not for meetings. It's for simultaneous collaborative and solo development. One user can work in a solo workspace using the same space as 11 other users who are in a separate shared workspace. Target early adopters are teams of developers and artists in product dev, engineering, VFX, game dev, architecture, auto, aerospace, etc. 
+The 3OS endgame is to allow file management, version control, collaboration, communication, presentation, and all forms of complex multimedia development to coexist within a single 3D field (or collection of superimposed fields) supporting multiple simultaneous workspaces in the same room, controlled by one interface, powered by an on-prem server supporting up to 12 simultaneous users in any number of workspace groups as they all face the center of a room rather than facing a wall all day with their backs to each other. 
+
+The 3OS Enterprise Server prototype is very specifically <b>NOT</b> a conference room. It's not for meetings. It's for simultaneous collaborative and solo development. It can be used to present work progress, but a majority of the time is best dedicated to the 12 workers working in small teams together to complete a large range of tasks involving 3D assets. One user can work in a solo workspace using the same space as 11 other users who are in a separate shared workspace. Early adopters are teams of developers and artists in product dev, engineering, VFX, game dev, architecture, auto, aerospace, etc. 
 
 
 </details>
@@ -33,9 +35,13 @@ The 3OS Enterprise prototype is very specifically <b>NOT</b> a conference room. 
 <details>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🪟 WIMP is wimpy</summary>
 
-3OS rejects the default bias of legacy WIMP (Windows, Icons, Menus, and Pointers) and multi-touch paradigms that have been a crutch in modern XR for far too long. It aims to knock the dust off of the works of HCI giants whose volumetric contributions fly circles around WIMP, yet they got buried by the fervor of mobile era's obsession with minimalism. Minimalism has its place in consumer software. For enterprise, it's time to finally prove 90s 3D UI optimism was not misplaced.
+3OS rejects the default bias of legacy WIMP (Windows, Icons, Menus, and Pointers) and multi-touch paradigms that have been a crutch in modern XR for far too long. Legacy paradigms are supported for full real-time integration, but they are not the primary interface. 3OS aims to knock the dust off of the works of HCI giants whose volumetric contributions fly circles around WIMP, yet their research got buried by the fervor of the mobile era's obsession with minimalism. 
 
-The WIMP paradigm is a backwards compatibility tool in XR. It should not be front-and-center in any spatial computing OS. A VR or MR HMD that uses WIMP as its default metaphor set is like Windows 95 launching into a command line with no Desktop, no Start button, and no File Explorer, except at least the command line still brought extra speed for power users. WIMP interfaces do the opposite in XR, yet they're the ONLY OS interface in 2026, rather than a background legacy option. We cannot expect enterprise software suite companies to consider porting their robust systems into XR using stone tools.
+<b>Minimalism has its place in consumer software.</b> For enterprise, it's time to unbolt the training wheels of minimalism to prove that 90s 3D UI optimism was not misplaced.
+
+The WIMP paradigm is a backwards compatibility tool in XR. It should not be front-and-center in any spatial computing OS. A VR or MR HMD that uses WIMP as its default metaphor set is like Windows 95 launching into a command line with no Desktop, no Start button, and no File Explorer, except at least the command line still brought extra speed for power users. WIMP interfaces do the opposite in XR. Their primary value is familiarity comfort, but their incredible UX latency baggage comes with it. Even so, they're currently the ONLY XR OS interface available in 2026.
+
+We cannot expect enterprise software suite companies to consider porting their robust systems into XR using stone tools. Their customers want what's "cool" in sci-fi. Their customers want to be Iron Man, tossing holograms around the room. 3OS aims to prove they can have that dream in a way that makes them faster at their jobs, not slower.
 
 </details>
 
@@ -47,7 +53,7 @@ The WIMP paradigm is a backwards compatibility tool in XR. It should not be fron
 
 Instead of forcing users to aim virtual laser pointers at floating 2D windows, 3OS treats the entire environment as a high-capacity voxel field where the parameterized resolution defaults to a 3-inch voxel, the approximate size that satisfies high selection accuracy at rapid speed with 6DOF 10-finger hand motion (see the Trivariate validation below). The goal is to provide users a voxel grid representing all the subdivisions of 3D space in which they can hover, select, or otherwise interact with any voxel in under 0.25 seconds regardless of their body's distance away from that voxel. This is an impossible feat in all current spatial computing operating systems because of the false assumption that OS interfaces must use WIMP.
 
-At 3 inch voxel resolution and a default 50-foot radius from head pose to the grid's outer shell, the grid contains on the order of ~150 million voxels if the user is standing in a wide open field. Theoretically, it could be larger as some viewers have accurate parallax stereo vision up to several hundred feet, but 3-inch objects side-by-side shrink into uselessness via perspective long before that distance, thus 50ft is a decent parameterized ballpark limit.
+At 3 inch voxel resolution and a default 50-foot radius from head pose to the grid's outer shell, the grid contains on the order of ~15 million voxels if the user is standing in a wide open field. Theoretically, it could be larger as some viewers have accurate parallax stereo vision up to several hundred feet, but 3-inch objects side-by-side shrink into uselessness via perspective long before that distance, thus 50ft is a decent parameterized ballpark limit.
 
 3OS is built in OpenXR and intended as a module to plug into any spatial computing OS. It is fully open-source under the MIT license, and it does not replace existing OS infrastructure, since WIMP-based interfaces still need to be installed for backwards compatibility, just as Windows 95 couldn't launch without command line dialogs.
 
@@ -62,7 +68,7 @@ The 20-teens era of spatial OS design is the Xerox PARC era. The Windows 95 era 
 <details>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">⚠️ The Problem</summary>
 
-Software companies (Adobe, Autodesk, Salesforce, Intuit, Shopify, etc.) assess whether they should port their legacy platforms into a new OS frequently. Their software is typically web-browser first for cross-platform efficiency, but even with cross-platform apps, the most robust productivity tools in these apps typically run on the desktop version only.
+Software companies (Adobe, Autodesk, Epic, NVidia, etc.) assess whether they should port their legacy platforms into a new OS frequently. Their software is typically web-browser first for cross-platform efficiency, but even with cross-platform apps, the most robust productivity tools in these apps typically run on the desktop version only.
 
 **Why?**
 
@@ -70,19 +76,25 @@ These companies understand that touchscreens are more of an entertainment consum
 
 **Multi-touch interfaces...**
 
-1) ...are physically smaller. Shrinking the number of available interactive fragments reduces multitasking capability exponentially, hence why iOS requires developers to severely limit the number of user choices per screen controller.
+1) ...are physically smaller. Shrinking the number of available interactive fragments (especially when hands are constantly occluding some of them) reduces multitasking capability exponentially, hence why iOS requires developers to severely limit the number of user choices per screen controller.
 
 2) ...cannot compete with desktop interfaces due to mouse/keyboard blowing multi-touch out of the water on throughput.
 
-3) ...actively discourage manual raw data management by obfuscating direct data access, implying that some OS makers do not want the developer community thinking of touchscreens as capable of cannibalizing desktop/laptop sales through competitive levels of productivity. 
+3) ...actively discourage manual raw data management by obfuscating direct data access, implying that some OS makers do not want the developer community thinking of touchscreens (or other new platforms) as capable of cannibalizing desktop/laptop sales through competitive levels of productivity. 
 
 It follows, though, that if you INCREASE the number of interactive fragments (or voxels) instead of decreasing it, shortened total adjacency and multitasking capability should explode exponentially beyond the capability of the best desktop interfaces. Enterprise workers understand the simple virtue of multi-screen setups, but their value barely scratches the throughput surface of multiple screens times multiple layers of depth, IF we use those layers.
 
-Why then is the boot interface of EVERY XR OS patterned after Apple and Android? It implies "this is a platform that can't do the things your desktop PC can do." WindowsMR by Microsoft was a notable exception aesthetics-wise. Microsoft clearly recognized the problem, yet they failed to hone in on its linchpin: WIMP itself.
+### Why then is the boot interface of EVERY XR OS patterned after Apple and Android?
 
-If you try to complete nearly any run-of-the-mill office PC tasks on any XR OS, common features make progress so God-awfully slow that no enterprise company would ever consider porting their desktop feature sets into XR in the 2020s.
+The author of 3OS suspects it's primarily because companies like Meta and HTC hired the smartest people in the world on the subject of UI, and they were too smart for their own good. People who have their doctorates in HCI, bless their hearts, probably told everyone at these companies that raycast has 2X the throughput of any other option in XR, which is true, therefore everything BUT raycast is DOA. Case closed.
 
-XR has greater enterprise potential than desktop computers. Raw throughput capability will one day be proven to be king as soon as the right OS interface enables it to shine. AI voice-based interfaces are part of that story, but we can't always speak our work into a computer. Sometimes, work needs to be more private, even among colleagues in a shared office. We can't adopt XR in the office if the interaction model slows us to a crawl in these moments. Thus, XR must present an interface that is faster than desktop interfaces WITH OR WITHOUT an AI assistant.
+That case needs to be reopened. They were right about the data, but wrong about the conclusion. Raycast discourages bimanual interaction, so its 2X throughput is cancelled by nearly always being used one-hand-at-a-time, whereas volumetric isometric models feel effortless with two hands. Add to that the fact that raycast squashes the field to a plane, destroying the entire value proposition of XR as a productivity booster when it can only use 10% of its own adjacency and multitasking potential, and here we are 10 years after the launch of modern VR, and we still can't copy/paste two files into a folder at once.
+
+The author of 3OS doesn't blame anyone on the design teams at Meta or Apple or Steam or Microsoft. If the path to becoming Iron Man were easy to see, thousands of us would have built it and no one would care, because it was just too easy. But our best UI/UX scientists so far have followed in the footsteps of Steve Jobs and Jony Ive with their best efforts, which implies "this XR platform can't do the things your desktop PC can do."
+
+If you try to complete nearly any run-of-the-mill office PC tasks on any XR OS, common features make progress so God-awfully slow that no enterprise company would ever consider porting their desktop features into XR in the 2020s. They don't believe XR is viable for work because the interface told them it's not.
+
+XR has greater enterprise potential than desktop computers. This will be obvious as soon as the right OS interface enables the platform to shine with all of its advantages. AI voice-based interfaces are part of that story, but we can't always speak our work into a computer. Sometimes, work needs to be more private, even among colleagues in a shared office. We can't adopt XR in the office if the interaction model slows us to a crawl in these moments. Thus, XR must present an interface that is faster than desktop interfaces WITH OR WITHOUT an AI assistant.
 
 
 </details>
@@ -139,7 +151,7 @@ The Trivariate Target paper by Grossman and Balakrishnan was instrumental in det
 
 **Derived Interaction Volume Parameters (Body Anchor/Height/Offset):**
 
-With palms up or down, the hands define the bottom plane of the ideal voodoo volume bounding box in this navel-level position. The center of the bounding box is approximately 12 inches forward of the navel, allowing the user to place fingertips in the center of the box's bottom plane simply by touching their fingertips together with both hands. This is not a gesture to instantiate the box. It's merely an imaginary reference to show approximately where the box anchor lives if the user instantiates it direction forward of the stomach. The user can instantiate multiple voodoo volumes side-by-side. 3OS may use IPD and/or user height to estimate the ideal offset of the voodoo volume's center anchor. A height of approximately 12-18 inches above that center point constitutes the total height of the voodoo volume bounding box because lifting fingers above that height immediately overtaxes the coracobrachialis muscle, which connects the collar bone to the bicep bone. This muscle can handle hours of flex below the height of eye-level fingertips, which gives us approximately ~18 inches max for the voodoo volume height. The box may have a small offset away from the body defined by 3OS near-field point cursor parameters. For instance, if the near-field cursor offset in front of the hand is 3", then the voodoo volume should also be offset forward of the navel by three more inches.
+With palms up or down, the hands define the bottom plane of the ideal voodoo volume bounding box in this navel-level position. The center of the bounding box is approximately 12 inches forward of the navel, allowing the user to place fingertips in the center of the box's bottom plane simply by touching their fingertips together with both hands. This is not a gesture to instantiate the box. It's merely an imaginary reference to show approximately where the box anchor lives if the user instantiates it directly forward of the stomach. The user can instantiate multiple voodoo volumes side-by-side. 3OS may use IPD and/or user height to estimate the ideal offset of the voodoo volume's center anchor. A height of approximately 12-18 inches above that center point constitutes the total height of the voodoo volume bounding box because lifting fingers above that height immediately overtaxes the coracobrachialis muscle, which connects the collar bone to the bicep bone. This muscle can handle hours of flex below the height of eye-level fingertips, which gives us approximately ~18 inches max for the voodoo volume height. The box may have a small offset away from the body defined by 3OS near-field point cursor parameters. For instance, if the near-field cursor offset in front of the hand is 3", then the voodoo volume should also be offset forward of the navel by three more inches.
 
 **Research-backed Voxel Size:**
 
@@ -198,13 +210,13 @@ To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR s
 
 <a id="volumetric-workspace-management-portals-teleportation"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🌀 Volumetric Workspace Management: Portals & Teleportation</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🌀 Volumetric Workspace Management: Voodoo Volumes</summary>
 
 3OS bypasses the slow, physics-based fishing-line-reeling or lassoing of legacy XR by utilizing **Non-Euclidean Voodoo Volumes**.
 
-* **Voodoo Volume Portal Dragging:** If a double-proxy voodoo volume is open, dragging an object from the near field into the voodoo volume teleports that object out into the far-field. Vice versa, dragging an object out of a voodoo volume teleports it from its far field volume into the near field. The need to grab onto a far field object with raycast and reel it in is entirely eliminated. The concept is heavily inspired by the Poros Framework (see Prior Art #6).
-* **Cross-Proxy Portal Dragging:** If multiple double-proxy voodoo volumes are open, dragging an asset out of one local volume and dropping it into another triggers an instantaneous teleportation from volume A to volume B in the far field, essentially letting the object travel through two wormholes at once.
-* **The Global Desktop Drop:** The World Proxy Half-Dome acts as an omnipresent directory. To move a massive dashboard to the back corner of a warehouse, the user grabs its near-field proxy and drops it onto a destination within the world proxy half-dome. A double proxy opens representing that spot and the object teleports into it.
+* **Voodoo Volume Dragging:** If a double-proxy voodoo volume is open, dragging an object from the near field into the voodoo volume teleports that object out into the far-field. Vice versa, dragging an object out of a voodoo volume teleports it from its far field volume into the near field. The need to grab onto a far field object with raycast and reel it in is entirely eliminated. The concept is heavily inspired by the Poros Framework (see Prior Art #6).
+* **Cross-Proxy Voodoo Volume Dragging:** If multiple double-proxy voodoo volumes are open, dragging an asset out of one local volume and dropping it into another triggers an instantaneous teleportation from volume A to volume B in the far field, essentially letting the object travel through two wormholes at once.
+* **The World-In-Miniature Drag/Drop:** To move a near field object out into the far field rapidly, the user need not open a voodoo volume first. The user can activate the object as though it itself is a voodoo volume, which allows a simple drag/drop gesture to send the object anywhere into the far field via the same technique as creating a voodoo volume.
 
 
 </details>
@@ -216,7 +228,7 @@ To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR s
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🗂️ Volumetric Topology & System Architecture</summary>
 
 ### 1. The Selection Frustum
-Multi-selection is resolved by pulling open both hands or twisting wrists in a dual-pinch to scale a dynamic bounding **Selection Frustum** inside the double-proxy volume. The possessed group behaves rigidly, preserving relative spatial offsets during velocity-mapped transformations.
+Multi-selection is resolved via drag to scale a dynamic bounding **Selection Frustum** inside a near-field voodoo volume. The possessed group behaves rigidly, preserving relative spatial offsets during velocity-mapped transformations.
 
 ### 2. Layered Coordinate Subordination
 The system treats the origin $(0,0,0)$ as a fluid variable, allowing users to toggle fields across three structural anchor types:
@@ -233,9 +245,9 @@ Emulating the 2D File Explorer's view shifts, 3OS can instantly re-compute the s
 ### 4. Field Subdivision and Layout
 The near field is defined as the capsule surrounding the user whose radius is approximately matched to the user's fingertip reach in any direction while standing on the same spot.
 
-The far field is non-uniform, but it can often be logically and conceptually subdivided especially during instantiation of large numbers of objects that must allign in matrices and also avoid collision with each other. The rule of thumb for incoming objects is to instantiate in the near field if the total number of objects is fewer than 6 and the near field is clear of potential collisions. Otherwise, priority instantiation happens at ground level, and matrices lay out isometrically relative to themselves but concentrically relative to each other. For example, if two dozen matrices each containing 125 objects must instantiate simultaneously, the would do so in a panorama of 5x5x5 matrices side by side in the far field as close as possible with adequate paddind and margins.
+The far field is non-uniform, but it can often be logically and conceptually subdivided especially during instantiation of large numbers of objects that must align in matrices and also avoid collision with each other. The rule of thumb for incoming objects is to instantiate in the near field if the total number of objects is fewer than 6 and the near field is clear of potential collisions. Otherwise, priority instantiation happens at ground level, and matrices lay out isometrically relative to themselves but concentrically relative to each other. For example, if two dozen matrices each containing 125 objects must instantiate simultaneously, they would do so in a panorama of 5x5x5 matrices side by side in the far field as close as possible with adequate padding and margins.
 
-Until extensive UX testing can be done on densely populated fields, it is assumed that the maximum number of objects that can occupy an entire single field is 1.5 million. We back into this napkin math by assuming a field of cylindrical shape could fill the ground level with matrices starting with concentric rings from the user out to the radial limit of the field, then stack multiple more layers of matrices on top until the field is full. At the ideal minium size of 3" for each voxel, we assume the objects should not be smaller, and we assume that ~90% of the voxel space is always dedicated to padding and margins between the objects. A field of 50' radius and 30' height can accomodate ~15 million voxels, thus ~1.5 million objects completely fill that field. It is less than ideal to fill an entire field and leave no breathing room to utilize extra empty space just as it is less than ideal to fill a 2D desktop with hundreds of icons until there is no room to move an icon anywhere. Thus, we assume, the functional working range of total number of objects in a field can be measured in six figures at maximum capacity, though most users will probably opt for sparse fields in the three-to-four figure range since they can jump from one field to another as easily as a change-directory command in a CLI.
+Until extensive UX testing can be done on densely populated fields, it is assumed that the maximum number of objects that can occupy an entire single field is 1.5 million. We back into this napkin math by assuming a field of cylindrical shape could fill the ground level with matrices starting with concentric rings from the user out to the radial limit of the field, then stack multiple more layers of matrices on top until the field is full. At the ideal minimum size of 3" for each voxel, we assume the objects should not be smaller, and we assume that ~90% of the voxel space is always dedicated to padding and margins between the objects. A field of 50' radius and 30' height can accommodate ~15 million voxels, thus ~1.5 million objects completely fill that field. It is less than ideal to fill an entire field and leave no breathing room to utilize extra empty space just as it is less than ideal to fill a 2D desktop with hundreds of icons until there is no room to move an icon anywhere. Thus, we assume, the functional working range of total number of objects in a field can be measured in six figures at maximum capacity, though most users will probably opt for sparse fields in the three-to-four figure range since they can jump from one field to another as easily as a change-directory command in a CLI.
 
 
 </details>
@@ -263,7 +275,7 @@ Until extensive UX testing can be done on densely populated fields, it is assume
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🎲 Common 3D Element Types</summary>
 
 ### 1) Objects
-  3OS is intended for full cross-compatibility with desktop OS interfaces because the file metaphor remains intact in an extruded 3D-ified form. A file is an OBJECT in 3OS. Its icon is no longer an icon. It's a glyph, a low-poly prismatic piece of geometry that can represent the brand of the app that generated the file. In addition, 3OS will support treating media as objects as well, including audio clips, video clips, images, 3D assets, and point-cloud-based assets (particle effects and/or Gaussian splat assets).
+  3OS is intended for full cross-compatibility with desktop OS interfaces because the file metaphor remains intact in an extruded 3D-ified form. A file is an OBJECT in 3OS. A folder is a BOX. Their icons are no longer icons. They're glyphs, low-poly prismatic pieces of geometry that can represent the brand of the app that generated the object. In addition, 3OS will support treating media as objects as well, including audio clips, video clips, images, 3D assets, and point-cloud-based assets (particle effects and/or Gaussian splat assets).
 
 ### 2) Glyphs (`.3glyph`)
   A **glyph** is a specific type of object, a volumetric file type icon: a small, semi-transparent mesh plus associative metadata in one file. Packs are valid **glTF Binary (GLB)** renamed to **`.3glyph`**, with a root vendor extension `THREEOS_glyph` (schema, injector, and demo packs: [`docs/THREEOS_glyph.md`](docs/THREEOS_glyph.md)).
@@ -295,7 +307,7 @@ Until extensive UX testing can be done on densely populated fields, it is assume
   Content files (e.g. a user’s `report.pdf` or demo `simple.glb`) are **not** glyph packs — they keep their normal formats. Only the OS icon that *represents* that type is a `.3glyph`.
 
 ### 3) Boxes
-  Boxes in 3OS are the 3D equivalent of folders in legacy platforms. They can expand/collapse all of their contents into the current field, and they are the control source for a variety of spatial arrangements. 3OS has a global box mode and a local box mode, meaning expansion of a box can automatically trigger collapse of any currently-expanded other boxes in local mode, or expansion can be cumulative with all other expanded boxes in global mode. 3OS deals with spatial collision resolution of nearest neighbors by bumping newcomers into the closest available adjacent space. Global and Local box modes are only relevant in Manual Arrangment Mode. In Matrix and Cluster Modes, nested child boxes expand to fill space in separate matrices or clusters above the parent matrices or clusters.
+  Boxes in 3OS are the 3D equivalent of folders in legacy platforms. They can expand/collapse all of their contents into the current field, and they are the control source for a variety of spatial arrangements. 3OS has a global box mode and a local box mode, meaning expansion of a box can automatically trigger collapse of any currently-expanded other boxes in local mode, or expansion can be cumulative with all other expanded boxes in global mode. 3OS deals with spatial collision resolution of nearest neighbors by bumping newcomers into the closest available adjacent space. Global and Local box modes are only relevant in Manual Arrangement Mode. In Matrix and Cluster Modes, nested child boxes expand to fill space in separate matrices or clusters above the parent matrices or clusters.
 
   **Options** (equivalent of View options in File Explorer):
 
@@ -308,7 +320,7 @@ Until extensive UX testing can be done on densely populated fields, it is assume
 
 
 ### 4) Voodoo Volumes
-  These are the workhorse of 3OS, merging the near and far field via non-Euclidean portal behaviors. To engage one, the user can manifest a World Proxy Half Dome which represents a miniature model of the entire field. While holding the gesture, the user drags a point cursor through the interior of the Half Dome, and a far-field voodoo volume instantiates and moves in concert around the actual field. By releasing this same gesture that opened the Half Dome, the user chooses where to drop the far field voodoo volume. Upon placing it, a near-field voodoo volume immediate replaces the half dome, opening the other end of the portal. Now any contents or empty space in that part of the far field are suddenly in hand's reach in the near field. Any objects or boxes encapsulated by the voodoo volume now show a ghostly copy of themselves easily within the user's reach. Likewise, the user can place a point cursor or hand into the vooodoo volume and a ghostly copy of their cursor or hand will appear out on the other end of the portal in the far field. The user is welcome to gaze at either the near-field voodoo volume or the far-field voodoo volume. The voodoo volume's bounding box can be pinched/stretched to scale the far-field bounding box while the near field bounding box remains the same ergonomically-perfect size. If an object in the volume is dragged in real far-field space, the far field bounding box will scale up to keep it in scope. Meanwhile, the bounding box of the near field volume will remain the same size, causing its inner contents to appear to scale down. The bounding box can also be single-hand dragged for velocity-based translation of the far-field bounding box. And finally, the voodoo volume will have an button at its top back right corner to collapse the portal.
+  These are the workhorse of 3OS, merging the near and far field via non-Euclidean portal behaviors. To engage one, the user can manifest a World Proxy Half Dome which represents a miniature model of the entire field. While holding the gesture, the user drags a point cursor through the interior of the Half Dome, and a far-field voodoo volume instantiates and moves in concert around the actual field. By releasing this same gesture that opened the Half Dome, the user chooses where to drop the far field voodoo volume. Upon placing it, a near-field voodoo volume immediately replaces the half dome, opening the other end of the portal. Now any contents or empty space in that part of the far field are suddenly in hand's reach in the near field. Any objects or boxes encapsulated by the voodoo volume now show a ghostly copy of themselves easily within the user's reach. Likewise, the user can place a point cursor or hand into the voodoo volume and a ghostly copy of their cursor or hand will appear out on the other end of the portal in the far field. The user is welcome to gaze at either the near-field voodoo volume or the far-field voodoo volume. The voodoo volume's bounding box can be pinched/stretched to scale the far-field bounding box while the near field bounding box remains the same ergonomically-perfect size. If an object in the volume is dragged in real far-field space, the far field bounding box will scale up to keep it in scope. Meanwhile, the bounding box of the near field volume will remain the same size, causing its inner contents to appear to scale down. The bounding box can also be single-hand dragged for velocity-based translation of the far-field bounding box. And finally, the voodoo volume will have a button at its top back right corner to collapse the portal.
 
 ### 5) Voodoo Widgets
   These are peripheral remote control devices. They appear temporarily just forward of the hand that engages the associated action, and they disappear as soon as the action is complete. The most common use is for remote transformations (dragging/rotating far-field objects). These widgets visualize the hand's current action state e.g. a vector arrow to confirm drag is currently active at a specific velocity. For rotation, the widget is a miniature voodoo copy the object so that any tumbling action can happen accurately even if the actual object is too distant to make out.
@@ -316,37 +328,44 @@ Until extensive UX testing can be done on densely populated fields, it is assume
 ### 6) Focus Anchors
   These are the invisible backbone enabling voodoo snapping to work so rapidly. At the top level of 3OS, each open directory has contents potentially strewn about in a matrix or cluster, but a voodoo volume can latch onto that entire cluster instantly because it contains an invisible centroid, a Focus Anchor. Every directory has a focus anchor allowing voodoo volumes to snap to them and summon a voodoo doll of their contents into the near field for easy control. Focus Anchors are a key feature that will be available in the 3OS 3rd party SDK as well. When a 3rd party app launches, it is in multitasking mode by default, meaning it shares the same global field as everything else, including the file system and other open apps. But if the user sends a voodoo volume into the 3rd party app's bounding box, the OS won't have any default anchors to snap to, leaving the user to fish around the app's volume manually. Thus, it is important for 3rd party apps to define focus anchors early on because it enables the user to instantly summon access to any collection of elements within the app. This is a key advantage of 3OS because it enables the app content to BE the interface. If, for example, it's a CAD program, it can be designed such that every part automatically has a focus anchor, thus the developer can allow the user to pull/inspect/edit any part instantly without needing to code a custom UI. The OS already enables it.
 
-### 6) 3D Buttons
+### 7) 3D Buttons
   In 3OS, buttons are typically depicted as translucent cubes or other simple volumetric prisms, often with smoothed edges. Text labels may hover near, above, below, or inside the geometry, typically shaded over the top of their geo to enable clear legibility even if geo occludes any part of the text. Buttons in 3OS are volumetric, meaning cursors don't hover ONTO them; they hover INTO them. If touched directly by virtual hands, the button surface has no physics properties. The hand travels through it as though it is a ghost. We call it a button to avoid confusion around functionality. It is an event trigger handler just like any other button, but it does not reside on a surface, nor is it to be pressed. It floats in mid air, needing no flat panel to rest upon. A cursor enters into it from any vector and triggers a hover-state glow effect or other visual cue. During hover, the user performs a gesture, usually index-to-thumb pinch, to activate the button.
 
-### 7) Matrices
+### 8) Matrices
   Elements in legacy UI lay out on X and Y dimensions in table form. In a voxel-based OS, utilizing even one more interactive plane ahead of or behind the first plane unlocks more grid positions with less travel distance. For instance, a 4x4 or 2x8 table of elements in a 2D UI is much better laid out as a 2x2x2 matrix in 3OS. A minimum adjacency analysis on any collection of items will show matrices are ergonomically better and faster than tables.
 
-### 8) Clusters
+### 9) Clusters
   Similar to matrices, but spatial positioning is more loose in that the objects need not align on any kind of local Euclidean grid. Instead, they operate on a set of min-max adjacency parameters from their nearest neighbors, usually grouped in close proximity due to some shared attribute.
 
-### 9) Spherical Multi-Choice Nodes
+### 10) Spherical Multi-Choice Nodes
   A 3D-ified radio button element. 3OS supports easy creation of these spherical interfaces which are similar to desktop radio button lists in that alternate choices (A or B or C etc.) are arranged near each other, but in 3OS they can occupy uniform angular space around a center point. They may render as segments of a sphere, or each as 3D buttons floating in a formation. The cursor's vector relative to the center point changes hover state enabling highlight of one of the elements in that collection. This interface style is the highest-performance voxel-based multiple-choice option because it eliminates any possibility of overshoot errors. The multi-choice node may have an extra core node at its center which could be an extra multi-choice option or a neutral "none" option, and it may also have an out-of-bounds limit radius encapsulating the group.
+
+### 11) Sync Planes
+  Generally, planar UI in 3OS is discouraged. Default UI elements are volumetric and isometric, whereas planar elements typically require perspective-based raycasting for far field interaction, which is not impossible, but it must be custom-built case-by-case at the service and application layers. In general, if a planar UI exists in 3OS, it typically represents the virtual twin of a physical screen in an MR context. For instance, in a room with 12 2-monitor workstations mounted to its walls, any pair of monitors might be in use with WIMP-style UI elements on-screen. 3OS will be able to render that screen's output at any size via a sync plane, but more likely the sync plane will be invisible and superimposed over the physical screen it represents, enabling remote control interaction. Sync planes will feature API integration and transition between 2D and 3D elements. The WIMP instance running on the 2D screens would be rendered by the same server as the OS driving the eyewear, thus it holds an inventory of all shared interactive elements, which means an HMD user could use a voodoo volume to target the screen itself, or target one of its open windows, e.g. a File Explorer. Once the 2D File Explorer window is targeted, it would automatically be converted to its 3D representation in the near field in the same fashion as using a 3D-to-3D voodoo volume. This 2D-to-3D transition can work identically for any 3rd party software. For example, a control widget in a 2D Autodesk Maya window might be pulled into 3D MR space via a voodoo volume if Autodesk developers used the 3OS SDK to enable that functionality.
 
 
 </details>
 
 ---
-<a id="collaborative-rooms-vdi-enterprise-edge-compute-phase-20"></a>
+<a id="the-application-layer"></a>
 <details>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 The Application Layer</summary>
 
-3OS is designed first-and-foremost for professionals who are already working in 3D editing software (CAD, VFX, and Gaming), but it is also designed to be able to grow into mass market adoption after establishing 3D professionals as early adopters. To approach early adopters, 3OS must natively supoprt ports of a few dozen professional software suites.
+3OS is designed first-and-foremost for professionals who are already working in 3D editing software (CAD, VFX, and Gaming), but it is also designed to be able to grow into mass market adoption after establishing 3D professionals as early adopters. To approach early adopters, 3OS must natively support ports of a few dozen professional software suites.
 
 At the advent of modern VR with the Oculus Kickstarter, millions of us dreamed of being able to use Maya or Fusion or Unreal from inside a VR headset, but so far to date, these systems don't feel compatible with HMDs for productive eight-hour work yet because there is always some part of the task flow that requires constant removal of the HMD for fallback to a desktop interface, not to mention the ergonomic issues of bulky headsets worn all day.
 
-Hardware engineers are doing their part to shrink the technology to near-sunglasses form factor. As we approach elimination of this ergo bottlneck, it's well-past time for the OS layer to have provided a uniform 3D UI paradigm capable of enabling all 3D software compatibility, including CAD, VFX modelling/animation/texturing/shading/etc., and game engines to run in a cohesive single environment with multitasking (i.e. Maya and Unreal running in a shared field). 3OS aims to support XR app multitasking despite its immense perf op challenges. The first professional deployments of 3OS are intended to run on on-prem VDI servers with plenty of horsepower to handle the job, and 3OS aims to provide an SDK for enterprise 3rd parties to finally port their apps natively into XR.
+Hardware engineers are doing their part to shrink the technology to near-sunglasses form factor. As we approach elimination of this ergo bottleneck, it's well-past time for the OS layer to have provided a uniform 3D UI paradigm capable of enabling all 3D software compatibility, including CAD, VFX tools, and game engines to run in a cohesive single environment with multitasking (e.g. Maya and Unreal both running in a shared field). 
+
+3OS encourages 3rd parties not to think of their ported app as a floating window. In 3OS, floating windows are like command-line tools. Power users may need them occasionally, but most users should prefer engaging directly with the 3D content. For example, it may be challenging to picture all of Autodesk Maya's many features working without the panoply of sidebars and menus and dropdowns, but it can be done with a little imagination. It is likely to include conversion of 2D sidebars into 3D widgets that are summon-able per-context relative to the content itself. For the most part, <b>the content IS the interface.</b>
+
+3OS aims to support XR app multitasking despite its immense perf op challenges. The first professional deployments of 3OS are intended to run on on-prem VDI servers with plenty of horsepower to handle the job, and 3OS aims to provide an SDK for enterprise 3rd parties to finally port their apps natively into XR.
 
 </details>
 
 ---
 
-<a id="collaborative-rooms-vdi-enterprise-edge-compute-phase-20"></a>
+<a id="basic-transformation"></a>
 <details>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 Basic Transformation</summary>
 
@@ -354,9 +373,9 @@ The greatest challenge in resolving the chicken-egg problem of enterprise users 
 
 * ### Basic 3D UI for transform gizmos
 
-In desktop interfaces, transform gizmos have become somewhat uniform and standardized across most 3D software, but they're not as standardized as "mouse left-click always causes selection." The gizmos are designed for the quirks of translating 2D mouse motion to 3D virtual space, and each has their flavor. 
+In desktop interfaces, transform gizmos have become somewhat uniform and standardized across most 3D software, but they're not as standardized as "mouse left-click always causes selection." The gizmos are designed for the quirks of translating 2D mouse motion to 3D virtual space, and each app has its flavor. 
 
-With 6DOF control, the complexity of that 2D-to-3D mapping becomes unnecessary in most cases. Instead, control designers can focus on deciding whether to map motion 1-to-1, snap to specific angles/positions, or constrain certain axes in certain situations as is already common in their 2D software. They simply have more DOFs to work with in 3D, but more options often leads to more chaos.
+With 6DOF control, the complexity of that 2D-to-3D mapping becomes unnecessary in most cases. Instead, control designers can focus on deciding whether to map motion 1-to-1, snap to specific angles/positions, or constrain certain axes in certain situations as is already common in their 2D software. They simply have more DOFs to work with in 3D, yet more options may lead to more chaos.
 
 3OS aims to offer a basic initial transformation standard below the app layer to encourage control uniformity. The nuances of DOF constraints and scalar quantizations must be available to professionals, but by default, 3OS aims also to make basic transformation palatable to all laypeople as well. Desktop gizmos are not palatable to laypeople. They look like a math equation to newbies. It's an instant turnoff. Laypeople need to be able to transform 3D objects via telekinesis just as laypeople in Windows 95 needed to know how to drag an icon across a desktop and drop it into the Recycle Bin.
 
@@ -375,22 +394,27 @@ In most cases, rendering complex gizmos on the object will be unnecessary, where
 
 ---
 
-<a id="collaborative-rooms-vdi-enterprise-edge-compute-phase-20"></a>
+<a id="the-mind-palace"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 Collaborative Rooms, VDI & Enterprise Edge Compute (Phase 2.0)</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 The Mind Palace</summary>
 
-Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handheld screen joins a shared volumetric field, sessions run on on-prem **VDI** or home **edge** compute, and collaboration semantics cover personal/shared/full-room workspaces, flyweight vs copy assets, view vs object transforms, spectator cameras, and optional site-to-site sync. The full design — reference 20×20 office fixture, desk docks, IMU monitors, co-editor VOIP/avatars, and VCS for simultaneous copies — is in [docs/COLLABORATIVE_ROOMS.md](docs/COLLABORATIVE_ROOMS.md); task checklists are Phase 2.0 in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+Roman statesmen, philosophers, and lawyers used a technique called <b>"the Mind Palace"</b> to deliver long, unscripted speeches in the Roman Senate or courts. It was an imaginary place where they could stash chunks of information in specific spatial locations, which, when they imagined retrieval, would assist in rapid recall.
 
+The Mind Palace in 3OS is a transitional multi-field construct that bridges MR and VR. The default field in 3OS is an MR office room where professionals are doing collaborative creative 3D work (CAD, VFX, game engine dev, etc.) with each other and with 3D agents. If each user can drop a folder on the floor or a desk or pin to the wall in that singular MR space, the space may become cluttered quickly.
+
+Alternatively, in 3OS, each user can gesture to toggle their Mind Palace, which begins as an empty VR void that retains any voodoo volume(s) already open from the MR scene, allowing users to quickly bring data from the real world into their Mind Palace and back out again. The Mind Palace begins as an empty void, but the user can associate any directory of any hard drive in the system as the root node of a new field, and navigate between any number of those fields similarly to shortcuts on a desktop.
+
+Any given field can be decorated with static 3D objects (walls, furniture, etc.) if those structures help the user mentally organize the data, but most users will simply place floating files (objects) and folders (boxes) in a certain azimuth, depth, and height relative to their body. Like a desktop PC, hundreds of files can easily cause clutter in one field, but each field allows an order of magnitude more breathing room than a desktop before needing reorganization.
 
 </details>
 
 ---
 
-<a id="collaborative-rooms-vdi-enterprise-edge-compute-phase-20"></a>
+<a id="reserved-and-supported-gestures"></a>
 <details>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 Reserved and Supported Gestures</summary>
 
-3OS supports cross-compatilibity of all input actions for 10-finger hand tracking first and foremost, but 6DOF controllers as well. The OS interface defines the following universal event triggers:
+3OS supports cross-compatibility of all input actions for 10-finger hand tracking first and foremost, but 6DOF controllers as well. The OS interface defines the following universal event triggers:
 
 * ### Primary
   * Index-to-thumb pinch for hands
@@ -410,7 +434,7 @@ Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handhel
 * ### Palm down
 * ### Palm sideways
 
-Each ulnar write mode has option to modify the primary, secondary, or ternary event trigger, yielding a total of nine event combinations for each hand:
+Each ulnar wrist mode has the option to modify the primary, secondary, or ternary event trigger, yielding a total of nine event combinations for each hand:
 * ### Primary-palm-up
 * ### Primary-palm-down
 * ### Primary-palm-sideways
@@ -423,9 +447,40 @@ The 3OS interface layer reserves all primary event triggers and secondary-palm-d
 
 ---
 
+<a id="collaborative-rooms-vdi-enterprise-edge-compute-phase-20"></a>
+<details>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 Collaborative Rooms, VDI & Enterprise Edge Compute (Phase 2.0)</summary>
+
+Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handheld screen joins a shared volumetric field, sessions run on on-prem **VDI** or home **edge** compute, and collaboration semantics cover personal/shared/full-room workspaces, flyweight vs copy assets, view vs object transforms, spectator cameras, and optional site-to-site sync. The full design — reference 20×20 office fixture, desk docks, IMU monitors, co-editor VOIP/avatars, and VCS for simultaneous copies — is in [docs/COLLABORATIVE_ROOMS.md](docs/COLLABORATIVE_ROOMS.md); task checklists are Phase 2.0 in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+
+
+</details>
+
+---
+
+<a id="AI-integration"></a>
+<details>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">💡 Agentic Integration (Phase 3.0)</summary>
+
+It is assumed 3OS will host agentic integration, though that is not the focus for the early alpha prototype. The endgame is to enable agents to exist as avatars who can converse with team members in real time before diving lower in the stack to complete their work, then return to the visual field for reporting and for more instructions.
+
+Though agents will be heavily integrated, 3OS must stand as an interface on its own without agentic text-to-speech and speech-to-text as the primary interaction models due to a funny quirk of the human psyche:
+
+### Impostor Syndrome!
+
+One of the biggest value propositions agents bring at work is the ability to let junior team members ask infinite stupid questions with no fear of judgement. Juniors may be surprised to learn that this syndrome never goes away. Grizzled 20-year veterans in every field are also quietly asking agents stupid questions they'd be embarrassed to ask out loud.
+
+Even in an office where every coworker is very familiar with every other coworker in the room, verbal agent conversations cannot be the only, nor even the primary, interface during work hours. In dealing with agents, every team member needs to be able to ask judgement-free stupid questions frequently and quietly.
+
+Therefore, if teams are ever able to transition to an agentic XR interface that replaces desktop PCs, it must be one that enables silent communication as a core option. A 3D gesture-based form of communication that operates equally well on any data in the entire field is necessary to limit the amount of prompt typing required, whether the user is communicating with agents or team members. Thus, 3OS early prototypes focus on the raw manual interface to ensure it can stand on its own without agents, and then its processes can be accelerated once agents arrive as team members.
+
+</details>
+
+---
+
 <a id="structural-outline"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">📁 Structural Outline</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">📁 Source Structural Outline</summary>
 
 ```
 3os-core/
@@ -478,9 +533,9 @@ The 3OS interface layer reserves all primary event triggers and secondary-palm-d
 <details>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏛️ Academic Lineage & Prior Art</summary>
 
-Piles of incredible Human-Computer Interaction (HCI) literature have been left to languish by the modern spatial computing industry. In 2026, the following papers do not currently influence OS interfaces running on Meta Quest, Meta VR Glasses, Apple Vision Pro, Snap Specs, XReal Aura, Vive, Pico, Playstation VR, Lynx, Varjo, Bigscreen, or Steam Frame. They should.
+Piles of incredible Human-Computer Interaction (HCI) literature have been left to languish by the modern spatial computing industry. In 2026, the following papers do not currently influence OS interfaces running on Meta Quest, Meta VR Glasses, Apple Vision Pro, Magic Leap, Hololens, Snap Specs, XReal Aura, Vive, Pico, Playstation VR, Lynx, Varjo, Bigscreen, or Steam Frame. They should.
 
-By grounding **3OS** in this seminal research, we bridge the historic gap between the late-1990s proprioceptive research labs and modern non-Euclidean spatial interaction theories to break the productivity chains of WIMP. Despite raycast having double the throughput of isometric virtual hands (point cursors), it is unsuitable for rapid serial and/or parallel two-handed interactions. Point cursors, on the other hand, are stellar at utilizing two-handed speed boosts, which more than covers the throughput gap even before completely unlocking the far field, allowing point cursors to leave raycast in the dust.
+By grounding **3OS** in this seminal research, we bridge the historic gap between the late-1990s proprioceptive research labs and modern non-Euclidean spatial interaction theories to break the productivity chains of WIMP. Despite raycast having double the throughput of isometric virtual hands (point cursors), it is unsuitable for rapid serial and/or parallel two-handed interactions. Point cursors, on the other hand, are stellar at utilizing two-handed speed boosts, which more than covers the throughput gap even before completely unlocking the far field, allowing point cursors to leave raycast in the dust. The following research shows how and why.
 
 ---
 
@@ -525,29 +580,6 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 ---
 
-<a id="architectural-synthesis"></a>
-<details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧬 Architectural Synthesis</summary>
-
-3OS acts as the ultimate engineering synthesis of these two historical schools of thought:
-
-```text
-[1990s: Proprioceptive School]  --> Mine, Pierce, Pausch
-                                    Exploited near-field body space to drop motor fatigue.
-                                              │
-                                              ▼
-[2020s: Volumetric Portal School] --> Pohl, Hornbæk, McIntosh
-                                    Proved non-Euclidean workspace remapping matrices.
-                                              │
-                                              ▼
-[3OS Operating System Engine]   --> 3OS Core Kernel Architecture
-                                    Synthesizes both tracks AND applies the unified theory to the entire field's voxel grid whether any given voxel is occupied or not, which finally unlocks the same near-instantaneous control over every voxel as a PC user has over every pixel without requiring the hands to move more than a few inches total before returning to fully relaxed rest.
-```
-
-</details>
-
----
-
 <a id="getting-started"></a>
 <details open>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🚀 Getting Started</summary>
@@ -561,7 +593,16 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-The shared library target is `3os_kernel` (`3os_kernel.dll` / `lib3os_kernel.so`). The console harness prints `threeos_version` (currently `0.3.0`) and checks the frozen ABI (`InteropInputFrame` = 192 bytes). Host ABI headers: `include/interop/threeos_abi.h`. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md); Unity Quest verification lives in [3OS_Unity](https://github.com/scifiuiguy/3OS_Unity).
+### Pre-Alpha Demo
+* To use the Pre-Alpha Demo with built-in sample files and folders, load it as is.
+* To load your own sample files and folders into the demo:
+  1) On your Quest hard drive, create these folders: 
+      - Documents/3OS_Demo
+      - Documents/3OS_Demo2
+  2) Drag/drop any files of your choice into either folder and they'll appear in-scene.
+      * NOTE: Don't test with important unarchived files. The demo WILL read/write/delete in those directories.
+
+The shared library target is `3os_kernel` (`3os_kernel.dll` / `lib3os_kernel.so`). The console harness prints `threeos_version` (currently `0.6.0`) and checks the frozen ABI (`InteropInputFrame` = 192 bytes). Host ABI headers: `include/interop/threeos_abi.h`. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md); Unity Quest verification lives in [3OS_Unity](https://github.com/scifiuiguy/3OS_Unity).
 
 *This project is dedicated to breaking the flatland illusion. Welcome to true volumetric computing.*
 

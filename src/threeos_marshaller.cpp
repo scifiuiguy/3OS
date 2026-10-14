@@ -9,6 +9,7 @@
 #include "storage/glyph_registry.hpp"
 #include "storage/workspace.hpp"
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <mutex>
@@ -447,6 +448,9 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
     s_prev_voodoo_t = frame->time_seconds;
 
     const threeos::Pose head_pose = from_c(frame->head);
+    const bool selection_blocks_voodoo = g_workspace.selection() != 0;
+    const bool kin_possessed =
+        g_kinematics.state().phase == threeos::KineticPhase::Possessed;
     for (uint32_t vh = 0; vh < 2u; ++vh) {
       const bool aim_ok = (vh == 0u) ? left : right;
       const bool cursor_ok = g_hands.cursor(vh).active;
@@ -458,10 +462,156 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
       } else if (vh == 1u && right) {
         vhand = from_c(frame->right_aim);
       }
-      g_voodoo.tick_hand(vh, g_hands.pending_intents(vh), vhand, cursor_ok || aim_ok, head_pose,
-                         head_valid, dt, g_centroids, g_workspace);
+      // Selected object drag (palm-ignored) and live possess/ghost-drag must not
+      // open a concurrent voodoo session on the same hand.
+      threeos::InteractionIntents vintents = g_hands.pending_intents(vh);
+      const bool hand_busy =
+          selection_blocks_voodoo || g_voodoo.ghost_drag_active(vh) ||
+          (kin_possessed && g_kin_hand_latch == static_cast<int>(vh));
+      if (hand_busy) {
+        using threeos::InteractionIntentFlags;
+        const uint32_t clear = static_cast<uint32_t>(InteractionIntentFlags::VoodooSnap) |
+                               static_cast<uint32_t>(InteractionIntentFlags::VoodooFree);
+        vintents.flags = static_cast<InteractionIntentFlags>(static_cast<uint32_t>(vintents.flags) &
+                                                             ~clear);
+        // Abort in-flight create (do not park) so drag and voodoo cannot run together.
+        g_voodoo.cancel_open_session(vh);
+      }
+      g_voodoo.tick_hand(vh, vintents, vhand, cursor_ok || aim_ok, head_pose, head_valid, dt,
+                         g_centroids, g_workspace);
     }
     g_voodoo.tick_portals(dt, head_pose, head_valid);
+    g_voodoo.tick_pose_lerps(dt, g_workspace);
+    g_voodoo.sync_ghosts_from_workspace(g_workspace);
+
+    // Task 6.5: advance active ghost-scale drags (host begins/ends; tick is kernel-owned).
+    for (uint32_t gh = 0; gh < 2u; ++gh) {
+      if (!g_voodoo.ghost_drag_active(gh)) {
+        continue;
+      }
+      const bool cursor_ok = g_hands.cursor(gh).active;
+      threeos::Pose ghand{};
+      if (cursor_ok) {
+        ghand.position = g_hands.cursor(gh).position;
+      } else if (gh == 0u && left) {
+        ghand = from_c(frame->left_aim);
+      } else if (gh == 1u && right) {
+        ghand = from_c(frame->right_aim);
+      }
+      g_voodoo.ghost_drag_tick(gh, ghand, cursor_ok || ((gh == 0u) ? left : right), head_pose,
+                               head_valid, dt, g_workspace);
+      if (g_voodoo.ghost_drag_active(gh)) {
+        g_voodoo.refresh_ghost_drag_arrows(gh, ghand, head_pose, head_valid);
+      }
+      const threeos::EntityId gid = g_voodoo.ghost_drag_entity(gh);
+      if (gid != 0) {
+        // Box snap while ghost/audition dragging. Prefer near ghost pose so
+        // near-field Boxes are reachable; else workspace (audition outside BB).
+        threeos::Pose snap_pose{};
+        bool have_snap_pose = false;
+        if (const uint64_t pid = g_voodoo.portal_for_ghost_entity(gid); pid != 0) {
+          for (const auto& portal : g_voodoo.portals()) {
+            if (portal.id != pid) {
+              continue;
+            }
+            for (const auto& g : portal.ghosts) {
+              if (!g.is_parent_box && g.entity_id == gid) {
+                snap_pose = g.near_pose;
+                have_snap_pose = true;
+                break;
+              }
+            }
+            break;
+          }
+        }
+        if (!have_snap_pose) {
+          if (const auto* we = g_workspace.find(gid)) {
+            snap_pose = we->pose;
+            have_snap_pose = true;
+          }
+        }
+        if (have_snap_pose) {
+          // Near BB is ~0.3 m — far-field 0.2 m radius armed almost every pair.
+          // Snap only between content ghosts in the same portal, tight radius.
+          // If the drag ghost was pruned (left far BB), never fall back to far
+          // update_snap (that caused distant false inserts + FS thrash).
+          const uint64_t snap_portal = g_voodoo.portal_for_ghost_entity(gid);
+          if (snap_portal == 0) {
+            g_workspace.clear_snap();
+          } else {
+            constexpr float kGhostSnapM = 0.07f;
+            // Midway between the clipped 0.04 m seat and the gappy 0.14 m far hold.
+            constexpr float kGhostHoldAboveM = 0.09f;
+            // After hold, centers sit ~holdAbove apart — sticky must allow that gap.
+            constexpr float kGhostStickyM = kGhostHoldAboveM + 0.03f;
+            threeos::EntityId best_box = 0;
+            float best_d = kGhostSnapM;
+            const threeos::VoodooPortal* snap_portal_ptr = nullptr;
+            for (const auto& portal : g_voodoo.portals()) {
+              if (portal.id == snap_portal) {
+                snap_portal_ptr = &portal;
+                break;
+              }
+            }
+            if (snap_portal_ptr != nullptr) {
+              auto near_dist_to = [&](threeos::EntityId box_id) -> float {
+                for (const auto& g : snap_portal_ptr->ghosts) {
+                  if (!g.is_parent_box && g.entity_id == box_id) {
+                    const float dx = snap_pose.position.x - g.near_pose.position.x;
+                    const float dy = snap_pose.position.y - g.near_pose.position.y;
+                    const float dz = snap_pose.position.z - g.near_pose.position.z;
+                    return std::sqrt(dx * dx + dy * dy + dz * dz);
+                  }
+                }
+                return 1e9f;
+              };
+              if (g_workspace.snap().pending && g_workspace.snap().object_id == gid &&
+                  g_workspace.snap().box_id != 0) {
+                const float d = near_dist_to(g_workspace.snap().box_id);
+                if (d < kGhostStickyM) {
+                  best_box = g_workspace.snap().box_id;
+                  best_d = d;
+                }
+              }
+              if (best_box == 0) {
+                for (const auto& g : snap_portal_ptr->ghosts) {
+                  if (g.is_parent_box || g.entity_id == gid) {
+                    continue;
+                  }
+                  const auto* we = g_workspace.find(g.entity_id);
+                  if (we == nullptr || !we->in_field ||
+                      we->kind != threeos::StorageKind::Box) {
+                    continue;
+                  }
+                  const float dx = snap_pose.position.x - g.near_pose.position.x;
+                  const float dy = snap_pose.position.y - g.near_pose.position.y;
+                  const float dz = snap_pose.position.z - g.near_pose.position.z;
+                  const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+                  if (d < best_d) {
+                    best_d = d;
+                    best_box = g.entity_id;
+                  }
+                }
+              }
+            }
+            if (best_box != 0 && g_workspace.arm_snap_to_box(gid, best_box)) {
+              (void)g_voodoo.apply_near_ghost_snap_hold(gid, best_box, kGhostHoldAboveM,
+                                                        g_workspace);
+            } else {
+              g_workspace.clear_snap();
+            }
+          }
+        }
+        if (out_delta != nullptr && out_delta->entity_id == 0) {
+          if (const auto* we = g_workspace.find(gid)) {
+            out_delta->entity_id = gid;
+            out_delta->pose = to_c(we->pose);
+            out_delta->flags = THREEOS_XFORM_KINEMATIC;
+          }
+        }
+      }
+    }
+
     // Keep temp centroid poses on near BB centers; mirror latest portal into hand session.
     for (const auto& portal : g_voodoo.portals()) {
       if (portal.temporary_centroid_id != 0) {
@@ -471,6 +621,21 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
             portal.temporary_centroid_id,
             threeos::Vec3{bb.pose.position.x, bb.pose.position.y - bb.extents.y * 0.5f,
                           bb.pose.position.z});
+      }
+    }
+    // Persistent centroids follow workspace poses (including summoned/ghost-dragged members).
+    g_centroids.rebuild(g_workspace);
+
+    // Emit lerp motion when no other delta claimed the frame.
+    if (out_delta != nullptr && out_delta->entity_id == 0) {
+      for (uint32_t i = 0; i < g_workspace.entries().size(); ++i) {
+        const auto& e = g_workspace.entries()[i];
+        if (g_voodoo.pose_lerp_active(e.id)) {
+          out_delta->entity_id = e.id;
+          out_delta->pose = to_c(e.pose);
+          out_delta->flags = THREEOS_XFORM_KINEMATIC;
+          break;
+        }
       }
     }
   }
@@ -857,6 +1022,7 @@ extern "C" THREEOS_API int32_t threeos_kinematics_release(void) {
   g_kin_hand_latch = -1;
   // Drop-into-box: releasing while snapped commits insert (no coast).
   if (g_workspace.snap().pending) {
+    const threeos::EntityId inserted = g_workspace.snap().object_id;
     std::string err;
     if (!g_workspace.commit_insert(&err)) {
       set_error(err.c_str());
@@ -866,6 +1032,11 @@ extern "C" THREEOS_API int32_t threeos_kinematics_release(void) {
       g_kinematics.clear();
       return -3;
     }
+    const auto temps = g_voodoo.on_entity_inserted(inserted);
+    for (const auto temp : temps) {
+      g_centroids.clear_temporary(temp);
+    }
+    g_centroids.rebuild(g_workspace);
     g_kinematics.clear();
     set_error("");
     return 0;
@@ -1113,11 +1284,37 @@ extern "C" THREEOS_API int32_t threeos_storage_try_commit_insert(void) {
     set_error("not initialized");
     return -1;
   }
+  const threeos::EntityId inserted = g_workspace.snap().object_id;
   std::string err;
   if (!g_workspace.commit_insert(&err)) {
     set_error(err.c_str());
     return -2;
   }
+  const auto temps = g_voodoo.on_entity_inserted(inserted);
+  for (const auto temp : temps) {
+    g_centroids.clear_temporary(temp);
+  }
+  g_centroids.rebuild(g_workspace);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_insert_into(uint64_t object_id, uint64_t box_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  std::string err;
+  if (!g_workspace.insert_into(object_id, box_id, &err)) {
+    set_error(err.c_str());
+    return -2;
+  }
+  const auto temps = g_voodoo.on_entity_inserted(object_id);
+  for (const auto temp : temps) {
+    g_centroids.clear_temporary(temp);
+  }
+  g_centroids.rebuild(g_workspace);
   set_error("");
   return 0;
 }
@@ -1521,7 +1718,9 @@ extern "C" THREEOS_API int32_t threeos_voodoo_get_drag_arrow(uint32_t hand,
     set_error("null arrow");
     return -2;
   }
-  const auto& a = g_voodoo.session(hand).arrow;
+  // Ghost-drag velocity: yellow far twin lives on the ghost-drag state.
+  const auto& a = g_voodoo.ghost_drag_active(hand) ? g_voodoo.ghost_drag_far_arrow(hand)
+                                                   : g_voodoo.session(hand).arrow;
   std::memset(out_arrow, 0, sizeof(*out_arrow));
   out_arrow->active = a.active ? 1u : 0u;
   out_arrow->in_deadzone = a.in_deadzone ? 1u : 0u;
@@ -1845,4 +2044,151 @@ extern "C" THREEOS_API uint32_t threeos_voodoo_point_in_near_bb(float x, float y
     return 0;
   }
   return g_voodoo.point_in_any_near_bb(threeos::Vec3{x, y, z}) ? 1u : 0u;
+}
+
+extern "C" THREEOS_API uint64_t threeos_voodoo_portal_at_near_point(float x, float y, float z) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return g_voodoo.portal_at_near_point(threeos::Vec3{x, y, z});
+}
+
+extern "C" THREEOS_API uint64_t threeos_voodoo_portal_for_ghost(uint64_t entity_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return g_voodoo.portal_for_ghost_entity(entity_id);
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_ghost_drag_begin(uint32_t hand, uint64_t entity_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (hand > 1u) {
+    set_error("hand out of range");
+    return -3;
+  }
+  threeos::Pose hand_pose{};
+  bool hand_valid = false;
+  if (g_hands.cursor(hand).active) {
+    hand_pose.position = g_hands.cursor(hand).position;
+    hand_valid = true;
+  }
+  if (!hand_valid) {
+    set_error("no hand cursor");
+    return -4;
+  }
+  if (!g_voodoo.ghost_drag_begin(hand, entity_id, hand_pose, g_workspace)) {
+    set_error("ghost drag begin refused");
+    return -5;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_ghost_drag_end(uint32_t hand,
+                                                            uint32_t release_inside_near_bb) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (hand > 1u) {
+    set_error("hand out of range");
+    return -3;
+  }
+  const threeos::EntityId gid = g_voodoo.ghost_drag_entity(hand);
+  // Tick clears snap when out of range; if still pending for this drag, commit.
+  // Hold seats ~0.09 m above the box, so a raw 0.07 m 3D check always failed.
+  const bool commit_snap = g_workspace.snap().pending && g_workspace.snap().object_id == gid &&
+                           g_workspace.snap().box_id != 0;
+  if (commit_snap) {
+    std::string err;
+    if (!g_workspace.commit_insert(&err)) {
+      set_error(err.c_str());
+      g_workspace.clear_snap();
+      g_voodoo.ghost_drag_end(hand, release_inside_near_bb != 0u, g_workspace);
+      g_centroids.rebuild(g_workspace);
+      return -3;
+    }
+    const auto temps = g_voodoo.on_entity_inserted(gid);
+    for (const auto temp : temps) {
+      g_centroids.clear_temporary(temp);
+    }
+    g_centroids.rebuild(g_workspace);
+    set_error("");
+    return 0;
+  }
+  g_workspace.clear_snap();
+  g_voodoo.ghost_drag_end(hand, release_inside_near_bb != 0u, g_workspace);
+  g_centroids.rebuild(g_workspace);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API uint32_t threeos_voodoo_ghost_drag_active(uint32_t hand) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized || hand > 1u) {
+    return 0;
+  }
+  return g_voodoo.ghost_drag_active(hand) ? 1u : 0u;
+}
+
+extern "C" THREEOS_API uint64_t threeos_voodoo_ghost_drag_entity(uint32_t hand) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized || hand > 1u) {
+    return 0;
+  }
+  return g_voodoo.ghost_drag_entity(hand);
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_get_ghost_drag_arrow(
+    uint32_t hand, ThreeOS_VoodooDragArrow* out_arrow) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (hand > 1u) {
+    set_error("hand out of range");
+    return -3;
+  }
+  if (out_arrow == nullptr) {
+    set_error("null arrow");
+    return -2;
+  }
+  const auto& gd = g_voodoo.ghost_drag_state(hand);
+  const auto& a = g_voodoo.ghost_drag_arrow(hand);
+  std::memset(out_arrow, 0, sizeof(*out_arrow));
+  out_arrow->active = a.active ? 1u : 0u;
+  out_arrow->in_deadzone = a.in_deadzone ? 1u : 0u;
+  out_arrow->magnitude = a.magnitude;
+  out_arrow->stick = to_c(a.stick);
+  out_arrow->ray_origin = to_c(a.ray_origin);
+  out_arrow->ray_tip = to_c(a.ray_tip);
+  out_arrow->deadzone_armed = a.deadzone_armed ? 1u : 0u;
+  out_arrow->reserved1 = gd.direct_follow ? 1u : 0u;
+  out_arrow->reserved2 = gd.near_stick_visible ? 1u : 0u;
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_summon(uint64_t entity_id, float x, float y,
+                                                     float z) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!g_voodoo.summon_selected(entity_id, threeos::Vec3{x, y, z}, g_workspace)) {
+    set_error("summon refused");
+    return -5;
+  }
+  g_centroids.rebuild(g_workspace);
+  set_error("");
+  return 0;
 }

@@ -431,7 +431,7 @@ const WorkspaceEntry* Workspace::find(EntityId id) const {
 
 void Workspace::clear_snap() { snap_ = {}; }
 
-bool Workspace::update_snap(EntityId object_id, const Pose& pose) {
+bool Workspace::update_snap(EntityId object_id, const Pose& pose, bool apply_pose) {
   WorkspaceEntry* obj = find_mut(object_id);
   // Objects and Boxes may snap-insert into a different in-field Box.
   if (obj == nullptr || !obj->in_field ||
@@ -453,11 +453,15 @@ bool Workspace::update_snap(EntityId object_id, const Pose& pose) {
       Pose hold = box->pose;
       hold.position.y += kHoldAboveBoxM;
       snap_.hold_pose = hold;
-      obj->pose = hold;
+      if (apply_pose) {
+        obj->pose = hold;
+      }
       return false;
     }
     clear_snap();
-    obj->pose = pose;
+    if (apply_pose) {
+      obj->pose = pose;
+    }
     return true;
   }
 
@@ -500,12 +504,89 @@ bool Workspace::update_snap(EntityId object_id, const Pose& pose) {
     snap_.object_id = object_id;
     snap_.box_id = best_box;
     snap_.hold_pose = hold;
-    obj->pose = hold;
+    if (apply_pose) {
+      obj->pose = hold;
+    }
   } else {
     snap_ = {};
-    obj->pose = pose;
+    if (apply_pose) {
+      obj->pose = pose;
+    }
   }
   return edge;
+}
+
+bool Workspace::arm_snap_to_box(EntityId object_id, EntityId box_id) {
+  WorkspaceEntry* obj = find_mut(object_id);
+  WorkspaceEntry* box = find_mut(box_id);
+  if (obj == nullptr || box == nullptr || !obj->in_field || !box->in_field ||
+      box->kind != StorageKind::Box || obj->id == box->id) {
+    return false;
+  }
+  if (obj->kind != StorageKind::Object && obj->kind != StorageKind::Box) {
+    return false;
+  }
+  if (obj->kind == StorageKind::Box) {
+    EntityId walk = box->parent_box;
+    while (walk != 0) {
+      if (walk == object_id) {
+        return false;
+      }
+      const WorkspaceEntry* p = find(walk);
+      walk = p != nullptr ? p->parent_box : 0;
+    }
+  }
+  snap_.pending = true;
+  snap_.object_id = object_id;
+  snap_.box_id = box_id;
+  Pose hold = box->pose;
+  hold.position.y += kHoldAboveBoxM;
+  snap_.hold_pose = hold;
+  return true;
+}
+
+bool Workspace::insert_into(EntityId object_id, EntityId box_id, std::string* err) {
+  WorkspaceEntry* obj = find_mut(object_id);
+  WorkspaceEntry* box = find_mut(box_id);
+  if (obj == nullptr || box == nullptr) {
+    if (err) {
+      *err = "missing insert entities";
+    }
+    return false;
+  }
+  if (box->kind != StorageKind::Box || obj->id == box->id) {
+    if (err) {
+      *err = "invalid insert target";
+    }
+    return false;
+  }
+  if (obj->kind != StorageKind::Object && obj->kind != StorageKind::Box) {
+    if (err) {
+      *err = "invalid insert source";
+    }
+    return false;
+  }
+  if (obj->kind == StorageKind::Box) {
+    EntityId walk = box->parent_box;
+    while (walk != 0) {
+      if (walk == object_id) {
+        if (err) {
+          *err = "cannot nest box into descendant";
+        }
+        return false;
+      }
+      const WorkspaceEntry* p = find(walk);
+      walk = p != nullptr ? p->parent_box : 0;
+    }
+  }
+  clear_snap();
+  snap_.pending = true;
+  snap_.object_id = object_id;
+  snap_.box_id = box_id;
+  Pose hold = box->pose;
+  hold.position.y += kHoldAboveBoxM;
+  snap_.hold_pose = hold;
+  return commit_insert(err);
 }
 
 bool Workspace::commit_insert(std::string* err) {

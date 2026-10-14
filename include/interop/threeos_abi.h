@@ -317,6 +317,8 @@ THREEOS_API uint32_t threeos_storage_item_count(void);
 THREEOS_API int32_t threeos_storage_get_item(uint32_t index, ThreeOS_WorkspaceItem* out_item);
 THREEOS_API int32_t threeos_storage_get_snap(ThreeOS_SnapState* out_snap);
 THREEOS_API int32_t threeos_storage_try_commit_insert(void);
+/** Insert object/box into target box without prior snap (cross-proxy select-drop). */
+THREEOS_API int32_t threeos_storage_insert_into(uint64_t object_id, uint64_t box_id);
 THREEOS_API int32_t threeos_storage_poll_event(ThreeOS_StorageEvent* out_event);
 THREEOS_API int32_t threeos_storage_ack_event(int32_t success);
 THREEOS_API int32_t threeos_storage_set_box_open(uint64_t box_id, int32_t open);
@@ -589,6 +591,21 @@ THREEOS_API int32_t threeos_voodoo_get_portal_ghost(uint64_t portal_id, uint32_t
 THREEOS_API int32_t threeos_voodoo_dismiss_portal(uint64_t portal_id);
 THREEOS_API uint32_t threeos_voodoo_creation_allowed(void);
 THREEOS_API uint32_t threeos_voodoo_point_in_near_bb(float x, float y, float z);
+
+/* --- Voodoo ghost drag / summon (Phase 0.6 Task 6.5; additive) --- */
+
+/** Portal id whose open near BB contains the point, or 0. */
+THREEOS_API uint64_t threeos_voodoo_portal_at_near_point(float x, float y, float z);
+/** Portal owning a content ghost for entity_id, or 0. */
+THREEOS_API uint64_t threeos_voodoo_portal_for_ghost(uint64_t entity_id);
+THREEOS_API int32_t threeos_voodoo_ghost_drag_begin(uint32_t hand, uint64_t entity_id);
+THREEOS_API int32_t threeos_voodoo_ghost_drag_end(uint32_t hand, uint32_t release_inside_near_bb);
+THREEOS_API uint32_t threeos_voodoo_ghost_drag_active(uint32_t hand);
+THREEOS_API uint64_t threeos_voodoo_ghost_drag_entity(uint32_t hand);
+THREEOS_API int32_t threeos_voodoo_get_ghost_drag_arrow(uint32_t hand,
+                                                       ThreeOS_VoodooDragArrow* out_arrow);
+/** Summon selected ghost to pinch (open-air or cross-portal). */
+THREEOS_API int32_t threeos_voodoo_summon(uint64_t entity_id, float x, float y, float z);
 
 #ifdef __cplusplus
 }
