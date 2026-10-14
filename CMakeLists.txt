@@ -15,6 +15,12 @@ add_library(3os_kernel SHARED
   src/workspace.cpp
   src/hand_interaction.cpp
   src/voodoo_volume.cpp
+  src/voodoo_portal_space.cpp
+  src/voodoo_stick_viz.cpp
+  src/voodoo_pose_lerp.cpp
+  src/voodoo_orbit_packer.cpp
+  src/voodoo_ghost_drag.cpp
+  src/voodoo_cut_paste.cpp
   src/centroid_registry.cpp
 )
 

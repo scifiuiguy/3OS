@@ -3,11 +3,19 @@
 #include "core/centroid_registry.hpp"
 #include "core/hand_interaction.hpp"
 #include "core/types.hpp"
+#include "core/voodoo_cut_paste.hpp"
+#include "core/voodoo_geom.hpp"
+#include "core/voodoo_ghost_drag.hpp"
+#include "core/voodoo_orbit_packer.hpp"
+#include "core/voodoo_portal_space.hpp"
+#include "core/voodoo_pose_lerp.hpp"
+#include "core/voodoo_stick_viz.hpp"
 #include "storage/workspace.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 namespace threeos {
@@ -134,15 +142,6 @@ struct GhostDragState {
   bool near_stick_visible = false;
 };
 
-/// Fast visual travel for summon / insert / cross-portal.
-struct PoseLerpState {
-  bool active = false;
-  EntityId entity_id = 0;
-  Pose from{};
-  Pose to{};
-  float t = 0.f;  // 0..1
-};
-
 struct VoodooSessionState {
   VoodooMode mode = VoodooMode::None;
   bool open = false;
@@ -169,8 +168,8 @@ class VoodooVolumeEngine {
   static constexpr float kNavelBelowHeadM = 0.35f;
   static constexpr float kFarStartScale = 2.f;
   static constexpr float kFarDampTauS = 0.045f;
-  static constexpr float kStickVizForwardOffsetM = 4.f * 0.0254f;
-  static constexpr float kStickVizUpOffsetM = 4.f * 0.0254f;
+  static constexpr float kStickVizForwardOffsetM = StickViz::kForwardOffsetM;
+  static constexpr float kStickVizUpOffsetM = StickViz::kUpOffsetM;
   static constexpr float kSnapNodeRadiusM = 0.035f;
   static constexpr float kSnapPullMul = 2.2f;
   static constexpr float kExtentsLerpPerSec = 4.f;
@@ -181,7 +180,7 @@ class VoodooVolumeEngine {
   static constexpr float kGlyphHalfM = 0.05f;  // encapsulation pad (~GlyphSizeM/2)
   /// Cursor-in-glyph radius for direct grab (near reals; ghosts multiply by max(scale, 0.15)).
   static constexpr float kDirectGrabRadiusM = 0.09f;
-  static constexpr float kSummonLerpS = 0.20f;
+  static constexpr float kSummonLerpS = PoseLerpQueue::kSummonLerpS;
 
   const VoodooFieldParams& params() const { return params_; }
   bool set_params(const VoodooFieldParams& p);
@@ -198,10 +197,10 @@ class VoodooVolumeEngine {
   bool dismiss_portal(uint64_t portal_id);
 
   /// Task 6.6: voodoo-level cut (content ghosts only; parent Box excluded).
-  uint64_t cut_portal_id() const { return cut_portal_id_; }
+  uint64_t cut_portal_id() const;
   bool cut_arm(uint64_t portal_id);
   void cut_cancel();
-  bool cut_active() const { return cut_portal_id_ != 0; }
+  bool cut_active() const;
   /// Move all cut content ghosts to pinch as a billboarded centroid cluster
   /// (open-air or other near BB). Leaves source portal open, no refit.
   bool cut_paste_at(const Vec3& pinch_world, Workspace& workspace);
@@ -316,16 +315,48 @@ class VoodooVolumeEngine {
   /// Recompute ghost near poses from current far/near BB (after seat / bump).
   void refresh_ghost_near_poses(VoodooPortal& portal) const;
   static Vec3 near_bb_bottom_center(const VoodooBoundingBox& bb);
+  VoodooPortal* portal_mut(uint64_t portal_id);
+  const VoodooPortal* portal_const(uint64_t portal_id) const;
   bool find_ghost_mut(EntityId entity_id, VoodooPortal** out_portal, VoodooGhost** out_ghost);
   bool find_ghost(EntityId entity_id, const VoodooPortal** out_portal,
                   const VoodooGhost** out_ghost) const;
   Pose map_far_to_near_pose(const VoodooPortal& portal, const Pose& far_pose, float scale) const;
   Pose map_near_to_far_pose(const VoodooPortal& portal, const Pose& near_pose, float scale) const;
   Vec3 clamp_point_to_near_obb(const VoodooPortal& portal, const Vec3& p) const;
+  /// near_w/far_w content scale (matches park-time lock_scale formula).
+  static float content_scale_for_portal(const VoodooPortal& portal);
+  void erase_content_ghost(VoodooPortal& portal, EntityId entity_id);
+  void erase_all_content_ghosts(VoodooPortal& portal);
+  /// Seat `entity_id` as a content ghost in `target` at `near_pose`; strip other portals;
+  /// optional far lerp. Returns false if entity_id is 0.
+  bool move_ghost_to_portal(EntityId entity_id, VoodooPortal& target, const Pose& near_pose,
+                            Workspace* workspace_for_lerp);
+  /// Strip content ghosts for `entity_id` from every portal (keep parent markers).
+  void strip_content_ghost_everywhere(EntityId entity_id);
+  struct PlaceItem {
+    EntityId id = 0;
+    Pose far_pose{};
+    Pose near_pose{};
+  };
+  /// Shared cut-paste / summon placement: cross-portal cluster or open-air release.
+  /// `home` may be null for summon of a near-field real with no ghost.
+  /// `cluster_open_air`: cut paste orbits/bumps a multi-glyph footprint; summon uses pinch as-is.
+  bool place_items_at_pinch(VoodooPortal* home, const std::vector<PlaceItem>& items,
+                            const Vec3& pinch_world, Workspace& workspace, bool cluster_open_air);
   void update_ghost_drag_arrow(uint32_t hand, const Pose& hand_pose, const Pose& head,
                                bool head_valid, const Vec3& stick);
   bool ensure_ghost_in_portal(VoodooPortal& portal, EntityId entity_id, const Workspace& workspace);
   void remove_ghost_from_other_portals(uint64_t keep_portal_id, EntityId entity_id);
+  static void arm_deadzone(bool& armed, bool& left_once, float mag, float deadzone_m);
+  static Vec3 stick_viz_origin(const Vec3& start_hand, const Pose& head, bool head_valid);
+  static void fill_drag_arrow(VoodooDragArrow& arrow, const Vec3& origin, const Vec3& stick,
+                              float mag, bool deadzone_armed, float deadzone_m);
+  static Vec3 effective_portal_pos(const VoodooPortal& portal);
+  void set_portal_orbit_target(VoodooPortal& portal, const Vec3& to, const Pose& head,
+                               bool head_valid);
+  /// Walk ±orbit from `az0` until `pred(cand)`; writes `*out`. Shared by paste clear + nudge.
+  bool walk_orbit(const Vec3& body, const Vec3& fwd, const Vec3& right, float az0, float y,
+                  const std::function<bool(const Vec3&)>& pred, Vec3* out) const;
   /// Grow/recenter far BB around content; grow near by lock_scale.
   /// Always min-clears sibling near BBs (pinned bumper stays put). `settle_bump`
   /// recenters the far BB; live drag expands about a fixed far center.
@@ -370,8 +401,10 @@ class VoodooVolumeEngine {
   float azimuth_on_orbit(const Vec3& body, const Vec3& fwd, const Vec3& right,
                          const Vec3& p) const;
   float orbit_radius_at_az(float az) const;
-  static float wrap_pi(float a);
-  static float shortest_daz(float from_az, float to_az);
+  static float wrap_pi(float a) { return voodoo_geom::wrap_pi(a); }
+  static float shortest_daz(float from_az, float to_az) {
+    return voodoo_geom::shortest_daz(from_az, to_az);
+  }
   static bool near_bbs_overlap_xz(const VoodooBoundingBox& a, const VoodooBoundingBox& b,
                                   float gap_m);
   Vec3 fit_extents_for_aabb(const Vec3& aabb_min, const Vec3& aabb_max) const;
@@ -379,26 +412,39 @@ class VoodooVolumeEngine {
   void apply_far_start_extents(VoodooBoundingBox& bb) const;
   Pose far_rest_pose(const Pose& head, bool head_valid) const;
   Pose near_rest_pose(const Pose& head, bool head_valid) const;
-  static Quat yaw_billboard_toward(const Vec3& from, const Pose& head, bool head_valid);
-  static Vec3 flat_forward(const Pose& head, bool head_valid);
-  static bool point_in_obb(const Vec3& p, const Pose& box_pose, const Vec3& full_extents);
-  static Vec3 quat_rotate_yaw(const Quat& q, const Vec3& v);
-  static Quat quat_inverse_yaw(const Quat& q);
+  static Quat yaw_billboard_toward(const Vec3& from, const Pose& head, bool head_valid) {
+    return voodoo_geom::yaw_billboard_toward(from, head, head_valid);
+  }
+  static Vec3 flat_forward(const Pose& head, bool head_valid) {
+    return voodoo_geom::flat_forward(head, head_valid);
+  }
+  static bool point_in_obb(const Vec3& p, const Pose& box_pose, const Vec3& full_extents) {
+    return voodoo_geom::point_in_obb(p, box_pose, full_extents);
+  }
+  static Vec3 quat_rotate_yaw(const Quat& q, const Vec3& v) {
+    return voodoo_geom::quat_rotate_yaw(q, v);
+  }
+  static Quat quat_inverse_yaw(const Quat& q) { return voodoo_geom::quat_inverse_yaw(q); }
 
   static constexpr float kGhostDragGain = 10.f;  // match kinematics gain (1/s)
+
+  friend class VoodooOrbitPacker;
+  friend class GhostDragController;
+  friend class VoodooCutPaste;
 
   VoodooFieldParams params_{};
   HandRuntime hands_[2]{};
   GhostDragState ghost_drags_[2]{};
-  std::vector<PoseLerpState> pose_lerps_{};
+  PoseLerpQueue pose_lerps_{};
   float deadzone_m_ = kDefaultDeadzoneM;
   std::vector<VoodooPortal> portals_{};
   uint64_t next_portal_id_ = 1;
   uint64_t next_group_id_ = 1;
-  /// Portal whose content ghosts are armed for cut/paste (0 = none).
-  uint64_t cut_portal_id_ = 0;
   Pose last_head_{};
   bool last_head_valid_ = false;
+  VoodooOrbitPacker orbit_{*this};
+  GhostDragController ghost_drag_{*this};
+  VoodooCutPaste cut_{*this};
 };
 
 }  // namespace threeos
