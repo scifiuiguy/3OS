@@ -549,29 +549,23 @@ int main() {
   }
   threeos_selection_set(obj_id);  // re-select; insert should clear
 
-  // Snap: possess object, move near box
-  ThreeOS_Pose obj_pose = identity_pose_at(item.pose.position.x, item.pose.position.y,
-                                           item.pose.position.z);
-  threeos_storage_get_item(0, &item);
-  obj_pose = item.pose;
-  threeos_kinematics_possess(obj_id, &obj_pose);
+  // Snap: possess just below the box so enter radius is reached without a long
+  // stick trek across the matrix (gain * stick is too slow for a ~0.5 m drive).
+  threeos_storage_get_item(1, &item);
+  const ThreeOS_Pose box_pose = item.pose;
+  ThreeOS_Pose approach = box_pose;
+  approach.position.y += 0.05f;
+  threeos_kinematics_possess(obj_id, &approach);
   ThreeOS_InteropInputFrame sf{};
   sf.tracking_flags = THREEOS_TRACK_RIGHT_AIM | THREEOS_TRACK_HEAD;
-  sf.right_aim = obj_pose;
+  sf.right_aim = approach;
   sf.head = identity_pose_at(0.f, 1.5f, 0.f);
   sf.time_seconds = 10.0;
   threeos_tick(&sf, &delta);  // freeze start
-
-  threeos_storage_get_item(1, &item);
-  const ThreeOS_Pose box_pose = item.pose;
-  // Drive toward box over several frames
-  for (int i = 0; i < 20; ++i) {
+  for (int i = 0; i < 8; ++i) {
     sf.frame_index++;
     sf.time_seconds += 1.0 / 72.0;
-    const float t = (i + 1) / 20.f;
-    sf.right_aim.position.x = obj_pose.position.x + (box_pose.position.x - obj_pose.position.x) * t;
-    sf.right_aim.position.y = obj_pose.position.y + (box_pose.position.y - obj_pose.position.y) * t;
-    sf.right_aim.position.z = obj_pose.position.z + (box_pose.position.z - obj_pose.position.z) * t;
+    sf.right_aim = approach;
     threeos_tick(&sf, &delta);
   }
   ThreeOS_SnapState snap{};
@@ -585,12 +579,12 @@ int main() {
                 static_cast<unsigned long long>(snap.box_id));
   }
 
-  // Escape snap: keep possess, drive stick far so escape pose leaves 0.2 m.
+  // Escape snap: keep possess, drive stick past the 3″ hold buffer.
   // Hold a steady far aim so stick-built velocity persists after catch-up.
   ThreeOS_Pose escape_aim = box_pose;
-  escape_aim.position.x += 0.35f;
-  escape_aim.position.y += 0.35f;
-  escape_aim.position.z += 0.35f;
+  escape_aim.position.x += 0.20f;
+  escape_aim.position.y += 0.20f;
+  escape_aim.position.z += 0.20f;
   for (int i = 0; i < 60; ++i) {
     sf.frame_index++;
     sf.time_seconds += 1.0 / 72.0;
@@ -2255,6 +2249,201 @@ int main() {
     }
 
     std::printf("OK   ghost drag summon temp-no-grow\n");
+  }
+
+  // --- Phase 0.6 Task 6.6: scissors cut / paste / cancel ---
+  {
+    threeos_storage_clear();
+    threeos_god_clear();
+    threeos_voodoo_cut_cancel();
+
+    ThreeOS_Pose anchor{};
+    anchor.orientation = {0.f, 0.f, 0.f, 1.f};
+    uint64_t godA = 0;
+    threeos_god_register("CutA", &anchor, &godA);
+    uint64_t o1 = 0;
+    uint64_t o2 = 0;
+    threeos_storage_add_object("c1.glb", "c1.glb", &o1);
+    threeos_storage_add_object("c2.glb", "c2.glb", &o2);
+    threeos_storage_set_god_root(o1, godA);
+    threeos_storage_set_god_root(o2, godA);
+    ThreeOS_Pose lay = identity_pose_at(0.f, 1.4f, 2.0f);
+    threeos_storage_layout_god(godA, &lay);
+
+    auto fill_hand = [](ThreeOS_HandSample* h, float x, float y, float z, int primary) {
+      *h = ThreeOS_HandSample{};
+      h->tracked = 1;
+      h->tip_flags = 0x1Fu;
+      h->thumb_tip = {x, y, z};
+      h->index_tip = {x + 0.02f, y, z};
+      h->index_proximal = {x, y, z};
+      h->palm_mode = THREEOS_PALM_DOWN;
+      h->palm_mode_valid = 1;
+      h->primary_pressed = primary ? 1u : 0u;
+      h->primary_value = primary ? 1.f : 0.f;
+    };
+
+    ThreeOS_HandSample L{};
+    ThreeOS_HandSample R{};
+    fill_hand(&R, 0.25f, 1.2f, -0.25f, 1);
+    threeos_interaction_set_hands(&L, &R);
+
+    ThreeOS_InteropInputFrame vf{};
+    vf.frame_index = 22000;
+    vf.time_seconds = 120.0;
+    vf.tracking_flags =
+        THREEOS_TRACK_HEAD | THREEOS_TRACK_LEFT_AIM | THREEOS_TRACK_RIGHT_AIM;
+    vf.head = identity_pose_at(0.f, 1.6f, 0.f);
+    vf.head.orientation = {0.f, 0.f, 0.f, 1.f};
+    vf.right_aim = identity_pose_at(0.25f, 1.2f, -0.25f);
+    ThreeOS_InteropTransformDelta vd{};
+    threeos_tick(&vf, &vd);
+
+    ThreeOS_VoodooFieldParams fp{};
+    threeos_voodoo_get_field_params(&fp);
+    ThreeOS_VoodooSession sess{};
+    threeos_voodoo_get_session(1, &sess);
+    const float rest_x = sess.far_bb.pose.position.x;
+    const float rest_y = sess.far_bb.pose.position.y;
+    const float rest_z = sess.far_bb.pose.position.z;
+    ThreeOS_Centroid ca{};
+    for (uint32_t i = 0; i < threeos_centroid_count(); ++i) {
+      ThreeOS_Centroid cx{};
+      threeos_centroid_get(i, &cx);
+      if (cx.id == godA) {
+        ca = cx;
+        break;
+      }
+    }
+    const float gain_h = fp.field_radius_m / fp.arm_reach_m;
+    const float gain_v = fp.field_height_m / fp.arm_reach_m;
+    const float sx = (ca.position.x - rest_x) / gain_h;
+    const float sy = (ca.position.y - rest_y) / gain_v;
+    const float sz = (ca.position.z - rest_z) / gain_h;
+    fill_hand(&R, 0.25f + sx, 1.2f + sy, -0.25f + sz, 1);
+    vf.right_aim = identity_pose_at(0.25f + sx, 1.2f + sy, -0.25f + sz);
+    for (int i = 0; i < 22; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    fill_hand(&R, 0.25f + sx, 1.2f + sy, -0.25f + sz, 0);
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 0.016;
+    threeos_tick(&vf, &vd);
+
+    ok = expect_eq("cut.portal1", threeos_voodoo_portal_count(), 1u) && ok;
+    ThreeOS_VoodooPortal portal{};
+    threeos_voodoo_get_portal(0, &portal);
+    ok = expect_eq("cut.ghosts", portal.ghost_count >= 2u ? 1u : 0u, 1u) && ok;
+
+    float base_scale = 1.f;
+    for (uint32_t gi = 0; gi < portal.ghost_count; ++gi) {
+      ThreeOS_VoodooGhost g{};
+      threeos_voodoo_get_portal_ghost(portal.id, gi, &g);
+      if (g.is_parent_box == 0) {
+        base_scale = g.scale;
+        break;
+      }
+    }
+
+    ok = expect_eq("cut.arm", threeos_voodoo_cut_arm(portal.id) == 0 ? 1u : 0u, 1u) && ok;
+    ok = expect_eq("cut.active", threeos_voodoo_cut_portal() == portal.id ? 1u : 0u, 1u) && ok;
+
+    bool ducked = false;
+    for (uint32_t gi = 0; gi < portal.ghost_count; ++gi) {
+      ThreeOS_VoodooGhost g{};
+      threeos_voodoo_get_portal_ghost(portal.id, gi, &g);
+      if (g.is_parent_box == 0) {
+        // Opacity duck is host-side via unused0; geometric scale stays intact.
+        ducked = g.unused0 > 0.5f && std::fabs(g.scale - base_scale) < 1e-4f;
+        ok = expect_eq("cut.duck", ducked ? 1u : 0u, 1u) && ok;
+        ok = expect_eq("cut.flag", g.unused0 > 0.5f ? 1u : 0u, 1u) && ok;
+        ok = expect_eq("cut.scale_kept",
+                       std::fabs(g.scale - base_scale) < 1e-4f ? 1u : 0u, 1u) &&
+             ok;
+        break;
+      }
+    }
+
+    threeos_voodoo_cut_cancel();
+    ok = expect_eq("cut.cancel", threeos_voodoo_cut_portal(), 0u) && ok;
+    for (uint32_t gi = 0; gi < portal.ghost_count; ++gi) {
+      ThreeOS_VoodooGhost g{};
+      threeos_voodoo_get_portal_ghost(portal.id, gi, &g);
+      if (g.is_parent_box == 0) {
+        ok = expect_eq("cut.restore", g.unused0 < 0.5f ? 1u : 0u, 1u) && ok;
+        ok = expect_eq("cut.restore_scale",
+                       std::fabs(g.scale - base_scale) < 1e-4f ? 1u : 0u, 1u) &&
+             ok;
+        break;
+      }
+    }
+
+    // Re-arm and paste into open near space (outside portal).
+    ok = expect_eq("cut.arm2", threeos_voodoo_cut_arm(portal.id) == 0 ? 1u : 0u, 1u) && ok;
+    const float before_ext_x = portal.near_bb.extents.x;
+    const uint32_t before_ghosts = portal.ghost_count;
+    const float paste_x = portal.near_bb.pose.position.x + 0.55f;
+    const float paste_y = portal.near_bb.pose.position.y;
+    const float paste_z = portal.near_bb.pose.position.z;
+    ok = expect_eq("cut.paste", threeos_voodoo_cut_paste_at(paste_x, paste_y, paste_z) == 0 ? 1u : 0u,
+                   1u) &&
+         ok;
+    ok = expect_eq("cut.cleared", threeos_voodoo_cut_portal(), 0u) && ok;
+    // Drain summon lerps so workspace poses settle at cluster destinations.
+    for (int i = 0; i < 30; ++i) {
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    threeos_voodoo_get_portal(0, &portal);
+    // Parent ghost may remain; content ghosts should be gone. Portal stays open, no resize.
+    ok = expect_eq("cut.portal_open", portal.near_bb.open, 1u) && ok;
+    ok = expect_eq("cut.no_resize",
+                   std::fabs(portal.near_bb.extents.x - before_ext_x) < 1e-4f ? 1u : 0u, 1u) &&
+         ok;
+    ok = expect_eq("cut.content_gone",
+                   portal.ghost_count < before_ghosts ? 1u : 0u, 1u) &&
+         ok;
+
+    // Pasted cluster must keep relative spacing (not stack on the pinch point).
+    ThreeOS_WorkspaceItem p1{};
+    ThreeOS_WorkspaceItem p2{};
+    bool got1 = false;
+    bool got2 = false;
+    for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+      ThreeOS_WorkspaceItem it{};
+      threeos_storage_get_item(i, &it);
+      if (it.entity_id == o1) {
+        p1 = it;
+        got1 = true;
+      }
+      if (it.entity_id == o2) {
+        p2 = it;
+        got2 = true;
+      }
+    }
+    ok = expect_eq("cut.paste_items", (got1 && got2) ? 1u : 0u, 1u) && ok;
+    if (got1 && got2) {
+      const float dx = p1.pose.position.x - p2.pose.position.x;
+      const float dy = p1.pose.position.y - p2.pose.position.y;
+      const float dz = p1.pose.position.z - p2.pose.position.z;
+      const float sep = std::sqrt(dx * dx + dy * dy + dz * dz);
+      ok = expect_eq("cut.paste_spread", sep > 0.05f ? 1u : 0u, 1u) && ok;
+      // Cluster centroid should land near the paste pinch (XZ).
+      const float cx = 0.5f * (p1.pose.position.x + p2.pose.position.x);
+      const float cz = 0.5f * (p1.pose.position.z + p2.pose.position.z);
+      const float cdx = cx - paste_x;
+      const float cdz = cz - paste_z;
+      ok = expect_eq("cut.paste_centroid",
+                     std::sqrt(cdx * cdx + cdz * cdz) < 0.35f ? 1u : 0u, 1u) &&
+           ok;
+    }
+
+    std::printf("OK   scissors cut duck cancel paste\n");
   }
 
   threeos_shutdown();

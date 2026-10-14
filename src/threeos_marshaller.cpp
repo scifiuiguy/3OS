@@ -532,20 +532,30 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
         }
         if (have_snap_pose) {
           // Near BB is ~0.3 m — far-field 0.2 m radius armed almost every pair.
-          // Snap only between content ghosts in the same portal, tight radius.
-          // If the drag ghost was pruned (left far BB), never fall back to far
-          // update_snap (that caused distant false inserts + FS thrash).
+          // Portal ghosts: snap to sibling ghost Boxes (tight near-space radius).
+          // Near-field reals (audition / no portal ghost): snap to in-field Boxes via
+          // workspace poses. Committed drag with no ghost (pulled to far) must NOT
+          // fall back to far update_snap (distant false inserts + FS thrash).
           const uint64_t snap_portal = g_voodoo.portal_for_ghost_entity(gid);
+          const auto drag_kind = g_voodoo.ghost_drag_kind(gh);
           if (snap_portal == 0) {
-            g_workspace.clear_snap();
+            if (drag_kind == threeos::GhostDragKind::Audition) {
+              // Matrix snap (seat + re-anchor) runs inside ghost_drag_tick for audition
+              // outside a portal. Do not clear here — tick already armed/updated snap.
+            } else {
+              g_workspace.clear_snap();
+            }
           } else {
             constexpr float kGhostSnapM = 0.07f;
             // Midway between the clipped 0.04 m seat and the gappy 0.14 m far hold.
             constexpr float kGhostHoldAboveM = 0.09f;
             // After hold, centers sit ~holdAbove apart — sticky must allow that gap.
             constexpr float kGhostStickyM = kGhostHoldAboveM + 0.03f;
+            // Near-field real Boxes use the wider workspace snap radius.
+            constexpr float kNearRealSnapM = 0.2f;
             threeos::EntityId best_box = 0;
-            float best_d = kGhostSnapM;
+            float best_d = kNearRealSnapM;
+            bool best_is_ghost = false;
             const threeos::VoodooPortal* snap_portal_ptr = nullptr;
             for (const auto& portal : g_voodoo.portals()) {
               if (portal.id == snap_portal) {
@@ -554,7 +564,7 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
               }
             }
             if (snap_portal_ptr != nullptr) {
-              auto near_dist_to = [&](threeos::EntityId box_id) -> float {
+              auto near_dist_to_ghost = [&](threeos::EntityId box_id) -> float {
                 for (const auto& g : snap_portal_ptr->ghosts) {
                   if (!g.is_parent_box && g.entity_id == box_id) {
                     const float dx = snap_pose.position.x - g.near_pose.position.x;
@@ -567,10 +577,26 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
               };
               if (g_workspace.snap().pending && g_workspace.snap().object_id == gid &&
                   g_workspace.snap().box_id != 0) {
-                const float d = near_dist_to(g_workspace.snap().box_id);
-                if (d < kGhostStickyM) {
+                const float d_ghost = near_dist_to_ghost(g_workspace.snap().box_id);
+                if (d_ghost < kGhostStickyM) {
                   best_box = g_workspace.snap().box_id;
-                  best_d = d;
+                  best_d = d_ghost;
+                  best_is_ghost = true;
+                } else if (g_voodoo.portal_for_ghost_entity(g_workspace.snap().box_id) == 0) {
+                  if (const auto* box = g_workspace.find(g_workspace.snap().box_id)) {
+                    const float hx = box->pose.position.x;
+                    const float hy = box->pose.position.y + threeos::Workspace::kHoldAboveBoxM;
+                    const float hz = box->pose.position.z;
+                    const float dx = snap_pose.position.x - hx;
+                    const float dy = snap_pose.position.y - hy;
+                    const float dz = snap_pose.position.z - hz;
+                    const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+                    if (d < threeos::Workspace::kSnapEscapeBufferM) {
+                      best_box = g_workspace.snap().box_id;
+                      best_d = d;
+                      best_is_ghost = false;
+                    }
+                  }
                 }
               }
               if (best_box == 0) {
@@ -587,16 +613,37 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
                   const float dy = snap_pose.position.y - g.near_pose.position.y;
                   const float dz = snap_pose.position.z - g.near_pose.position.z;
                   const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
-                  if (d < best_d) {
+                  if (d < kGhostSnapM && d < best_d) {
                     best_d = d;
                     best_box = g.entity_id;
+                    best_is_ghost = true;
+                  }
+                }
+                // Near-field real Boxes (not portal ghosts) — workspace pose is near.
+                for (const auto& e : g_workspace.entries()) {
+                  if (e.kind != threeos::StorageKind::Box || !e.in_field || e.id == gid) {
+                    continue;
+                  }
+                  if (g_voodoo.portal_for_ghost_entity(e.id) != 0) {
+                    continue;
+                  }
+                  const float dx = snap_pose.position.x - e.pose.position.x;
+                  const float dy = snap_pose.position.y - e.pose.position.y;
+                  const float dz = snap_pose.position.z - e.pose.position.z;
+                  const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+                  if (d < best_d) {
+                    best_d = d;
+                    best_box = e.id;
+                    best_is_ghost = false;
                   }
                 }
               }
             }
             if (best_box != 0 && g_workspace.arm_snap_to_box(gid, best_box)) {
-              (void)g_voodoo.apply_near_ghost_snap_hold(gid, best_box, kGhostHoldAboveM,
-                                                        g_workspace);
+              if (best_is_ghost) {
+                (void)g_voodoo.apply_near_ghost_snap_hold(gid, best_box, kGhostHoldAboveM,
+                                                          g_workspace);
+              }
             } else {
               g_workspace.clear_snap();
             }
@@ -2001,7 +2048,10 @@ extern "C" THREEOS_API int32_t threeos_voodoo_get_portal_ghost(uint64_t portal_i
   out_ghost->is_parent_box = g.is_parent_box ? 1u : 0u;
   out_ghost->far_pose = to_c(g.far_pose);
   out_ghost->near_pose = to_c(g.near_pose);
+  // Cut ducks opacity on the host (unused0 flag); keep geometric scale intact.
+  const bool cut = !g.is_parent_box && g_voodoo.cut_portal_id() == portal_id;
   out_ghost->scale = g.scale;
+  out_ghost->unused0 = cut ? 1.f : 0.f;
   set_error("");
   return 0;
 }
@@ -2119,6 +2169,9 @@ extern "C" THREEOS_API int32_t threeos_voodoo_ghost_drag_end(uint32_t hand,
     for (const auto temp : temps) {
       g_centroids.clear_temporary(temp);
     }
+    // Always end the drag after commit — leaving it active kept ticking the
+    // inserted entity and could fight host hide/RebuildViews (disappear/reappear).
+    g_voodoo.ghost_drag_end(hand, release_inside_near_bb != 0u, g_workspace);
     g_centroids.rebuild(g_workspace);
     set_error("");
     return 0;
@@ -2186,6 +2239,66 @@ extern "C" THREEOS_API int32_t threeos_voodoo_summon(uint64_t entity_id, float x
   }
   if (!g_voodoo.summon_selected(entity_id, threeos::Vec3{x, y, z}, g_workspace)) {
     set_error("summon refused");
+    return -5;
+  }
+  g_centroids.rebuild(g_workspace);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_cut_arm(uint64_t portal_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!g_voodoo.cut_arm(portal_id)) {
+    set_error("cut arm refused");
+    return -2;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API void threeos_voodoo_cut_cancel(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return;
+  }
+  g_voodoo.cut_cancel();
+}
+
+extern "C" THREEOS_API uint64_t threeos_voodoo_cut_portal(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return g_voodoo.cut_portal_id();
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_cut_paste_at(float x, float y, float z) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!g_voodoo.cut_paste_at(threeos::Vec3{x, y, z}, g_workspace)) {
+    set_error("cut paste refused");
+    return -5;
+  }
+  g_centroids.rebuild(g_workspace);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_cut_paste_into(uint64_t box_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!g_voodoo.cut_paste_into(box_id, g_workspace)) {
+    set_error("cut paste-into refused");
     return -5;
   }
   g_centroids.rebuild(g_workspace);

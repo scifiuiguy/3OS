@@ -110,6 +110,10 @@ struct GhostDragState {
   bool direct_follow = false;
   /// Object position − cursor at grab (preserved so the glyph does not snap to the tip).
   Vec3 grab_offset{};
+  /// Free/escape position while matrix-snapped (audition outside a portal). Hold is
+  /// display-only; escape must accumulate or sticky snap can never clear.
+  Vec3 snap_escape{};
+  bool have_snap_escape = false;
   uint32_t hand = 0;
   EntityId entity_id = 0;
   uint64_t portal_id = 0;
@@ -192,6 +196,20 @@ class VoodooVolumeEngine {
   /// Hard portal cap only. Collide-with-full-group is refused at park (pose-dependent).
   bool creation_allowed() const { return portals_.size() < kMaxNearPortals; }
   bool dismiss_portal(uint64_t portal_id);
+
+  /// Task 6.6: voodoo-level cut (content ghosts only; parent Box excluded).
+  uint64_t cut_portal_id() const { return cut_portal_id_; }
+  bool cut_arm(uint64_t portal_id);
+  void cut_cancel();
+  bool cut_active() const { return cut_portal_id_ != 0; }
+  /// Move all cut content ghosts to pinch as a billboarded centroid cluster
+  /// (open-air or other near BB). Leaves source portal open, no refit.
+  bool cut_paste_at(const Vec3& pinch_world, Workspace& workspace);
+  /// Move/insert all cut content into `box_id` (must not belong to the cut portal).
+  bool cut_paste_into(EntityId box_id, Workspace& workspace);
+  /// Content entity ids currently armed for cut (excludes parent Box ghost).
+  std::vector<EntityId> cut_entity_ids() const;
+
   /// Point-in-any-open-near-BB (for cursor tint).
   bool point_in_any_near_bb(const Vec3& p) const;
   /// Portal whose open near BB contains `p`, or 0 if none.
@@ -252,7 +270,7 @@ class VoodooVolumeEngine {
   /// Drive one hand. Pass live centroids + workspace for snap / park ghosts.
   void tick_hand(uint32_t hand, const InteractionIntents& intents, const Pose& hand_pose,
                  bool hand_valid, const Pose& head, bool head_valid, float dt_seconds,
-                 CentroidRegistry& centroids, const Workspace& workspace);
+                 CentroidRegistry& centroids, Workspace& workspace);
 
   /// Advance bump-lerps for all portals (call once per tick after hands).
   void tick_portals(float dt_seconds, const Pose& head, bool head_valid);
@@ -276,12 +294,15 @@ class VoodooVolumeEngine {
     bool deadzone_armed_ = false;
     bool deadzone_left_once_ = false;
     float drag_hold_s_ = 0.f;
+    /// Portal created by the last park on this hand (0 = none). Session near/far
+    /// snapshots sync from this portal so they do not go stale after bump-lerp.
+    uint64_t parked_portal_id_ = 0;
   };
 
   void open_drag(uint32_t hand, VoodooMode mode, const Pose& hand_pose, const Pose& head,
                  bool head_valid);
   void park(uint32_t hand, const Pose& hand_pose, bool hand_valid, const Pose& head,
-            bool head_valid, CentroidRegistry& centroids, const Workspace& workspace);
+            bool head_valid, CentroidRegistry& centroids, Workspace& workspace);
   void cancel_drag(uint32_t hand);
   void clear_hand_session(uint32_t hand);
   void update_far_while_dragging(uint32_t hand, const Pose& hand_pose, const Pose& head,
@@ -311,12 +332,25 @@ class VoodooVolumeEngine {
   void refit_far_bb_to_content_ghosts(VoodooPortal& portal, Workspace& workspace,
                                      bool settle_bump);
   /// Push in-field objects out of an open near BB footprint (XZ).
-  void bump_near_field_clutter(const VoodooPortal& portal, Workspace& workspace);
+  /// When `animate` is true, targets travel via pose-lerp (~under 0.25 s); else snap.
+  void bump_near_field_clutter(const VoodooPortal& portal, Workspace& workspace,
+                               const Pose& head, bool head_valid, bool animate);
+  /// Open-air cut paste: orbit overlapping near BBs clear of a paste footprint; if the
+  /// ring cannot absorb them, nudge the paste origin on the body orbit instead.
+  /// Near BBs never leave the near field. Returns the (possibly nudged) paste centroid.
+  Vec3 resolve_cut_paste_origin(const Vec3& pinch_world, float cluster_radius_m);
+  /// Orbit near BBs clear of a paste cylinder, then cascade sibling overlaps on the
+  /// body orbit (bumped A into B → B yields). Returns false if the ring cannot clear.
+  bool orbit_near_bbs_clear_of_paste(const Vec3& paste_c, float paste_r);
   static float portal_near_footprint_radius(const VoodooBoundingBox& near_bb);
   void begin_pose_lerp(EntityId entity_id, const Pose& to, Workspace& workspace);
   void audition_enter_portal(GhostDragState& gd, VoodooPortal& portal, const Pose& hand_pose,
                              Workspace& workspace);
   void audition_exit_portal(GhostDragState& gd, const Pose& hand_pose, Workspace& workspace);
+  /// Near-field matrix Box snap while auditioning outside a portal: seat on hold and
+  /// re-anchor grab/stick so the object does not keep tunneling through the target.
+  void audition_apply_matrix_snap(GhostDragState& gd, const Pose& hand_pose,
+                                  Workspace& workspace);
   /// Pin `pinned_index` as bumper (pose/yaw fixed); other near BBs in its group orbit clear.
   /// Merge groups on contact. Returns false if the group cannot clear (full ring) — caller rolls back.
   bool bump_resolve(const Pose& head, bool head_valid, size_t pinned_index);
@@ -361,6 +395,8 @@ class VoodooVolumeEngine {
   std::vector<VoodooPortal> portals_{};
   uint64_t next_portal_id_ = 1;
   uint64_t next_group_id_ = 1;
+  /// Portal whose content ghosts are armed for cut/paste (0 = none).
+  uint64_t cut_portal_id_ = 0;
   Pose last_head_{};
   bool last_head_valid_ = false;
 };

@@ -442,21 +442,22 @@ bool Workspace::update_snap(EntityId object_id, const Pose& pose, bool apply_pos
   }
 
   // Sticky snap: once pending, ignore every other Box until the free/escape
-  // pose leaves *this* box's radius. Hold sits above the target, which in a
-  // tight vertical matrix is closer to the Box above — without stickiness
-  // nearest-neighbor would cascade up the stack. On exit, do not retarget
-  // another Box in the same call (host also suppresses snap during lerp escape).
+  // pose leaves a small buffer around *this* hold seat (not the wide enter
+  // radius — that forced nearly an arm's length to unsnap). Hold sits above
+  // the target; without stickiness nearest-neighbor cascades up dense stacks.
+  // On exit, do not retarget another Box in the same call.
   if (snap_.pending && snap_.object_id == object_id && snap_.box_id != 0) {
     const WorkspaceEntry* box = find(snap_.box_id);
-    if (box != nullptr && box->kind == StorageKind::Box && box->in_field &&
-        dist(pose.position, box->pose.position) < kSnapDistanceM) {
+    if (box != nullptr && box->kind == StorageKind::Box && box->in_field) {
       Pose hold = box->pose;
       hold.position.y += kHoldAboveBoxM;
       snap_.hold_pose = hold;
-      if (apply_pose) {
-        obj->pose = hold;
+      if (dist(pose.position, hold.position) < kSnapEscapeBufferM) {
+        if (apply_pose) {
+          obj->pose = hold;
+        }
+        return false;
       }
-      return false;
     }
     clear_snap();
     if (apply_pose) {

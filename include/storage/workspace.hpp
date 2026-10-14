@@ -56,6 +56,9 @@ class Workspace {
  public:
   static constexpr float kSnapDistanceM = 0.2f;
   static constexpr float kHoldAboveBoxM = 0.14f;
+  /// Once seated, free/escape pose may leave this radius around the hold to unsnap
+  /// (3″). Enter still uses `kSnapDistanceM` from the Box center.
+  static constexpr float kSnapEscapeBufferM = 3.f * 0.0254f;
   static constexpr float kDefaultFieldSpacingM = 0.22f;
   static constexpr int kMaxExpandLiftCells = 32;
 
@@ -103,8 +106,8 @@ class Workspace {
 
   /// While dragging an Object or Box at `pose`, update snap vs other Boxes.
   /// `pose` should be the free/escape kinematic pose (not the display hold).
-  /// Once snapped, stays on that Box until `pose` leaves its snap radius
-  /// (ignores nearer neighbors — prevents hold-pose cascade in dense stacks).
+  /// Once snapped, stays on that Box until `pose` leaves `kSnapEscapeBufferM`
+  /// around the hold seat (ignores nearer neighbors — prevents hold-pose cascade).
   /// When `apply_pose` is false, only snap state is updated (ghost-scale drag targets
   /// with a near pose must not teleport the far workspace entry onto the ghost).
   /// Returns true if snap enter/exit edge occurred.

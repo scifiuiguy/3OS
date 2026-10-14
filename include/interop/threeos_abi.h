@@ -607,6 +607,18 @@ THREEOS_API int32_t threeos_voodoo_get_ghost_drag_arrow(uint32_t hand,
 /** Summon selected ghost to pinch (open-air or cross-portal). */
 THREEOS_API int32_t threeos_voodoo_summon(uint64_t entity_id, float x, float y, float z);
 
+/* --- Voodoo scissors cut/paste (Phase 0.6 Task 6.6; additive) --- */
+
+/** Arm cut on portal content ghosts (excludes parent Box). Replaces any prior cut. */
+THREEOS_API int32_t threeos_voodoo_cut_arm(uint64_t portal_id);
+THREEOS_API void threeos_voodoo_cut_cancel(void);
+/** Armed cut portal id, or 0. */
+THREEOS_API uint64_t threeos_voodoo_cut_portal(void);
+/** Move all cut content to pinch (open-air / other near BB). Leaves source portal open. */
+THREEOS_API int32_t threeos_voodoo_cut_paste_at(float x, float y, float z);
+/** Move/insert all cut content into box_id (refuses boxes belonging to the cut portal). */
+THREEOS_API int32_t threeos_voodoo_cut_paste_into(uint64_t box_id);
+
 #ifdef __cplusplus
 }
 #endif

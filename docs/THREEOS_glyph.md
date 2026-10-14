@@ -69,6 +69,7 @@ Inside the GLB JSON chunk, on the **root** glTF object:
 | `gltf_mark.3glyph` | `gltf_mark` | `.gltf`, `.glb` **content** (e.g. demo `simple.glb`) |
 | `box.3glyph` | `box_closed` | default closed Box glyph (`box_state: "closed"`) |
 | `box_open.3glyph` | `box_open` | open Box glyph (`box_state: "open"`) |
+| `scissors.3glyph` | `scissors` | UI cut affordance (voodoo portal scissors button; `category: "app"`) |
 
 Ready-to-paste JSON for each pack: [`docs/glyph_packs/`](glyph_packs/).
 

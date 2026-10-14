@@ -1,6 +1,8 @@
 #include "core/voodoo_volume.hpp"
 
 #include <algorithm>
+#include <functional>
+#include <string>
 
 namespace threeos {
 namespace {
@@ -223,6 +225,7 @@ void VoodooVolumeEngine::reset() {
   portals_.clear();
   next_portal_id_ = 1;
   next_group_id_ = 1;
+  cut_portal_id_ = 0;
   clear_hand_session(0);
   clear_hand_session(1);
   ghost_drags_[0] = {};
@@ -263,8 +266,528 @@ bool VoodooVolumeEngine::dismiss_portal(uint64_t portal_id) {
       ghost_drags_[h] = {};
     }
   }
+  if (cut_portal_id_ == portal_id) {
+    cut_portal_id_ = 0;
+  }
   portals_.erase(it, portals_.end());
   return true;
+}
+
+bool VoodooVolumeEngine::cut_arm(uint64_t portal_id) {
+  if (portal_id == 0) {
+    return false;
+  }
+  for (const auto& p : portals_) {
+    if (p.id == portal_id && p.near_bb.open) {
+      cut_portal_id_ = portal_id;
+      return true;
+    }
+  }
+  return false;
+}
+
+void VoodooVolumeEngine::cut_cancel() {
+  cut_portal_id_ = 0;
+}
+
+std::vector<EntityId> VoodooVolumeEngine::cut_entity_ids() const {
+  std::vector<EntityId> ids;
+  if (cut_portal_id_ == 0) {
+    return ids;
+  }
+  for (const auto& p : portals_) {
+    if (p.id != cut_portal_id_) {
+      continue;
+    }
+    for (const auto& g : p.ghosts) {
+      if (!g.is_parent_box && g.entity_id != 0) {
+        ids.push_back(g.entity_id);
+      }
+    }
+    break;
+  }
+  return ids;
+}
+
+bool VoodooVolumeEngine::orbit_near_bbs_clear_of_paste(const Vec3& paste_c, float paste_r) {
+  const Pose& head = last_head_;
+  const bool head_valid = last_head_valid_;
+  const Vec3 body{head_valid ? head.position.x : 0.f, 0.f, head_valid ? head.position.z : 0.f};
+  const Vec3 fwd = flat_forward(head, head_valid);
+  const Vec3 right{fwd.z, 0.f, -fwd.x};
+
+  auto eff_pos = [](const VoodooPortal& p) {
+    return (p.bump_t < 1.f) ? p.bump_to : p.near_bb.pose.position;
+  };
+  auto set_orbit_target = [&](VoodooPortal& p, const Vec3& to) {
+    p.bump_from = p.near_bb.pose.position;
+    p.bump_to = to;
+    if (dist3(p.bump_from, to) < 1e-4f) {
+      p.near_bb.pose.position = to;
+      p.bump_t = 1.f;
+    } else {
+      p.bump_t = 0.f;
+    }
+    p.near_bb.pose.orientation = yaw_billboard_toward(to, head, head_valid);
+    refresh_ghost_near_poses(p);
+  };
+  auto paste_need = [&](const VoodooPortal& p) {
+    return paste_r + portal_near_footprint_radius(p.near_bb) + kNearClearGapM;
+  };
+  auto clear_of_paste = [&](const Vec3& pos, const VoodooPortal& p) {
+    const float need = paste_need(p);
+    const float dx = pos.x - paste_c.x;
+    const float dz = pos.z - paste_c.z;
+    return std::sqrt(dx * dx + dz * dz) + 1e-4f >= need;
+  };
+  auto pair_need = [](const VoodooPortal& a, const VoodooPortal& b) {
+    // Match near_bbs_overlap_xz / near_targets_clear (half-diagonals + gap).
+    const auto& ea = a.near_bb.extents;
+    const auto& eb = b.near_bb.extents;
+    const float ra = 0.5f * std::sqrt(ea.x * ea.x + ea.z * ea.z);
+    const float rb = 0.5f * std::sqrt(eb.x * eb.x + eb.z * eb.z);
+    return ra + rb + kNearClearGapM;
+  };
+
+  // Walk `az0` along ±orbit until `pred(cand)` is true. Returns false if no slot.
+  auto walk_orbit = [&](float az0, float y, const std::function<bool(const Vec3&)>& pred,
+                        Vec3* out) {
+    constexpr float kStep = 0.06f;
+    for (int dir = 0; dir < 2; ++dir) {
+      const float sign = dir == 0 ? 1.f : -1.f;
+      for (int step = 1; step <= 48; ++step) {
+        const float az = wrap_pi(az0 + sign * kStep * static_cast<float>(step));
+        const Vec3 cand = pos_on_orbit_ellipse(body, fwd, right, az, y);
+        if (pred(cand)) {
+          *out = cand;
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  // Pass 1: orbit every near BB that intersects the paste footprint.
+  for (auto& p : portals_) {
+    if (!p.near_bb.open) {
+      continue;
+    }
+    const Vec3 from = eff_pos(p);
+    if (clear_of_paste(from, p)) {
+      continue;
+    }
+    const float az0 = azimuth_on_orbit(body, fwd, right, from);
+    Vec3 target = from;
+    if (!walk_orbit(az0, from.y, [&](const Vec3& cand) { return clear_of_paste(cand, p); },
+                    &target)) {
+      return false;
+    }
+    set_orbit_target(p, target);
+  }
+
+  // Pass 2+: cascade sibling overlaps. A paste-bumped BB that lands on a neighbor must
+  // push that neighbor onward (and so on), without anyone walking back into the paste.
+  for (int pass = 0; pass < 64; ++pass) {
+    bool moved = false;
+    for (size_t i = 0; i < portals_.size(); ++i) {
+      if (!portals_[i].near_bb.open) {
+        continue;
+      }
+      for (size_t j = i + 1; j < portals_.size(); ++j) {
+        if (!portals_[j].near_bb.open) {
+          continue;
+        }
+        auto& a = portals_[i];
+        auto& b = portals_[j];
+        Vec3 pa = eff_pos(a);
+        Vec3 pb = eff_pos(b);
+        const float need = pair_need(a, b);
+        float dx = pb.x - pa.x;
+        float dz = pb.z - pa.z;
+        float dist = std::sqrt(dx * dx + dz * dz);
+        if (dist + 1e-4f >= need) {
+          continue;
+        }
+
+        float az_a = azimuth_on_orbit(body, fwd, right, pa);
+        float az_b = azimuth_on_orbit(body, fwd, right, pb);
+        const float daz = shortest_daz(az_a, az_b);
+        const float sign = daz >= 0.f ? 1.f : -1.f;
+        constexpr float kSep = 0.025f;
+        bool separated = false;
+        for (int step = 0; step < 80; ++step) {
+          // Prefer moving B (later seed) when A was the paste bumper; both may move.
+          az_b = wrap_pi(az_b + sign * kSep);
+          az_a = wrap_pi(az_a - sign * kSep * 0.35f);
+          pa = pos_on_orbit_ellipse(body, fwd, right, az_a, pa.y);
+          pb = pos_on_orbit_ellipse(body, fwd, right, az_b, pb.y);
+          // Never re-enter the paste footprint while separating.
+          if (!clear_of_paste(pa, a) || !clear_of_paste(pb, b)) {
+            continue;
+          }
+          dx = pb.x - pa.x;
+          dz = pb.z - pa.z;
+          if (std::sqrt(dx * dx + dz * dz) + 1e-4f >= need) {
+            separated = true;
+            break;
+          }
+        }
+        if (!separated) {
+          // One-sided yield: park A, push B clear of both A and paste.
+          pa = eff_pos(a);
+          pb = eff_pos(b);
+          az_b = azimuth_on_orbit(body, fwd, right, pb);
+          Vec3 target = pb;
+          const bool ok = walk_orbit(
+              az_b, pb.y,
+              [&](const Vec3& cand) {
+                if (!clear_of_paste(cand, b)) {
+                  return false;
+                }
+                const float cdx = cand.x - pa.x;
+                const float cdz = cand.z - pa.z;
+                return std::sqrt(cdx * cdx + cdz * cdz) + 1e-4f >= need;
+              },
+              &target);
+          if (!ok) {
+            return false;
+          }
+          set_orbit_target(b, target);
+          moved = true;
+          continue;
+        }
+        set_orbit_target(a, pa);
+        set_orbit_target(b, pb);
+        moved = true;
+      }
+    }
+
+    // Re-clear anyone who drifted into paste during sibling pushes.
+    for (auto& p : portals_) {
+      if (!p.near_bb.open) {
+        continue;
+      }
+      const Vec3 from = eff_pos(p);
+      if (clear_of_paste(from, p)) {
+        continue;
+      }
+      const float az0 = azimuth_on_orbit(body, fwd, right, from);
+      Vec3 target = from;
+      if (!walk_orbit(az0, from.y, [&](const Vec3& cand) { return clear_of_paste(cand, p); },
+                      &target)) {
+        return false;
+      }
+      set_orbit_target(p, target);
+      moved = true;
+    }
+
+    if (!moved) {
+      break;
+    }
+  }
+
+  // Final world check: paste clear + sibling targets clear.
+  for (const auto& p : portals_) {
+    if (p.near_bb.open && !clear_of_paste(eff_pos(p), p)) {
+      return false;
+    }
+  }
+  return near_targets_clear();
+}
+
+Vec3 VoodooVolumeEngine::resolve_cut_paste_origin(const Vec3& pinch_world, float cluster_radius_m) {
+  const Pose& head = last_head_;
+  const bool head_valid = last_head_valid_;
+  const Vec3 body{head_valid ? head.position.x : 0.f, 0.f, head_valid ? head.position.z : 0.f};
+  const Vec3 fwd = flat_forward(head, head_valid);
+  const Vec3 right{fwd.z, 0.f, -fwd.x};
+  const float paste_r = std::max(cluster_radius_m, kGlyphHalfM) + kNearClearGapM;
+
+  auto footprint_clear = [&](const Vec3& c) {
+    for (const auto& p : portals_) {
+      if (!p.near_bb.open) {
+        continue;
+      }
+      const Vec3 pc = (p.bump_t < 1.f) ? p.bump_to : p.near_bb.pose.position;
+      const float need = paste_r + portal_near_footprint_radius(p.near_bb);
+      const float dx = pc.x - c.x;
+      const float dz = pc.z - c.z;
+      if (std::sqrt(dx * dx + dz * dz) + 1e-4f < need) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  Vec3 dest = pinch_world;
+  // Prefer orbiting near BBs clear of the pinch; only nudge paste origin if the ring is full.
+  if (!orbit_near_bbs_clear_of_paste(dest, paste_r) || !footprint_clear(dest)) {
+    const float az0 = azimuth_on_orbit(body, fwd, right, pinch_world);
+    const float y = pinch_world.y;
+    constexpr float kStep = 0.1f;
+    bool nudged = false;
+    for (int dir = 0; dir < 2 && !nudged; ++dir) {
+      const float sign = dir == 0 ? 1.f : -1.f;
+      for (int step = 1; step <= 32; ++step) {
+        const float az = wrap_pi(az0 + sign * kStep * static_cast<float>(step));
+        const Vec3 cand = pos_on_orbit_ellipse(body, fwd, right, az, y);
+        if (footprint_clear(cand)) {
+          dest = cand;
+          nudged = true;
+          break;
+        }
+      }
+    }
+    if (nudged) {
+      // After nudging paste origin, orbit any leftover overlaps (should be rare).
+      orbit_near_bbs_clear_of_paste(dest, paste_r);
+    }
+  }
+  return dest;
+}
+
+bool VoodooVolumeEngine::cut_paste_at(const Vec3& pinch_world, Workspace& workspace) {
+  if (cut_portal_id_ == 0) {
+    return false;
+  }
+  VoodooPortal* home = nullptr;
+  for (auto& p : portals_) {
+    if (p.id == cut_portal_id_) {
+      home = &p;
+      break;
+    }
+  }
+  if (home == nullptr) {
+    cut_portal_id_ = 0;
+    return false;
+  }
+  // Pinch inside source near BB is cancel (host); refuse paste here.
+  if (point_in_obb(pinch_world, home->near_bb.pose, home->near_bb.extents)) {
+    return false;
+  }
+
+  struct CutItem {
+    EntityId id = 0;
+    Pose far_pose{};
+    Pose near_pose{};
+    float scale = 1.f;
+  };
+  std::vector<CutItem> items;
+  items.reserve(home->ghosts.size());
+  for (const auto& g : home->ghosts) {
+    if (!g.is_parent_box && g.entity_id != 0) {
+      items.push_back(CutItem{g.entity_id, g.far_pose, g.near_pose, g.scale});
+    }
+  }
+  if (items.empty()) {
+    cut_portal_id_ = 0;
+    return false;
+  }
+
+  const uint64_t src = cut_portal_id_;
+  cut_portal_id_ = 0;
+
+  const float n = static_cast<float>(items.size());
+  const uint64_t pinch_portal = portal_at_near_point(pinch_world);
+  VoodooPortal* target = nullptr;
+  if (pinch_portal != 0 && pinch_portal != src) {
+    for (auto& p : portals_) {
+      if (p.id == pinch_portal) {
+        target = &p;
+        break;
+      }
+    }
+  }
+
+  bool any = false;
+  if (target != nullptr) {
+    // Paste into another near BB: cluster relative to near-pose centroid, billboarded to target.
+    Vec3 near_centroid{};
+    for (const auto& it : items) {
+      near_centroid.x += it.near_pose.position.x;
+      near_centroid.y += it.near_pose.position.y;
+      near_centroid.z += it.near_pose.position.z;
+    }
+    near_centroid.x /= n;
+    near_centroid.y /= n;
+    near_centroid.z /= n;
+    const Quat src_yaw = home->near_bb.pose.orientation;
+    const Quat dest_yaw = target->near_bb.pose.orientation;
+    const Vec3 dest_centroid = pinch_world;
+
+    for (const auto& it : items) {
+      const Vec3 d{it.near_pose.position.x - near_centroid.x,
+                   it.near_pose.position.y - near_centroid.y,
+                   it.near_pose.position.z - near_centroid.z};
+      const Vec3 local = quat_rotate_yaw(quat_inverse_yaw(src_yaw), d);
+      const Vec3 world_off = quat_rotate_yaw(dest_yaw, local);
+      Pose near_pose{};
+      near_pose.position = Vec3{dest_centroid.x + world_off.x, dest_centroid.y + world_off.y,
+                                dest_centroid.z + world_off.z};
+      near_pose.orientation = dest_yaw;
+      near_pose.position = clamp_point_to_near_obb(*target, near_pose.position);
+
+      const float near_w = std::max(target->near_bb.extents.x, 1e-4f);
+      const float far_w = std::max(target->far_bb.extents.x, 1e-4f);
+      const float scale = clampf(near_w / far_w, 0.05f, 1.f);
+      const Pose far_pose = map_near_to_far_pose(*target, near_pose, scale);
+
+      const EntityId eid = it.id;
+      home->ghosts.erase(std::remove_if(home->ghosts.begin(), home->ghosts.end(),
+                                        [eid](const VoodooGhost& g) {
+                                          return g.entity_id == eid && !g.is_parent_box;
+                                        }),
+                         home->ghosts.end());
+      remove_ghost_from_other_portals(target->id, eid);
+
+      VoodooGhost ng;
+      ng.entity_id = it.id;
+      ng.is_parent_box = false;
+      ng.scale = scale;
+      ng.far_pose = far_pose;
+      ng.near_pose = near_pose;
+      target->ghosts.push_back(ng);
+      begin_pose_lerp(it.id, far_pose, workspace);
+      any = true;
+    }
+  } else {
+    // Open-air: paste the far-pose centroid cluster, billboarded toward the user.
+    Vec3 far_centroid{};
+    for (const auto& it : items) {
+      far_centroid.x += it.far_pose.position.x;
+      far_centroid.y += it.far_pose.position.y;
+      far_centroid.z += it.far_pose.position.z;
+    }
+    far_centroid.x /= n;
+    far_centroid.y /= n;
+    far_centroid.z /= n;
+    const Quat src_yaw = home->far_bb.pose.orientation;
+
+    float cluster_r = kGlyphHalfM;
+    std::vector<Vec3> local_offs;
+    local_offs.reserve(items.size());
+    for (const auto& it : items) {
+      const Vec3 d{it.far_pose.position.x - far_centroid.x, it.far_pose.position.y - far_centroid.y,
+                   it.far_pose.position.z - far_centroid.z};
+      const Vec3 local = quat_rotate_yaw(quat_inverse_yaw(src_yaw), d);
+      local_offs.push_back(local);
+      const float horiz = std::sqrt(local.x * local.x + local.z * local.z);
+      cluster_r = std::max(cluster_r, horiz + kGlyphHalfM);
+    }
+
+    const Vec3 dest_centroid = resolve_cut_paste_origin(pinch_world, cluster_r);
+    const Quat dest_yaw = yaw_billboard_toward(dest_centroid, last_head_, last_head_valid_);
+
+    for (size_t i = 0; i < items.size(); ++i) {
+      const auto& it = items[i];
+      const Vec3 world_off = quat_rotate_yaw(dest_yaw, local_offs[i]);
+      Pose dest{};
+      dest.position = Vec3{dest_centroid.x + world_off.x, dest_centroid.y + world_off.y,
+                           dest_centroid.z + world_off.z};
+      // Re-yaw entity orientation by the same billboard delta as the cluster.
+      const float src_y = src_yaw.y;
+      const float src_w = src_yaw.w;
+      const float dst_y = dest_yaw.y;
+      const float dst_w = dest_yaw.w;
+      // delta = dest * inverse(src) for yaw-only quats.
+      const float inv_y = -src_y;
+      const float inv_w = src_w;
+      const float dy = dst_w * inv_y + dst_y * inv_w;
+      const float dw = dst_w * inv_w - dst_y * inv_y;
+      const float ey = it.far_pose.orientation.y;
+      const float ew = it.far_pose.orientation.w;
+      dest.orientation = Quat{0.f, dw * ey + dy * ew, 0.f, dw * ew - dy * ey};
+
+      const EntityId eid = it.id;
+      home->ghosts.erase(std::remove_if(home->ghosts.begin(), home->ghosts.end(),
+                                        [eid](const VoodooGhost& g) {
+                                          return g.entity_id == eid && !g.is_parent_box;
+                                        }),
+                         home->ghosts.end());
+      remove_ghost_from_other_portals(0, eid);
+      begin_pose_lerp(eid, dest, workspace);
+      any = true;
+    }
+
+    // Bump near-field clutter (non-BB objects) out of the pasted cluster footprint.
+    VoodooPortal synth{};
+    synth.near_bb.open = true;
+    synth.near_bb.pose.position = dest_centroid;
+    synth.near_bb.pose.orientation = dest_yaw;
+    const float ext = std::max(cluster_r * 2.f, near_extents_m().x);
+    synth.near_bb.extents = Vec3{ext, near_extents_m().y, ext};
+    bump_near_field_clutter(synth, workspace, last_head_, last_head_valid_, /*animate=*/true);
+  }
+
+  // Ensure content ghosts are gone from source even if a path early-out.
+  for (auto& p : portals_) {
+    if (p.id != src) {
+      continue;
+    }
+    p.ghosts.erase(std::remove_if(p.ghosts.begin(), p.ghosts.end(),
+                                  [](const VoodooGhost& g) { return !g.is_parent_box; }),
+                   p.ghosts.end());
+    // Intentionally no far/near refit — leave empty shell at park size.
+    break;
+  }
+  return any;
+}
+
+bool VoodooVolumeEngine::cut_paste_into(EntityId box_id, Workspace& workspace) {
+  if (cut_portal_id_ == 0 || box_id == 0) {
+    return false;
+  }
+  VoodooPortal* home = nullptr;
+  for (auto& p : portals_) {
+    if (p.id == cut_portal_id_) {
+      home = &p;
+      break;
+    }
+  }
+  if (home == nullptr) {
+    cut_portal_id_ = 0;
+    return false;
+  }
+  // Refuse paste into any ghost belonging to the cut portal (content or parent).
+  for (const auto& g : home->ghosts) {
+    if (g.entity_id == box_id) {
+      return false;
+    }
+  }
+
+  const auto ids = cut_entity_ids();
+  if (ids.empty()) {
+    cut_portal_id_ = 0;
+    return false;
+  }
+
+  const uint64_t src = cut_portal_id_;
+  cut_portal_id_ = 0;
+  bool any = false;
+  for (EntityId id : ids) {
+    if (id == box_id) {
+      continue;
+    }
+    std::string err;
+    if (workspace.insert_into(id, box_id, &err)) {
+      any = true;
+      remove_content_ghost(id);
+      // Also drop pose lerps for inserted entity.
+      pose_lerps_.erase(std::remove_if(pose_lerps_.begin(), pose_lerps_.end(),
+                                       [id](const PoseLerpState& l) { return l.entity_id == id; }),
+                        pose_lerps_.end());
+    }
+  }
+  for (auto& p : portals_) {
+    if (p.id != src) {
+      continue;
+    }
+    p.ghosts.erase(std::remove_if(p.ghosts.begin(), p.ghosts.end(),
+                                  [](const VoodooGhost& g) { return !g.is_parent_box; }),
+                   p.ghosts.end());
+    break;
+  }
+  return any;
 }
 
 void VoodooVolumeEngine::apply_near_extents(VoodooBoundingBox& bb) const {
@@ -337,6 +860,9 @@ bool VoodooVolumeEngine::point_in_obb(const Vec3& p, const Pose& box_pose, const
 }
 
 bool VoodooVolumeEngine::point_in_any_near_bb(const Vec3& p) const {
+  // Live parked portals own near-BB hit testing. Do NOT also test hand-session
+  // near_bb after Parked: park copies a snapshot that never tracks bump-lerp /
+  // dismiss, which left phantom blue-cursor volumes at the old pose.
   for (const auto& portal : portals_) {
     if (portal.near_bb.open && point_in_obb(p, portal.near_bb.pose, portal.near_bb.extents)) {
       return true;
@@ -344,7 +870,11 @@ bool VoodooVolumeEngine::point_in_any_near_bb(const Vec3& p) const {
   }
   for (uint32_t h = 0; h < 2u; ++h) {
     const auto& s = hands_[h].session;
-    if (s.near_bb.open && point_in_obb(p, s.near_bb.pose, s.near_bb.extents)) {
+    // Dragging only (near opens on release today; keep the gate for future live near).
+    if (s.phase != VoodooSessionPhase::Dragging || !s.near_bb.open) {
+      continue;
+    }
+    if (point_in_obb(p, s.near_bb.pose, s.near_bb.extents)) {
       return true;
     }
   }
@@ -807,11 +1337,36 @@ void VoodooVolumeEngine::tick_portals(float dt_seconds, const Pose& head, bool h
     }
     refresh_ghost_near_poses(p);
   }
+
+  // Keep parked hand-session BB snapshots aligned with their live portal (bump / dismiss).
+  for (uint32_t h = 0; h < 2u; ++h) {
+    auto& hr = hands_[h];
+    if (hr.session.phase != VoodooSessionPhase::Parked || hr.parked_portal_id_ == 0) {
+      continue;
+    }
+    bool found = false;
+    for (const auto& p : portals_) {
+      if (p.id != hr.parked_portal_id_) {
+        continue;
+      }
+      hr.session.near_bb = p.near_bb;
+      hr.session.far_bb = p.far_bb;
+      found = true;
+      break;
+    }
+    if (!found) {
+      // Portal dismissed — drop the stale parked session entirely.
+      const uint32_t hand = hr.session.hand;
+      hr.session = VoodooSessionState{};
+      hr.session.hand = hand;
+      hr.parked_portal_id_ = 0;
+    }
+  }
 }
 
 void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_valid,
                               const Pose& head, bool head_valid, CentroidRegistry& centroids,
-                              const Workspace& workspace) {
+                              Workspace& workspace) {
   auto& hr = hands_[hand];
   if (!hr.session.open || hr.session.phase != VoodooSessionPhase::Dragging) {
     return;
@@ -934,6 +1489,9 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
     }
   }
 
+  // Task 6.6: non-voodoo near clutter yields to the new portal (orbit bump-lerp).
+  bump_near_field_clutter(portals_.back(), workspace, head, head_valid, /*animate=*/true);
+
   // Hand session mirrors latest portal for ABI get_session compat.
   hr.session.phase = VoodooSessionPhase::Parked;
   hr.session.arrow = {};
@@ -942,6 +1500,7 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
   hr.deadzone_armed_ = false;
   hr.deadzone_left_once_ = false;
   hr.drag_hold_s_ = 0.f;
+  hr.parked_portal_id_ = portals_.back().id;
   hr.session.near_bb = portals_.back().near_bb;
   hr.session.far_bb = portals_.back().far_bb;
   hr.session.far_bb.linked_centroid_id = hr.session.snapped_centroid_id;
@@ -1152,7 +1711,7 @@ void VoodooVolumeEngine::update_arrow(uint32_t hand, const Pose& hand_pose, cons
 void VoodooVolumeEngine::tick_hand(uint32_t hand, const InteractionIntents& intents,
                                    const Pose& hand_pose, bool hand_valid, const Pose& head,
                                    bool head_valid, float dt_seconds,
-                                   CentroidRegistry& centroids, const Workspace& workspace) {
+                                   CentroidRegistry& centroids, Workspace& workspace) {
   if (hand >= 2u) {
     return;
   }
@@ -1442,16 +2001,21 @@ bool VoodooVolumeEngine::ensure_ghost_in_portal(VoodooPortal& portal, EntityId e
 }
 
 void VoodooVolumeEngine::bump_near_field_clutter(const VoodooPortal& portal,
-                                                 Workspace& workspace) {
+                                                 Workspace& workspace, const Pose& head,
+                                                 bool head_valid, bool animate) {
   if (!portal.near_bb.open) {
     return;
   }
   // Clear anything inside the near OBB *or* its XZ footprint cylinder (same Y band).
-  // Waiting for center-in-OBB only made adjacent neighbors feel like walls until the
-  // box jumped over them, then pop them out a beat later — not a perf throttle.
   const float foot = portal_near_footprint_radius(portal.near_bb) + kNearClearGapM;
   const Vec3& c = portal.near_bb.pose.position;
   const float y_half = portal.near_bb.extents.y * 0.5f + kNearClearGapM;
+  const Vec3 body{head_valid ? head.position.x : 0.f, 0.f, head_valid ? head.position.z : 0.f};
+  const Vec3 fwd = flat_forward(head, head_valid);
+  const Vec3 right{fwd.z, 0.f, -fwd.x};
+  // Beyond near reach → spill into far field (just past arm-reach capsule).
+  const float far_spill_r = params_.arm_reach_m * 2.5f + foot;
+
   const auto snapshot = workspace.entries();
   for (const auto& e : snapshot) {
     if (!e.in_field || e.id == 0) {
@@ -1480,23 +2044,54 @@ void VoodooVolumeEngine::bump_near_field_clutter(const VoodooPortal& portal,
     if (we == nullptr) {
       continue;
     }
-    dx = we->pose.position.x - c.x;
-    dz = we->pose.position.z - c.z;
-    horiz = std::sqrt(dx * dx + dz * dz);
-    if (horiz < 1e-4f) {
-      const Vec3 fwd = flat_forward(last_head_, last_head_valid_);
-      dx = fwd.x;
-      dz = fwd.z;
-      horiz = std::sqrt(dx * dx + dz * dz);
-      if (horiz < 1e-4f) {
-        dx = 1.f;
-        dz = 0.f;
-        horiz = 1.f;
+
+    // Prefer body-orbit L/R: walk azimuth until clear of the portal footprint.
+    const float az0 = azimuth_on_orbit(body, fwd, right, we->pose.position);
+    const float y = we->pose.position.y;
+    Vec3 target = we->pose.position;
+    bool found = false;
+    constexpr float kStep = 0.12f;  // radians
+    for (int dir = 0; dir < 2 && !found; ++dir) {
+      const float sign = dir == 0 ? 1.f : -1.f;
+      for (int step = 1; step <= 24; ++step) {
+        const float az = wrap_pi(az0 + sign * kStep * static_cast<float>(step));
+        const Vec3 cand = pos_on_orbit_ellipse(body, fwd, right, az, y);
+        const float cdx = cand.x - c.x;
+        const float cdz = cand.z - c.z;
+        const float ch = std::sqrt(cdx * cdx + cdz * cdz);
+        if (ch >= foot && !point_in_obb(cand, portal.near_bb.pose, portal.near_bb.extents)) {
+          target = cand;
+          found = true;
+          break;
+        }
       }
     }
-    const float s = foot / horiz;
-    we->pose.position.x = c.x + dx * s;
-    we->pose.position.z = c.z + dz * s;
+    if (!found) {
+      // Orbital slot blocked — push radially beyond reach into the far field.
+      dx = we->pose.position.x - body.x;
+      dz = we->pose.position.z - body.z;
+      horiz = std::sqrt(dx * dx + dz * dz);
+      if (horiz < 1e-4f) {
+        dx = fwd.x;
+        dz = fwd.z;
+        horiz = std::sqrt(dx * dx + dz * dz);
+        if (horiz < 1e-4f) {
+          dx = 1.f;
+          dz = 0.f;
+          horiz = 1.f;
+        }
+      }
+      const float s = far_spill_r / horiz;
+      target = Vec3{body.x + dx * s, y, body.z + dz * s};
+    }
+
+    if (animate) {
+      Pose to = we->pose;
+      to.position = target;
+      begin_pose_lerp(e.id, to, workspace);
+    } else {
+      we->pose.position = target;
+    }
   }
 }
 
@@ -1582,7 +2177,7 @@ void VoodooVolumeEngine::refit_far_bb_to_content_ghosts(VoodooPortal& portal,
     bump_siblings_min_clear(pinned);
     refresh_ghost_near_poses(portals_[pinned]);
   }
-  bump_near_field_clutter(portal, workspace);
+  bump_near_field_clutter(portal, workspace, last_head_, last_head_valid_, /*animate=*/false);
 }
 
 void VoodooVolumeEngine::bump_siblings_min_clear(size_t pinned_index) {
@@ -1905,6 +2500,56 @@ void VoodooVolumeEngine::audition_exit_portal(GhostDragState& gd, const Pose& ha
   }
 }
 
+void VoodooVolumeEngine::audition_apply_matrix_snap(GhostDragState& gd, const Pose& hand_pose,
+                                                    Workspace& workspace) {
+  if (gd.audition_inside || gd.entity_id == 0) {
+    return;
+  }
+  auto* we = workspace.find_mut(gd.entity_id);
+  if (we == nullptr || !we->in_field) {
+    return;
+  }
+  const bool pending_before =
+      workspace.snap().pending && workspace.snap().object_id == gd.entity_id;
+
+  // Free/escape pose for sticky tests — never use the seated hold as escape, or the
+  // snap can never clear (and never re-anchor every frame; that resets escape too).
+  Pose free = we->pose;
+  if (pending_before && gd.have_snap_escape) {
+    if (gd.direct_follow) {
+      gd.snap_escape =
+          Vec3{hand_pose.position.x + gd.grab_offset.x, hand_pose.position.y + gd.grab_offset.y,
+               hand_pose.position.z + gd.grab_offset.z};
+    }
+    free.position = gd.snap_escape;
+  }
+
+  (void)workspace.update_snap(gd.entity_id, free, /*apply_pose=*/true);
+
+  const bool pending_after =
+      workspace.snap().pending && workspace.snap().object_id == gd.entity_id;
+  if (!pending_after) {
+    gd.have_snap_escape = false;
+    return;
+  }
+
+  if (!pending_before) {
+    // Snap enter only: seat is on hold; start escape at hold and re-anchor grab/stick.
+    gd.have_snap_escape = true;
+    gd.snap_escape = we->pose.position;
+    if (gd.direct_follow) {
+      gd.grab_offset =
+          Vec3{we->pose.position.x - hand_pose.position.x, we->pose.position.y - hand_pose.position.y,
+               we->pose.position.z - hand_pose.position.z};
+    } else {
+      gd.start_hand = hand_pose;
+      gd.deadzone_armed = false;
+      gd.deadzone_left_once = false;
+      gd.velocity = {};
+    }
+  }
+}
+
 bool VoodooVolumeEngine::ghost_drag_begin(uint32_t hand, EntityId entity_id, const Pose& hand_pose,
                                          Workspace& workspace) {
   if (hand >= 2u || entity_id == 0) {
@@ -2064,12 +2709,16 @@ void VoodooVolumeEngine::ghost_drag_tick(uint32_t hand, const Pose& hand_pose, b
         gd.clamped = false;
       } else if (auto* we = workspace.find_mut(gd.entity_id)) {
         we->pose.position = synced;
+        audition_apply_matrix_snap(gd, hand_pose, workspace);
       }
       return;
     }
 
     if (mag < deadzone_m_) {
       gd.velocity = {};
+      if (!gd.audition_inside) {
+        audition_apply_matrix_snap(gd, hand_pose, workspace);
+      }
       return;
     }
 
@@ -2097,10 +2746,20 @@ void VoodooVolumeEngine::ghost_drag_tick(uint32_t hand, const Pose& hand_pose, b
                kGhostDragGain * stick.z * eff};
       const float dt = std::max(0.f, dt_seconds);
       if (auto* we = workspace.find_mut(gd.entity_id)) {
-        we->pose.position.x += gd.velocity.x * dt;
-        we->pose.position.y += gd.velocity.y * dt;
-        we->pose.position.z += gd.velocity.z * dt;
+        const bool snapped =
+            workspace.snap().pending && workspace.snap().object_id == gd.entity_id;
+        if (snapped && gd.have_snap_escape) {
+          // Advance escape only — display hold is applied inside matrix snap.
+          gd.snap_escape.x += gd.velocity.x * dt;
+          gd.snap_escape.y += gd.velocity.y * dt;
+          gd.snap_escape.z += gd.velocity.z * dt;
+        } else {
+          we->pose.position.x += gd.velocity.x * dt;
+          we->pose.position.y += gd.velocity.y * dt;
+          we->pose.position.z += gd.velocity.z * dt;
+        }
       }
+      audition_apply_matrix_snap(gd, hand_pose, workspace);
     }
     return;
   }

@@ -349,7 +349,7 @@ Until extensive UX testing can be done on densely populated fields, it is assume
 ---
 <a id="the-application-layer"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 The Application Layer</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧩 The Application Layer</summary>
 
 3OS is designed first-and-foremost for professionals who are already working in 3D editing software (CAD, VFX, and Gaming), but it is also designed to be able to grow into mass market adoption after establishing 3D professionals as early adopters. To approach early adopters, 3OS must natively support ports of a few dozen professional software suites.
 
@@ -367,7 +367,7 @@ Hardware engineers are doing their part to shrink the technology to near-sunglas
 
 <a id="basic-transformation"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 Basic Transformation</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🔀 Basic Transformation</summary>
 
 The greatest challenge in resolving the chicken-egg problem of enterprise users having no natively supported XR enterprise apps and enterprise app companies (Adobe, Autodesk, etc.) having no enterprise XR-only users is...
 
@@ -396,7 +396,7 @@ In most cases, rendering complex gizmos on the object will be unnecessary, where
 
 <a id="the-mind-palace"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 The Mind Palace</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧠 The Mind Palace</summary>
 
 Roman statesmen, philosophers, and lawyers used a technique called <b>"the Mind Palace"</b> to deliver long, unscripted speeches in the Roman Senate or courts. It was an imaginary place where they could stash chunks of information in specific spatial locations, which, when they imagined retrieval, would assist in rapid recall.
 
@@ -412,7 +412,7 @@ Any given field can be decorated with static 3D objects (walls, furniture, etc.)
 
 <a id="reserved-and-supported-gestures"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 Reserved and Supported Gestures</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">👉 Reserved and Supported Gestures</summary>
 
 3OS supports cross-compatibility of all input actions for 10-finger hand tracking first and foremost, but 6DOF controllers as well. The OS interface defines the following universal event triggers:
 
@@ -460,7 +460,7 @@ Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handhel
 
 <a id="AI-integration"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">💡 Agentic Integration (Phase 3.0)</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🤖 Agentic Integration (Phase 3.0)</summary>
 
 It is assumed 3OS will host agentic integration, though that is not the focus for the early alpha prototype. The endgame is to enable agents to exist as avatars who can converse with team members in real time before diving lower in the stack to complete their work, then return to the visual field for reporting and for more instructions.
 
@@ -594,13 +594,27 @@ ctest --test-dir build -C Release --output-on-failure
 ```
 
 ### Pre-Alpha Demo
-* To use the Pre-Alpha Demo with built-in sample files and folders, load it as is.
+
+* To use the Pre-Alpha Demo with built-in sample files and folders, load it as is onto Quest 2 or 3:
+  * Plug your Quest into a PC via USB.
+  * In Quest, activate the main menu and choose the Notifications tab.
+  * A fresh USB Detected notification should appear. Select it.
+  * On PC, a File Explorer should launch, displaying This PC/Quest 2. Double-click it.
+  * Open the Documents folder and drag in the `quest_pre_alpha_demo_v070.apk`.
+  * On Quest, open the Library tab and choose Files.
+  * In the Quest Files Explorer, choose the "This headset" tab in the left panel.
+  * Pinch on the Documents folder.
+  * Pinch on the APK file, then pinch the `...` button at the bottom right corner of the APK file.
+  * Pinch **Open With → Package Installer**.
+  * A prompt will request install or update permission. Grant it.
+  * A prompt may request hard drive access (the demo optionally reads and writes into reserved folders in Documents).
+  * To launch the app any time after first install, pinch the **Menu** button on the left. Choose **Unknown Sources**, then select **3OS_Pre_Alpha_Demo**.
 * To load your own sample files and folders into the demo:
-  1) On your Quest hard drive, create these folders: 
-      - Documents/3OS_Demo
-      - Documents/3OS_Demo2
-  2) Drag/drop any files of your choice into either folder and they'll appear in-scene.
-      * NOTE: Don't test with important unarchived files. The demo WILL read/write/delete in those directories.
+  1. On your Quest hard drive, create these folders:
+     * `Documents/3OS_Demo`
+     * `Documents/3OS_Demo2`
+  2. Drag/drop any files of your choice into either folder and they'll appear in-scene.
+     * **NOTE:** Don't test with important unarchived files. The demo WILL read/write/delete in those directories.
 
 The shared library target is `3os_kernel` (`3os_kernel.dll` / `lib3os_kernel.so`). The console harness prints `threeos_version` (currently `0.6.0`) and checks the frozen ABI (`InteropInputFrame` = 192 bytes). Host ABI headers: `include/interop/threeos_abi.h`. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md); Unity Quest verification lives in [3OS_Unity](https://github.com/scifiuiguy/3OS_Unity).
 
