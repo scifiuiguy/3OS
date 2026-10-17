@@ -134,12 +134,12 @@ bool Workspace::set_in_field(EntityId id, bool in_field) {
   return true;
 }
 
-bool Workspace::set_god_root(EntityId id, EntityId god_root_id) {
+bool Workspace::set_mind_palace(EntityId id, EntityId mind_palace_id) {
   WorkspaceEntry* e = find_mut(id);
   if (e == nullptr) {
     return false;
   }
-  e->god_root_id = god_root_id;
+  e->mind_palace_id = mind_palace_id;
   return true;
 }
 
@@ -200,17 +200,17 @@ void Workspace::layout_demo_field(const Pose& head) {
   layout_demo_field(head, 0);
 }
 
-void Workspace::layout_demo_field(const Pose& head, EntityId god_root_id) {
+void Workspace::layout_demo_field(const Pose& head, EntityId mind_palace_id) {
   const Quat yaw = yaw_only_from_orientation(head.orientation);
   const Vec3 forward = quat_rotate(yaw, Vec3{0.f, 0.f, -1.f});
   Pose center{};
   center.position = vec_add(head.position, vec_scale(forward, 1.f));
   center.orientation = yaw;
-  if (god_root_id != 0) {
-    layout_god_field(god_root_id, center);
+  if (mind_palace_id != 0) {
+    layout_mind_palace_field(mind_palace_id, center);
     return;
   }
-  // Legacy: all unassigned + all gods' roots together 1 m ahead.
+  // Legacy: all unassigned + all mind palace roots together 1 m ahead.
   std::vector<WorkspaceEntry*> items;
   items.reserve(entries_.size());
   for (auto& e : entries_) {
@@ -242,14 +242,14 @@ void Workspace::layout_demo_field(const Pose& head, EntityId god_root_id) {
   }
 }
 
-bool Workspace::layout_god_field(EntityId god_root_id, const Pose& center) {
-  if (god_root_id == 0) {
+bool Workspace::layout_mind_palace_field(EntityId mind_palace_id, const Pose& center) {
+  if (mind_palace_id == 0) {
     return false;
   }
   std::vector<WorkspaceEntry*> items;
   items.reserve(entries_.size());
   for (auto& e : entries_) {
-    if (!e.in_field || e.parent_box != 0 || e.god_root_id != god_root_id) {
+    if (!e.in_field || e.parent_box != 0 || e.mind_palace_id != mind_palace_id) {
       continue;
     }
     items.push_back(&e);

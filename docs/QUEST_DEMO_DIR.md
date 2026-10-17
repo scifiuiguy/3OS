@@ -21,7 +21,7 @@ At **Start**, `ThreeOSStorageController` **scans** the demo directory and instan
 | Documents (MTP staging, list priority) | `/storage/emulated/0/Documents/3OS_Demo` (+ `3OS_Demo2`) |
 | Persistent (writable mirror) | `Android/data/com.scifiuiguy.threeos.sample/files/3OS_Demo` (+ `3OS_Demo2`) |
 
-Start **mirrors additively** both ways (never deletes). Dual-god fixture loads `3OS_Demo` (−15°) and `3OS_Demo2` (+15°).
+Start **mirrors additively** both ways (never deletes). Dual MindPalace fixture loads `3OS_Demo` (−15°) and `3OS_Demo2` (+15°).
 
 On insert, HUD shows `moved → 3OS_Demo/Test1/simple.glb` under the active write root.
 

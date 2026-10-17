@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "glyph_id": "unreal_mark",
+  "display_name": "Unreal Engine",
+  "category": "app",
+  "priority": 50,
+  "applies_to_extensions": [".uproject", ".uasset"],
+  "applies_to_mime": [],
+  "box_state": null,
+  "bounds_m": [0.08, 0.08, 0.02],
+  "tint_rgba": [1.0, 1.0, 1.0, 0.55]
+}

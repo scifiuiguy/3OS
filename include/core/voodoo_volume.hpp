@@ -118,10 +118,16 @@ struct GhostDragState {
   bool direct_follow = false;
   /// Object position − cursor at grab (preserved so the glyph does not snap to the tip).
   Vec3 grab_offset{};
+  /// Saved across matrix-snap seat so direct-follow can return to the cursor on unsnap.
+  Vec3 grab_offset_pre_snap{};
+  bool have_grab_offset_pre_snap = false;
   /// Free/escape position while matrix-snapped (audition outside a portal). Hold is
   /// display-only; escape must accumulate or sticky snap can never clear.
   Vec3 snap_escape{};
   bool have_snap_escape = false;
+  /// After sticky unsnap, suppress re-enter on this Box until free pose leaves enter radius
+  /// (lateral escape clears the 3″ hold buffer while still inside the 0.2 m arm radius).
+  EntityId snap_cooldown_box = 0;
   uint32_t hand = 0;
   EntityId entity_id = 0;
   uint64_t portal_id = 0;

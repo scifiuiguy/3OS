@@ -370,6 +370,7 @@ enum ThreeOS_InteractionIntentFlags : uint32_t {
   THREEOS_INTENT_SECONDARY_HELD = 1u << 4,
   THREEOS_INTENT_TERNARY_HELD = 1u << 5,
   THREEOS_INTENT_VOODOO_FREE = 1u << 6, /* secondary hold + palm down */
+  THREEOS_INTENT_MIND_PALACE_MENU = 1u << 7,    /* secondary hold + palm up (Multi-Choice) */
 };
 
 enum ThreeOS_VoodooMode : uint32_t {
@@ -503,18 +504,18 @@ THREEOS_API int32_t threeos_voodoo_set_field_params(const ThreeOS_VoodooFieldPar
 THREEOS_API int32_t threeos_voodoo_get_session(uint32_t hand, ThreeOS_VoodooSession* out_session);
 THREEOS_API int32_t threeos_voodoo_get_drag_arrow(uint32_t hand, ThreeOS_VoodooDragArrow* out_arrow);
 
-/* --- Centroids / god roots (Phase 0.6 Task 6.2; additive) --- */
+/* --- Centroids / mind palace roots (Phase 0.6 Task 6.2; additive) --- */
 
 enum ThreeOS_CentroidKind : uint32_t {
   THREEOS_CENTROID_NONE = 0,
-  THREEOS_CENTROID_GOD = 1,
+  THREEOS_CENTROID_MIND_PALACE = 1,
   THREEOS_CENTROID_BOX = 2,
   THREEOS_CENTROID_TEMPORARY = 3,
 };
 
 /** Live centroid snapshot (64 bytes). Empty sets are omitted from the list. */
 typedef struct ThreeOS_Centroid {
-  uint64_t id;               /* god id or box entity id */
+  uint64_t id;               /* mind palace id or box entity id */
   uint32_t kind;             /* ThreeOS_CentroidKind */
   uint32_t member_count;
   uint64_t linked_entity_id; /* same as id in 6.2 */
@@ -526,12 +527,12 @@ typedef struct ThreeOS_Centroid {
 } ThreeOS_Centroid;
 
 THREEOS_API uint32_t threeos_sizeof_centroid(void);
-THREEOS_API void threeos_god_clear(void);
-THREEOS_API int32_t threeos_god_register(const char* name, const ThreeOS_Pose* anchor,
-                                         uint64_t* out_god_id);
-THREEOS_API int32_t threeos_god_set_anchor(uint64_t god_id, const ThreeOS_Pose* anchor);
-THREEOS_API int32_t threeos_storage_set_god_root(uint64_t entity_id, uint64_t god_root_id);
-THREEOS_API int32_t threeos_storage_layout_god(uint64_t god_root_id, const ThreeOS_Pose* center);
+THREEOS_API void threeos_mind_palace_clear(void);
+THREEOS_API int32_t threeos_mind_palace_register(const char* name, const ThreeOS_Pose* anchor,
+                                         uint64_t* out_mind_palace_id);
+THREEOS_API int32_t threeos_mind_palace_set_anchor(uint64_t mind_palace_id, const ThreeOS_Pose* anchor);
+THREEOS_API int32_t threeos_storage_set_mind_palace(uint64_t entity_id, uint64_t mind_palace_id);
+THREEOS_API int32_t threeos_storage_layout_mind_palace(uint64_t mind_palace_id, const ThreeOS_Pose* center);
 THREEOS_API uint32_t threeos_centroid_count(void);
 THREEOS_API int32_t threeos_centroid_get(uint32_t index, ThreeOS_Centroid* out_centroid);
 
@@ -618,6 +619,110 @@ THREEOS_API uint64_t threeos_voodoo_cut_portal(void);
 THREEOS_API int32_t threeos_voodoo_cut_paste_at(float x, float y, float z);
 /** Move/insert all cut content into box_id (refuses boxes belonging to the cut portal). */
 THREEOS_API int32_t threeos_voodoo_cut_paste_into(uint64_t box_id);
+
+/* --- Multi-Choice / mind palace menu (Phase 0.6 Task 6.7; additive) --- */
+
+enum ThreeOS_MultiChoiceMode : uint32_t {
+  THREEOS_MC_CLOSED = 0,
+  THREEOS_MC_DRIVE_PICKER = 1,
+  THREEOS_MC_FOLDER_CONTEXT = 2,
+};
+
+enum ThreeOS_MultiChoiceSection : uint32_t {
+  THREEOS_MC_SECTION_ROOT_DRIVE = 0,
+  THREEOS_MC_SECTION_FAVORITES = 1,
+};
+
+enum ThreeOS_MultiChoiceSlotKind : uint32_t {
+  THREEOS_MC_SLOT_EMPTY = 0,
+  THREEOS_MC_SLOT_DRIVE_ROOT = 1,
+  THREEOS_MC_SLOT_FAVORITE_BOX = 2,
+  THREEOS_MC_SLOT_ACTION_FAVORITE = 3,
+  THREEOS_MC_SLOT_CONFIRM_ADD = 4,
+  THREEOS_MC_SLOT_CONFIRM_JUMP = 5,
+};
+
+enum ThreeOS_MultiChoiceAction : uint32_t {
+  THREEOS_MC_ACTION_NONE = 0,
+  THREEOS_MC_ACTION_ADD = 1,
+  THREEOS_MC_ACTION_JUMP_TO_ROOT = 2,
+  THREEOS_MC_ACTION_TOGGLE_FAVORITE = 3,
+};
+
+/** One Multi-Choice option slot (40 bytes). */
+typedef struct ThreeOS_MultiChoiceSlot {
+  uint32_t kind; /* ThreeOS_MultiChoiceSlotKind */
+  uint32_t enabled;
+  uint64_t target_id;
+  char label[24];
+} ThreeOS_MultiChoiceSlot;
+
+/** Live Multi-Choice widget snapshot (416 bytes). */
+typedef struct ThreeOS_MultiChoiceState {
+  uint32_t open;
+  uint32_t mode; /* ThreeOS_MultiChoiceMode */
+  uint32_t section;
+  uint32_t hand;
+  ThreeOS_Pose center;
+  float min_radius_m;
+  float max_radius_m;
+  int32_t hovered_slot; /* 0..7 octant, 8 back, 9 forward, -1 none */
+  uint32_t page_index;
+  uint32_t page_back_enabled;
+  uint32_t page_forward_enabled;
+  uint32_t confirm_open;
+  int32_t confirm_hovered; /* 0 Add, 1 Jump, -1 none */
+  uint32_t reserved0;
+  ThreeOS_Pose confirm_center;
+  float confirm_min_m;
+  float confirm_max_m;
+  uint32_t reserved1; /* pad to 8-byte align before context_box_id */
+  uint64_t context_box_id;
+  uint64_t pending_target_id;
+  uint32_t pending_kind;
+  uint32_t cursor_inside;
+  char title[32];
+  char hover_label[32];
+  ThreeOS_MultiChoiceSlot slots[8];
+} ThreeOS_MultiChoiceState; /* 528 bytes */
+
+/** Host-fed Documents root descriptor (40 bytes). */
+typedef struct ThreeOS_DriveRoot {
+  uint64_t id;
+  char name[32];
+} ThreeOS_DriveRoot;
+
+THREEOS_API uint32_t threeos_sizeof_multi_choice_state(void);
+THREEOS_API uint32_t threeos_sizeof_multi_choice_slot(void);
+THREEOS_API uint32_t threeos_sizeof_drive_root(void);
+
+/** Replace available drive roots (host enumerates Documents/*). */
+THREEOS_API int32_t threeos_drive_roots_set(const ThreeOS_DriveRoot* roots, uint32_t count);
+
+THREEOS_API int32_t threeos_favorite_set(uint64_t box_id, uint32_t favored);
+THREEOS_API uint32_t threeos_favorite_get(uint64_t box_id);
+
+THREEOS_API int32_t threeos_multichoice_open_drive(uint32_t hand, const ThreeOS_Pose* center);
+THREEOS_API int32_t threeos_multichoice_open_folder(uint32_t hand, const ThreeOS_Pose* center,
+                                                    uint64_t box_id);
+THREEOS_API void threeos_multichoice_close(void);
+THREEOS_API int32_t threeos_multichoice_tick(float cursor_x, float cursor_y, float cursor_z);
+THREEOS_API int32_t threeos_multichoice_confirm(void);
+THREEOS_API int32_t threeos_multichoice_get_state(ThreeOS_MultiChoiceState* out_state);
+/** Poll and clear last committed action (Add / Jump / ToggleFavorite). */
+THREEOS_API int32_t threeos_multichoice_poll_action(uint32_t* out_action, uint64_t* out_target_id,
+                                                    uint32_t* out_kind);
+
+/**
+ * Place mind palace contents at next N-orbit slot from head. Uses existing workspace entries
+ * tagged with mind_palace_id. On failure, threeos_last_error names the directory.
+ */
+THREEOS_API int32_t threeos_mind_palace_layout_next(uint64_t mind_palace_id, const ThreeOS_Pose* head,
+                                            const char* display_name);
+/** Hide all in-field entries and dismiss portals (Jump-to-Root prelude; host reloads). */
+THREEOS_API int32_t threeos_storage_clear_field(void);
+/** Run mutual object bump using last head (also runs after near-clutter bump). */
+THREEOS_API int32_t threeos_field_resolve_overlaps(const ThreeOS_Pose* head);
 
 #ifdef __cplusplus
 }

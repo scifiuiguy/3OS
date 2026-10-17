@@ -518,8 +518,8 @@ void VoodooVolumeEngine::rebuild_ghosts(VoodooPortal& portal, const CentroidRegi
         if (!e.in_field) {
           continue;
         }
-        const bool match = (c->kind == CentroidKind::God)
-                               ? (e.parent_box == 0 && e.god_root_id == c->id)
+        const bool match = (c->kind == CentroidKind::MindPalace)
+                               ? (e.parent_box == 0 && e.mind_palace_id == c->id)
                                : (e.parent_box == c->id);
         if (match) {
           push_ghost(e, false);

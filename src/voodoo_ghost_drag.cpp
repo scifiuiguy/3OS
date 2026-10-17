@@ -135,17 +135,37 @@ void GhostDragController::audition_apply_matrix_snap(GhostDragState& gd, const P
   }
   const bool pending_before =
       workspace.snap().pending && workspace.snap().object_id == gd.entity_id;
+  const EntityId prior_box = pending_before ? workspace.snap().box_id : 0;
 
   // Free/escape pose for sticky tests — never use the seated hold as escape, or the
   // snap can never clear (and never re-anchor every frame; that resets escape too).
   Pose free = we->pose;
   if (pending_before && gd.have_snap_escape) {
     if (gd.direct_follow) {
+      // grab_offset is hold−hand from snap enter so escape tracks hand delta from the seat.
       gd.snap_escape =
           Vec3{hand_pose.position.x + gd.grab_offset.x, hand_pose.position.y + gd.grab_offset.y,
                hand_pose.position.z + gd.grab_offset.z};
     }
     free.position = gd.snap_escape;
+  } else if (gd.direct_follow) {
+    free.position = Vec3{hand_pose.position.x + gd.grab_offset.x,
+                         hand_pose.position.y + gd.grab_offset.y,
+                         hand_pose.position.z + gd.grab_offset.z};
+  }
+
+  // Lateral unsnap clears the 3″ hold buffer while free is often still inside the 0.2 m
+  // enter radius around the Box center — suppress re-arm until the user leaves that radius.
+  if (!pending_before && gd.snap_cooldown_box != 0) {
+    const WorkspaceEntry* cool = workspace.find(gd.snap_cooldown_box);
+    if (cool != nullptr && cool->kind == StorageKind::Box && cool->in_field &&
+        dist3(free.position, cool->pose.position) < Workspace::kSnapDistanceM) {
+      workspace.clear_snap();
+      we->pose.position = free.position;
+      gd.have_snap_escape = false;
+      return;
+    }
+    gd.snap_cooldown_box = 0;
   }
 
   (void)workspace.update_snap(gd.entity_id, free, /*apply_pose=*/true);
@@ -153,6 +173,17 @@ void GhostDragController::audition_apply_matrix_snap(GhostDragState& gd, const P
   const bool pending_after =
       workspace.snap().pending && workspace.snap().object_id == gd.entity_id;
   if (!pending_after) {
+    if (pending_before) {
+      gd.snap_cooldown_box = prior_box;
+      // Direct-follow: restore pre-snap cursor grab so the glyph returns to the tip.
+      if (gd.direct_follow && gd.have_grab_offset_pre_snap) {
+        gd.grab_offset = gd.grab_offset_pre_snap;
+        gd.have_grab_offset_pre_snap = false;
+        we->pose.position = Vec3{hand_pose.position.x + gd.grab_offset.x,
+                                 hand_pose.position.y + gd.grab_offset.y,
+                                 hand_pose.position.z + gd.grab_offset.z};
+      }
+    }
     gd.have_snap_escape = false;
     return;
   }
@@ -161,7 +192,12 @@ void GhostDragController::audition_apply_matrix_snap(GhostDragState& gd, const P
     // Snap enter only: seat is on hold; start escape at hold and re-anchor grab/stick.
     gd.have_snap_escape = true;
     gd.snap_escape = we->pose.position;
+    gd.snap_cooldown_box = 0;
     if (gd.direct_follow) {
+      if (!gd.have_grab_offset_pre_snap) {
+        gd.grab_offset_pre_snap = gd.grab_offset;
+        gd.have_grab_offset_pre_snap = true;
+      }
       gd.grab_offset =
           Vec3{we->pose.position.x - hand_pose.position.x, we->pose.position.y - hand_pose.position.y,
                we->pose.position.z - hand_pose.position.z};

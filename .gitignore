@@ -10,6 +10,9 @@ marketing/
 # Local research notes / papers (not versioned)
 research/
 
+# Local hardware / VDI planning (not versioned yet)
+3OS_Server_Prototype_Spec.md
+
 # Local Unity Editor host project (created via Unity CLI; not part of core)
 3OS_Unity_Sample_Project/
 unity-create-sample.log
@@ -17,6 +20,9 @@ unity-phase00-bootstrap.log
 unity-*.log
 # Accidental APK drops at repo root (canonical out dir is Sample_Project/Builds/Android/)
 *.apk
+
+# Large Asset Store packs (also covered by Sample_Project/ ignore above)
+**/UnityJapanOffice/
 
 # Local Blender authoring (meshes / .blend / export WIP — not versioned)
 Blender/

@@ -1,5 +1,7 @@
 #include "core/voodoo_orbit_packer.hpp"
 
+#include "core/mind_palace_layout.hpp"
+
 #include "core/voodoo_volume.hpp"
 
 #include <algorithm>
@@ -761,6 +763,7 @@ void VoodooOrbitPacker::bump_near_field_clutter(const VoodooPortal& portal,
   const float far_spill_r = engine_.params_.arm_reach_m * 2.5f + foot;
 
   const auto snapshot = workspace.entries();
+  bool any_bumped = false;
   for (const auto& e : snapshot) {
     if (!e.in_field || e.id == 0) {
       continue;
@@ -829,6 +832,7 @@ void VoodooOrbitPacker::bump_near_field_clutter(const VoodooPortal& portal,
       target = Vec3{body.x + dx * s, y, body.z + dz * s};
     }
 
+    any_bumped = true;
     if (animate) {
       Pose to = we->pose;
       to.position = target;
@@ -836,6 +840,11 @@ void VoodooOrbitPacker::bump_near_field_clutter(const VoodooPortal& portal,
     } else {
       we->pose.position = target;
     }
+  }
+
+  // Only resolve when clutter actually moved — never re-pack the whole field matrix.
+  if (any_bumped) {
+    resolve_mutual_object_overlaps(workspace, head, head_valid, workspace.field_spacing_m());
   }
 }
 

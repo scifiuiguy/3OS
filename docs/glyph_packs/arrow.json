@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "glyph_id": "arrow",
+  "display_name": "Pagination arrow",
+  "category": "app",
+  "priority": 50,
+  "applies_to_extensions": [],
+  "applies_to_mime": [],
+  "box_state": null,
+  "bounds_m": [0.08, 0.07, 0.024],
+  "tint_rgba": [0.75, 0.80, 0.90, 0.45]
+}

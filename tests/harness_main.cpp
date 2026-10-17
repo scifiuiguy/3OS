@@ -816,6 +816,204 @@ int main() {
     }
   }
 
+  // Near-field audition ghost-drag: lateral unsnap must not re-suck inside the
+  // 0.2 m enter radius, and direct-follow must restore the pre-snap cursor grab.
+  {
+    threeos_storage_clear();
+    uint64_t box = 0;
+    uint64_t obj = 0;
+    if (threeos_storage_add_box("LatBox", "LatBox", 0, &box) != 0 ||
+        threeos_storage_add_object("lat.glb", "lat.glb", &obj) != 0) {
+      std::fprintf(stderr, "FAIL gdrag-snap seed: %s\n", threeos_last_error());
+      ok = false;
+    } else {
+      auto fill_hand = [](ThreeOS_HandSample* h, float x, float y, float z, int primary) {
+        *h = ThreeOS_HandSample{};
+        h->tracked = 1;
+        h->tip_flags = 0x1Fu;
+        h->thumb_tip = {x, y, z};
+        h->index_tip = {x + 0.02f, y, z};
+        h->index_proximal = {x, y, z};
+        h->palm_mode = THREEOS_PALM_DOWN;
+        h->palm_mode_valid = 1;
+        h->primary_pressed = primary ? 1u : 0u;
+        h->primary_value = primary ? 1.f : 0.f;
+      };
+      auto find_item = [](uint64_t id, ThreeOS_WorkspaceItem* out) -> bool {
+        for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+          threeos_storage_get_item(i, out);
+          if (out->entity_id == id) {
+            return true;
+          }
+        }
+        return false;
+      };
+      auto park = [&](uint64_t id, float x, float y, float z, double* t) {
+        ThreeOS_Pose p = identity_pose_at(x, y, z);
+        threeos_kinematics_possess(id, &p);
+        ThreeOS_InteropInputFrame f{};
+        f.tracking_flags = THREEOS_TRACK_RIGHT_AIM | THREEOS_TRACK_HEAD;
+        f.right_aim = p;
+        f.head = identity_pose_at(0.f, 1.5f, 0.f);
+        f.time_seconds = *t;
+        threeos_tick(&f, &delta);
+        *t += 1.0 / 72.0;
+        threeos_kinematics_release();
+        for (int i = 0; i < 4; ++i) {
+          f.frame_index++;
+          f.time_seconds = *t;
+          *t += 1.0 / 72.0;
+          threeos_tick(&f, &delta);
+        }
+      };
+
+      const float bx = 0.f;
+      const float by = 1.0f;
+      const float bz = -0.6f;
+      const float hold_y = by + 0.14f;
+      // Park object well outside the 0.2 m enter radius so kinematics release
+      // during setup cannot commit-insert and clear in_field.
+      const float start_x = bx + 0.45f;
+      double t = 200.0;
+      park(box, bx, by, bz, &t);
+      park(obj, start_x, hold_y, bz, &t);
+
+      ThreeOS_HandSample L{};
+      ThreeOS_HandSample R{};
+      ThreeOS_InteropInputFrame af{};
+      af.tracking_flags =
+          THREEOS_TRACK_HEAD | THREEOS_TRACK_LEFT_AIM | THREEOS_TRACK_RIGHT_AIM;
+      af.head = identity_pose_at(0.f, 1.6f, 0.f);
+      af.head.orientation = {0.f, 0.f, 0.f, 1.f};
+      af.time_seconds = t;
+
+      // Probe tip→cursor offset with identity head / right hand.
+      fill_hand(&R, 0.f, hold_y, bz, 1);
+      threeos_interaction_set_hands(&L, &R);
+      af.right_aim = identity_pose_at(0.f, hold_y, bz);
+      af.frame_index++;
+      af.time_seconds = t;
+      t += 1.0 / 72.0;
+      threeos_tick(&af, &delta);
+      ThreeOS_PointCursor cur{};
+      threeos_interaction_get_cursor(1, &cur);
+      const float tip_off_x = cur.position.x - 0.f;
+      const float tip_off_y = cur.position.y - hold_y;
+      const float tip_off_z = cur.position.z - bz;
+
+      auto tip_for_cursor = [&](float cx, float cy, float cz) {
+        return identity_pose_at(cx - tip_off_x, cy - tip_off_y, cz - tip_off_z);
+      };
+      auto drive = [&](float cx, float cy, float cz) {
+        ThreeOS_Pose tip = tip_for_cursor(cx, cy, cz);
+        fill_hand(&R, tip.position.x, tip.position.y, tip.position.z, 1);
+        threeos_interaction_set_hands(&L, &R);
+        af.right_aim = tip;
+        af.frame_index++;
+        af.time_seconds = t;
+        t += 1.0 / 72.0;
+        threeos_tick(&af, &delta);
+      };
+
+      ThreeOS_WorkspaceItem pre{};
+      find_item(obj, &pre);
+      ok = expect_eq("gdrag.snap_in_field", (pre.flags & 1u) != 0u ? 1u : 0u, 1u) && ok;
+
+      // Cursor on the object → direct_follow audition drag.
+      drive(start_x, hold_y, bz);
+      threeos_interaction_get_cursor(1, &cur);
+      find_item(obj, &pre);
+      const float grab_dx = pre.pose.position.x - cur.position.x;
+      const float grab_dy = pre.pose.position.y - cur.position.y;
+      const float grab_dz = pre.pose.position.z - cur.position.z;
+      const float grab_d =
+          std::sqrt(grab_dx * grab_dx + grab_dy * grab_dy + grab_dz * grab_dz);
+      ok = expect_eq("gdrag.snap_in_glyph", grab_d < 0.09f ? 1u : 0u, 1u) && ok;
+
+      ok = expect_eq("gdrag.snap_begin",
+                     threeos_voodoo_ghost_drag_begin(1, obj) == 0 ? 1u : 0u, 1u) &&
+           ok;
+
+      // Confirm direct follow before approaching the box.
+      drive(start_x - 0.03f, hold_y, bz);
+      find_item(obj, &pre);
+      threeos_interaction_get_cursor(1, &cur);
+      const float follow_dx = pre.pose.position.x - cur.position.x;
+      const float follow_dy = pre.pose.position.y - cur.position.y;
+      const float follow_dz = pre.pose.position.z - cur.position.z;
+      const float follow_d =
+          std::sqrt(follow_dx * follow_dx + follow_dy * follow_dy + follow_dz * follow_dz);
+      ok = expect_eq("gdrag.snap_direct", follow_d < 0.04f ? 1u : 0u, 1u) && ok;
+
+      // Slide onto the hold seat to arm sticky snap.
+      bool snapped = false;
+      for (int i = 0; i < 48; ++i) {
+        drive(bx, hold_y, bz);
+        ThreeOS_SnapState sn{};
+        threeos_storage_get_snap(&sn);
+        if (sn.pending != 0 && sn.box_id == box && sn.object_id == obj) {
+          snapped = true;
+          break;
+        }
+      }
+      ok = expect_eq("gdrag.snap_armed", snapped ? 1u : 0u, 1u) && ok;
+
+      // Lateral pull past the 3″ hold buffer but still inside 0.2 m enter radius.
+      const float lat = 0.10f;
+      bool escaped = false;
+      if (snapped) {
+        for (int i = 0; i < 40; ++i) {
+          drive(bx + lat, hold_y, bz);
+          ThreeOS_SnapState sn{};
+          threeos_storage_get_snap(&sn);
+          if (sn.pending == 0) {
+            escaped = true;
+            break;
+          }
+        }
+      }
+      ok = expect_eq("gdrag.lat_escape", escaped ? 1u : 0u, 1u) && ok;
+
+      bool sucked = false;
+      if (escaped) {
+        for (int i = 0; i < 12; ++i) {
+          drive(bx + lat, hold_y, bz);
+          ThreeOS_SnapState sn{};
+          threeos_storage_get_snap(&sn);
+          if (sn.pending != 0) {
+            sucked = true;
+            break;
+          }
+        }
+      } else {
+        sucked = true;  // treat failed escape as failure for this check
+      }
+      ok = expect_eq("gdrag.lat_no_resuck", sucked ? 0u : 1u, 1u) && ok;
+
+      // After unsnap, object must reacquire the cursor (pre-snap grab ≈ zero).
+      ThreeOS_WorkspaceItem wi{};
+      threeos_interaction_get_cursor(1, &cur);
+      ok = expect_eq("gdrag.restore_item", find_item(obj, &wi) ? 1u : 0u, 1u) && ok;
+      const float dx = wi.pose.position.x - cur.position.x;
+      const float dy = wi.pose.position.y - cur.position.y;
+      const float dz = wi.pose.position.z - cur.position.z;
+      const float to_cur = std::sqrt(dx * dx + dy * dy + dz * dz);
+      ok = expect_eq("gdrag.restore_cursor",
+                     (escaped && to_cur < 0.04f) ? 1u : 0u, 1u) &&
+           ok;
+      if (escaped && to_cur >= 0.04f) {
+        std::fprintf(stderr,
+                     "FAIL gdrag.restore_cursor dist=%f obj=(%f,%f,%f) cur=(%f,%f,%f)\n",
+                     to_cur, wi.pose.position.x, wi.pose.position.y, wi.pose.position.z,
+                     cur.position.x, cur.position.y, cur.position.z);
+      }
+
+      threeos_voodoo_ghost_drag_end(1, 0);
+      std::printf("%s audition lateral unsnap + direct-grab restore\n",
+                  (snapped && escaped && !sucked && to_cur < 0.04f) ? "OK  " : "FAIL");
+    }
+  }
+
   // Expand / collapse: children above box; lift when default layer is occupied.
   {
     threeos_storage_clear();
@@ -1323,21 +1521,21 @@ int main() {
     threeos_kinematics_release();
   }
 
-  // --- Phase 0.6 Task 6.2: centroids + dual gods ---
+  // --- Phase 0.6 Task 6.2: centroids + dual MindPalaces ---
   {
     threeos_storage_clear();
-    threeos_god_clear();
+    threeos_mind_palace_clear();
     ok = expect_eq("centroid.empty", threeos_centroid_count(), 0u) && ok;
 
     ThreeOS_Pose anchor{};
     anchor.orientation = {0.f, 0.f, 0.f, 1.f};
-    uint64_t godA = 0;
-    uint64_t godB = 0;
-    ok = (threeos_god_register("DemoA", &anchor, &godA) == 0) && ok;
-    ok = (threeos_god_register("DemoB", &anchor, &godB) == 0) && ok;
-    ok = expect_eq("god.ids_distinct", godA != godB ? 1u : 0u, 1u) && ok;
+    uint64_t mpA = 0;
+    uint64_t mpB = 0;
+    ok = (threeos_mind_palace_register("DemoA", &anchor, &mpA) == 0) && ok;
+    ok = (threeos_mind_palace_register("DemoB", &anchor, &mpB) == 0) && ok;
+    ok = expect_eq("mind_palace.ids_distinct", mpA != mpB ? 1u : 0u, 1u) && ok;
 
-    // Empty gods → omitted from list.
+    // Empty MindPalaces → omitted from list.
     ThreeOS_InteropInputFrame cf{};
     cf.frame_index = 9400;
     cf.time_seconds = 50.0;
@@ -1345,7 +1543,7 @@ int main() {
     cf.head = identity_pose_at(0.f, 1.6f, 0.f);
     ThreeOS_InteropTransformDelta cd{};
     threeos_tick(&cf, &cd);
-    ok = expect_eq("centroid.omit_empty_gods", threeos_centroid_count(), 0u) && ok;
+    ok = expect_eq("centroid.omit_empty_mind_palaces", threeos_centroid_count(), 0u) && ok;
 
     uint64_t o1 = 0;
     uint64_t o2 = 0;
@@ -1353,25 +1551,25 @@ int main() {
     threeos_storage_add_object("a.glb", "a.glb", &o1);
     threeos_storage_add_object("b.glb", "b.glb", &o2);
     threeos_storage_add_object("c.glb", "c.glb", &o3);
-    threeos_storage_set_god_root(o1, godA);
-    threeos_storage_set_god_root(o2, godA);
-    threeos_storage_set_god_root(o3, godB);
+    threeos_storage_set_mind_palace(o1, mpA);
+    threeos_storage_set_mind_palace(o2, mpA);
+    threeos_storage_set_mind_palace(o3, mpB);
 
     ThreeOS_Pose layA = identity_pose_at(-1.f, 3.f, -3.f);
     ThreeOS_Pose layB = identity_pose_at(1.f, 3.f, -3.f);
-    ok = (threeos_storage_layout_god(godA, &layA) == 0) && ok;
-    ok = (threeos_storage_layout_god(godB, &layB) == 0) && ok;
+    ok = (threeos_storage_layout_mind_palace(mpA, &layA) == 0) && ok;
+    ok = (threeos_storage_layout_mind_palace(mpB, &layB) == 0) && ok;
     threeos_tick(&cf, &cd);
-    ok = expect_eq("centroid.two_gods", threeos_centroid_count(), 2u) && ok;
+    ok = expect_eq("centroid.two_mind_palaces", threeos_centroid_count(), 2u) && ok;
 
     ThreeOS_Centroid c0{};
     ThreeOS_Centroid c1{};
     threeos_centroid_get(0, &c0);
     threeos_centroid_get(1, &c1);
-    ok = expect_eq("centroid.kind_god", c0.kind, THREEOS_CENTROID_GOD) && ok;
+    ok = expect_eq("centroid.kind_mind_palace", c0.kind, THREEOS_CENTROID_MIND_PALACE) && ok;
     // Average of two DemoA objects near layA (2-cube matrix around center).
-    const ThreeOS_Centroid* ca = c0.id == godA ? &c0 : &c1;
-    const ThreeOS_Centroid* cb = c0.id == godB ? &c0 : &c1;
+    const ThreeOS_Centroid* ca = c0.id == mpA ? &c0 : &c1;
+    const ThreeOS_Centroid* cb = c0.id == mpB ? &c0 : &c1;
     ok = expect_eq("centroid.A.members", ca->member_count, 2u) && ok;
     ok = expect_eq("centroid.B.members", cb->member_count, 1u) && ok;
     ok = expect_near("centroid.A.y", ca->position.y, 3.f, 0.5f) && ok;
@@ -1380,7 +1578,7 @@ int main() {
     // Expanded box centroid = average of children; empty → omit.
     uint64_t box = 0;
     threeos_storage_add_box("Nest", "Nest", 2, &box);
-    threeos_storage_set_god_root(box, godB);
+    threeos_storage_set_mind_palace(box, mpB);
     uint64_t ch1 = 0;
     uint64_t ch2 = 0;
     threeos_storage_add_object("n1.glb", "Nest/n1.glb", &ch1);
@@ -1421,36 +1619,36 @@ int main() {
       }
     }
     ok = expect_eq("centroid.box_omitted_collapsed", found_box ? 1u : 0u, 0u) && ok;
-    std::printf("OK   centroids god average + box omit\n");
+    std::printf("OK   centroids MindPalace average + box omit\n");
   }
 
   // --- Phase 0.6 Task 6.3: snap nodes + tip gravity + aspect-locked BB fit ---
   {
     threeos_storage_clear();
-    threeos_god_clear();
+    threeos_mind_palace_clear();
     threeos_selection_clear();
     threeos_kinematics_release();
 
     ThreeOS_Pose anchor{};
     anchor.orientation = {0.f, 0.f, 0.f, 1.f};
-    uint64_t godA = 0;
-    uint64_t godB = 0;
-    threeos_god_register("SnapA", &anchor, &godA);
-    threeos_god_register("SnapB", &anchor, &godB);
+    uint64_t mpA = 0;
+    uint64_t mpB = 0;
+    threeos_mind_palace_register("SnapA", &anchor, &mpA);
+    threeos_mind_palace_register("SnapB", &anchor, &mpB);
     uint64_t o1 = 0;
     uint64_t o2 = 0;
     uint64_t o3 = 0;
     threeos_storage_add_object("sa.glb", "sa.glb", &o1);
     threeos_storage_add_object("sb.glb", "sb.glb", &o2);
     threeos_storage_add_object("sc.glb", "sc.glb", &o3);
-    threeos_storage_set_god_root(o1, godA);
-    threeos_storage_set_god_root(o2, godA);
-    threeos_storage_set_god_root(o3, godB);
-    // Place gods near far-rest (+Z) so hand-space offsets stay within ~arm reach.
+    threeos_storage_set_mind_palace(o1, mpA);
+    threeos_storage_set_mind_palace(o2, mpA);
+    threeos_storage_set_mind_palace(o3, mpB);
+    // Place MindPalaces near far-rest (+Z) so hand-space offsets stay within ~arm reach.
     ThreeOS_Pose layA = identity_pose_at(-0.5f, 1.4f, 2.0f);
     ThreeOS_Pose layB = identity_pose_at(0.8f, 1.6f, 2.5f);
-    threeos_storage_layout_god(godA, &layA);
-    threeos_storage_layout_god(godB, &layB);
+    threeos_storage_layout_mind_palace(mpA, &layA);
+    threeos_storage_layout_mind_palace(mpB, &layB);
 
     auto fill_hand = [](ThreeOS_HandSample* h, float x, float y, float z) {
       *h = ThreeOS_HandSample{};
@@ -1510,7 +1708,7 @@ int main() {
     for (uint32_t i = 0; i < threeos_voodoo_snap_node_count(1); ++i) {
       ThreeOS_VoodooSnapNode n{};
       threeos_voodoo_get_snap_node(1, i, &n);
-      if (n.centroid_id == godA) {
+      if (n.centroid_id == mpA) {
         target = n;
         found_target = true;
         break;
@@ -1547,14 +1745,14 @@ int main() {
         any_snapped = true;
       }
     }
-    if (!any_snapped || snapped_node.centroid_id != godA) {
+    if (!any_snapped || snapped_node.centroid_id != mpA) {
       std::fprintf(stderr, "FAIL snap lock any=%d id=%llu want=%llu far=(%.2f,%.2f,%.2f)\n",
                    any_snapped ? 1 : 0, (unsigned long long)snapped_node.centroid_id,
-                   (unsigned long long)godA, sess.far_bb.pose.position.x, sess.far_bb.pose.position.y,
+                   (unsigned long long)mpA, sess.far_bb.pose.position.x, sess.far_bb.pose.position.y,
                    sess.far_bb.pose.position.z);
       ok = false;
     } else {
-      ok = expect_eq("snap.linked", sess.far_bb.linked_centroid_id == godA ? 1u : 0u, 1u) && ok;
+      ok = expect_eq("snap.linked", sess.far_bb.linked_centroid_id == mpA ? 1u : 0u, 1u) && ok;
       ok = expect_near("snap.far_x", sess.far_bb.pose.position.x, target.field_position.x, 0.35f) &&
            ok;
       ok = expect_near("snap.far_z", sess.far_bb.pose.position.z, target.field_position.z, 0.35f) &&
@@ -1595,22 +1793,22 @@ int main() {
   // --- Phase 0.6 Task 6.4: portals, ghosts, orbit, bump, capacity ---
   {
     threeos_storage_clear();
-    threeos_god_clear();
+    threeos_mind_palace_clear();
     ok = expect_eq("portal.empty", threeos_voodoo_portal_count(), 0u) && ok;
     ok = expect_eq("portal.creation_allowed", threeos_voodoo_creation_allowed(), 1u) && ok;
 
     ThreeOS_Pose anchor{};
     anchor.orientation = {0.f, 0.f, 0.f, 1.f};
-    uint64_t godA = 0;
-    threeos_god_register("PortalA", &anchor, &godA);
+    uint64_t mpA = 0;
+    threeos_mind_palace_register("PortalA", &anchor, &mpA);
     uint64_t o1 = 0;
     uint64_t o2 = 0;
     threeos_storage_add_object("p1.glb", "p1.glb", &o1);
     threeos_storage_add_object("p2.glb", "p2.glb", &o2);
-    threeos_storage_set_god_root(o1, godA);
-    threeos_storage_set_god_root(o2, godA);
+    threeos_storage_set_mind_palace(o1, mpA);
+    threeos_storage_set_mind_palace(o2, mpA);
     ThreeOS_Pose lay = identity_pose_at(0.f, 1.4f, 2.0f);
-    threeos_storage_layout_god(godA, &lay);
+    threeos_storage_layout_mind_palace(mpA, &lay);
 
     auto fill_hand = [](ThreeOS_HandSample* h, float x, float y, float z, int primary) {
       *h = ThreeOS_HandSample{};
@@ -1641,7 +1839,7 @@ int main() {
     ThreeOS_InteropTransformDelta vd{};
     threeos_tick(&vf, &vd);
 
-    // Snap to god then park → portal with ghosts.
+    // Snap to MindPalace then park → portal with ghosts.
     ThreeOS_VoodooFieldParams fp{};
     threeos_voodoo_get_field_params(&fp);
     ThreeOS_VoodooSession sess{};
@@ -1653,7 +1851,7 @@ int main() {
     for (uint32_t i = 0; i < threeos_centroid_count(); ++i) {
       ThreeOS_Centroid cx{};
       threeos_centroid_get(i, &cx);
-      if (cx.id == godA) {
+      if (cx.id == mpA) {
         ca = cx;
         break;
       }
@@ -1862,20 +2060,20 @@ int main() {
   // --- Phase 0.6 Task 6.5: ghost drag, summon, temp BB unchanged ---
   {
     threeos_storage_clear();
-    threeos_god_clear();
+    threeos_mind_palace_clear();
 
     ThreeOS_Pose anchor{};
     anchor.orientation = {0.f, 0.f, 0.f, 1.f};
-    uint64_t godA = 0;
-    threeos_god_register("DragA", &anchor, &godA);
+    uint64_t mpA = 0;
+    threeos_mind_palace_register("DragA", &anchor, &mpA);
     uint64_t o1 = 0;
     uint64_t o2 = 0;
     threeos_storage_add_object("d1.glb", "d1.glb", &o1);
     threeos_storage_add_object("d2.glb", "d2.glb", &o2);
-    threeos_storage_set_god_root(o1, godA);
-    threeos_storage_set_god_root(o2, godA);
+    threeos_storage_set_mind_palace(o1, mpA);
+    threeos_storage_set_mind_palace(o2, mpA);
     ThreeOS_Pose lay = identity_pose_at(0.f, 1.4f, 2.0f);
-    threeos_storage_layout_god(godA, &lay);
+    threeos_storage_layout_mind_palace(mpA, &lay);
 
     auto fill_hand = [](ThreeOS_HandSample* h, float x, float y, float z, int primary) {
       *h = ThreeOS_HandSample{};
@@ -1917,7 +2115,7 @@ int main() {
     for (uint32_t i = 0; i < threeos_centroid_count(); ++i) {
       ThreeOS_Centroid cx{};
       threeos_centroid_get(i, &cx);
-      if (cx.id == godA) {
+      if (cx.id == mpA) {
         ca = cx;
         break;
       }
@@ -2254,21 +2452,21 @@ int main() {
   // --- Phase 0.6 Task 6.6: scissors cut / paste / cancel ---
   {
     threeos_storage_clear();
-    threeos_god_clear();
+    threeos_mind_palace_clear();
     threeos_voodoo_cut_cancel();
 
     ThreeOS_Pose anchor{};
     anchor.orientation = {0.f, 0.f, 0.f, 1.f};
-    uint64_t godA = 0;
-    threeos_god_register("CutA", &anchor, &godA);
+    uint64_t mpA = 0;
+    threeos_mind_palace_register("CutA", &anchor, &mpA);
     uint64_t o1 = 0;
     uint64_t o2 = 0;
     threeos_storage_add_object("c1.glb", "c1.glb", &o1);
     threeos_storage_add_object("c2.glb", "c2.glb", &o2);
-    threeos_storage_set_god_root(o1, godA);
-    threeos_storage_set_god_root(o2, godA);
+    threeos_storage_set_mind_palace(o1, mpA);
+    threeos_storage_set_mind_palace(o2, mpA);
     ThreeOS_Pose lay = identity_pose_at(0.f, 1.4f, 2.0f);
-    threeos_storage_layout_god(godA, &lay);
+    threeos_storage_layout_mind_palace(mpA, &lay);
 
     auto fill_hand = [](ThreeOS_HandSample* h, float x, float y, float z, int primary) {
       *h = ThreeOS_HandSample{};
@@ -2310,7 +2508,7 @@ int main() {
     for (uint32_t i = 0; i < threeos_centroid_count(); ++i) {
       ThreeOS_Centroid cx{};
       threeos_centroid_get(i, &cx);
-      if (cx.id == godA) {
+      if (cx.id == mpA) {
         ca = cx;
         break;
       }
@@ -2444,6 +2642,152 @@ int main() {
     }
 
     std::printf("OK   scissors cut duck cancel paste\n");
+  }
+
+  // --- Phase 0.6 Task 6.7: Multi-Choice octant/pagination, mutual bump, favorites ---
+  {
+    // Pure hover math (octant + center pagination).
+    ThreeOS_Pose widget{};
+    widget.position = {0.f, 1.5f, 0.f};
+    widget.orientation = {0.f, 0.f, 0.f, 1.f};
+    // Cursor along +X (right) in band → octant with bit0 set.
+    ok = (threeos_multichoice_open_drive(1, &widget) == 0) && ok;
+    ThreeOS_DriveRoot roots[10]{};
+    for (int i = 0; i < 10; ++i) {
+      roots[i].id = 9000ull + static_cast<uint64_t>(i);
+      std::snprintf(roots[i].name, sizeof(roots[i].name), "Root%d", i);
+    }
+    ok = (threeos_drive_roots_set(roots, 10) == 0) && ok;
+    // Magnitude ~0.12 m along +right → slot 1 (bit0).
+    ok = (threeos_multichoice_tick(0.12f, 1.5f, 0.f) == 0) && ok;
+    ThreeOS_MultiChoiceState st{};
+    ok = (threeos_multichoice_get_state(&st) == 0) && ok;
+    ok = expect_eq("mc.open", st.open, 1u) && ok;
+    ok = expect_eq("mc.mode_drive", st.mode, THREEOS_MC_DRIVE_PICKER) && ok;
+    ok = expect_eq("mc.hover_octant", static_cast<uint32_t>(st.hovered_slot >= 0 && st.hovered_slot <= 7),
+                   1u) &&
+         ok;
+    ok = expect_eq("mc.page_fwd_on", st.page_forward_enabled, 1u) && ok;
+    ok = expect_eq("mc.page_back_off", st.page_back_enabled, 0u) && ok;
+
+    // Center hover → pagination pair.
+    ok = (threeos_multichoice_tick(0.01f, 1.5f, 0.f) == 0) && ok;
+    ok = (threeos_multichoice_get_state(&st) == 0) && ok;
+    ok = expect_eq("mc.center_page",
+                   (st.hovered_slot == 8 || st.hovered_slot == 9) ? 1u : 0u, 1u) &&
+         ok;
+
+    // Favorite toggle round-trip.
+    const uint64_t boxFav = 4242;
+    ok = (threeos_favorite_set(boxFav, 1) == 0) && ok;
+    ok = expect_eq("mc.fav_on", threeos_favorite_get(boxFav), 1u) && ok;
+    ok = (threeos_favorite_set(boxFav, 0) == 0) && ok;
+    ok = expect_eq("mc.fav_off", threeos_favorite_get(boxFav), 0u) && ok;
+
+    // MindPalaceMenu intent: secondary + palm up.
+    ThreeOS_HandSample L{};
+    ThreeOS_HandSample R{};
+    R.tracked = 1;
+    R.tip_flags = 0x1Fu;
+    R.thumb_tip = {0.2f, 1.2f, -0.2f};
+    R.middle_tip = {0.22f, 1.2f, -0.2f};
+    R.index_proximal = {0.2f, 1.2f, -0.2f};
+    R.palm_mode = THREEOS_PALM_UP;
+    R.palm_mode_valid = 1;
+    R.secondary_pressed = 1;
+    R.secondary_value = 1.f;
+    threeos_interaction_set_hands(&L, &R);
+    ThreeOS_InteropInputFrame gf{};
+    gf.frame_index = 9001;
+    gf.time_seconds = 90.0;
+    gf.tracking_flags = THREEOS_TRACK_HEAD | THREEOS_TRACK_RIGHT_AIM;
+    gf.head.position = {0.f, 1.6f, 0.f};
+    gf.head.orientation = {0.f, 0.f, 0.f, 1.f};
+    gf.right_aim = gf.head;
+    ThreeOS_InteropTransformDelta gd{};
+    ok = (threeos_tick(&gf, &gd) == 0) && ok;
+    ThreeOS_InteractionIntents intents{};
+    ok = (threeos_interaction_get_intents(&intents) == 0) && ok;
+    ok = expect_eq("mc.mind_palace_menu_intent",
+                   (intents.flags & THREEOS_INTENT_MIND_PALACE_MENU) != 0 ? 1u : 0u, 1u) &&
+         ok;
+
+    threeos_multichoice_close();
+
+    // Mutual bump + N MindPalace layout.
+    threeos_storage_clear();
+    threeos_mind_palace_clear();
+    ThreeOS_Pose anchor{};
+    anchor.orientation = {0.f, 0.f, 0.f, 1.f};
+    ThreeOS_Pose head = identity_pose_at(0.f, 1.6f, 0.f);
+    uint64_t mpA = 0;
+    uint64_t mpB = 0;
+    threeos_mind_palace_register("BumpA", &anchor, &mpA);
+    threeos_mind_palace_register("BumpB", &anchor, &mpB);
+    uint64_t a = 0;
+    uint64_t b = 0;
+    threeos_storage_add_object("ba.glb", "ba.glb", &a);
+    threeos_storage_add_object("bb.glb", "bb.glb", &b);
+    threeos_storage_set_mind_palace(a, mpA);
+    threeos_storage_set_mind_palace(b, mpB);
+    ok = (threeos_mind_palace_layout_next(mpA, &head, "BumpA") == 0) && ok;
+    ok = (threeos_mind_palace_layout_next(mpB, &head, "BumpB") == 0) && ok;
+
+    // Force overlap via possess → set pose of A onto B, release, then mutual resolve.
+    ThreeOS_WorkspaceItem itemB{};
+    for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+      ThreeOS_WorkspaceItem it{};
+      threeos_storage_get_item(i, &it);
+      if (it.entity_id == b) {
+        itemB = it;
+      }
+    }
+    ThreeOS_Pose stacked = itemB.pose;
+    ok = (threeos_kinematics_possess(a, &stacked) == 0) && ok;
+    ok = (threeos_kinematics_set_object_pose(&stacked) == 0) && ok;
+    {
+      ThreeOS_HandSample L2{};
+      ThreeOS_HandSample R2{};
+      R2.tracked = 1;
+      R2.tip_flags = 0x1Fu;
+      R2.index_proximal = stacked.position;
+      R2.thumb_tip = stacked.position;
+      R2.primary_pressed = 1;
+      R2.primary_value = 1.f;
+      R2.palm_mode = THREEOS_PALM_SIDEWAYS;
+      R2.palm_mode_valid = 1;
+      threeos_interaction_set_hands(&L2, &R2);
+      ThreeOS_InteropInputFrame tf{};
+      tf.frame_index = 9100;
+      tf.time_seconds = 91.0;
+      tf.tracking_flags = THREEOS_TRACK_HEAD | THREEOS_TRACK_RIGHT_AIM;
+      tf.head = head;
+      tf.right_aim = stacked;
+      ThreeOS_InteropTransformDelta td{};
+      threeos_tick(&tf, &td);  // writes stacked pose into workspace while possessed
+    }
+    threeos_kinematics_release();
+    ok = (threeos_field_resolve_overlaps(&head) == 0) && ok;
+    {
+      ThreeOS_WorkspaceItem ia{};
+      ThreeOS_WorkspaceItem ib{};
+      for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+        ThreeOS_WorkspaceItem it{};
+        threeos_storage_get_item(i, &it);
+        if (it.entity_id == a) {
+          ia = it;
+        }
+        if (it.entity_id == b) {
+          ib = it;
+        }
+      }
+      const float dx = ia.pose.position.x - ib.pose.position.x;
+      const float dz = ia.pose.position.z - ib.pose.position.z;
+      const float sep = std::sqrt(dx * dx + dz * dz);
+      ok = expect_eq("mc.mutual_sep", sep >= 0.20f ? 1u : 0u, 1u) && ok;
+    }
+
+    std::printf("OK   multichoice octant pagination favorite mindpalace bump\n");
   }
 
   threeos_shutdown();

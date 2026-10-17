@@ -1,9 +1,11 @@
 #include "interop/threeos_marshaller.hpp"
 
 #include "core/centroid_registry.hpp"
+#include "core/mind_palace_layout.hpp"
 #include "core/hand_interaction.hpp"
 #include "core/interaction_facade.hpp"
 #include "core/kinematics.hpp"
+#include "core/multi_choice.hpp"
 #include "core/topology.hpp"
 #include "core/voodoo_volume.hpp"
 #include "storage/glyph_registry.hpp"
@@ -15,6 +17,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -34,6 +37,7 @@ threeos::Workspace g_workspace;
 threeos::HandInteractionEngine g_hands;
 threeos::VoodooVolumeEngine g_voodoo;
 threeos::CentroidRegistry g_centroids;
+threeos::MultiChoiceEngine g_multichoice;
 bool g_hands_pushed_this_frame = false;
 uint64_t g_tick_count = 0;
 std::optional<threeos::Pose> g_pending_portal_pose;
@@ -527,6 +531,7 @@ extern "C" THREEOS_API int32_t threeos_init(void) {
   g_hands.reset();
   g_voodoo.reset();
   g_centroids.clear();
+  g_multichoice.reset();
   g_hands_pushed_this_frame = false;
   set_error("");
   return 0;
@@ -540,6 +545,7 @@ extern "C" THREEOS_API void threeos_shutdown(void) {
   g_glyphs.clear();
   g_voodoo.reset();
   g_centroids.clear();
+  g_multichoice.reset();
   g_pending_portal_pose.reset();
   set_error("");
 }
@@ -1667,42 +1673,42 @@ extern "C" THREEOS_API uint32_t threeos_sizeof_centroid(void) {
   return static_cast<uint32_t>(sizeof(ThreeOS_Centroid));
 }
 
-extern "C" THREEOS_API void threeos_god_clear(void) {
+extern "C" THREEOS_API void threeos_mind_palace_clear(void) {
   std::lock_guard<std::mutex> lock(g_mu);
   if (!g_initialized) {
     return;
   }
-  g_centroids.clear_gods();
+  g_centroids.clear_mind_palaces();
   g_centroids.rebuild(g_workspace);
 }
 
-extern "C" THREEOS_API int32_t threeos_god_register(const char* name, const ThreeOS_Pose* anchor,
-                                                    uint64_t* out_god_id) {
+extern "C" THREEOS_API int32_t threeos_mind_palace_register(const char* name, const ThreeOS_Pose* anchor,
+                                                    uint64_t* out_mind_palace_id) {
   std::lock_guard<std::mutex> lock(g_mu);
   if (!g_initialized) {
     set_error("not initialized");
     return -1;
   }
-  if (name == nullptr || out_god_id == nullptr) {
-    set_error("null god args");
+  if (name == nullptr || out_mind_palace_id == nullptr) {
+    set_error("null mind palace args");
     return -2;
   }
   threeos::Pose a{};
   if (anchor != nullptr) {
     a = from_c(*anchor);
   }
-  const auto id = g_centroids.register_god(name, a);
+  const auto id = g_centroids.register_mind_palace(name, a);
   if (id == 0) {
-    set_error("god register failed");
+    set_error("mind palace register failed");
     return -3;
   }
-  *out_god_id = id;
+  *out_mind_palace_id = id;
   g_centroids.rebuild(g_workspace);
   set_error("");
   return 0;
 }
 
-extern "C" THREEOS_API int32_t threeos_god_set_anchor(uint64_t god_id, const ThreeOS_Pose* anchor) {
+extern "C" THREEOS_API int32_t threeos_mind_palace_set_anchor(uint64_t mind_palace_id, const ThreeOS_Pose* anchor) {
   std::lock_guard<std::mutex> lock(g_mu);
   if (!g_initialized) {
     set_error("not initialized");
@@ -1712,23 +1718,23 @@ extern "C" THREEOS_API int32_t threeos_god_set_anchor(uint64_t god_id, const Thr
     set_error("null anchor");
     return -2;
   }
-  if (!g_centroids.set_god_anchor(god_id, from_c(*anchor))) {
-    set_error("unknown god");
+  if (!g_centroids.set_mind_palace_anchor(mind_palace_id, from_c(*anchor))) {
+    set_error("unknown mind palace");
     return -3;
   }
   set_error("");
   return 0;
 }
 
-extern "C" THREEOS_API int32_t threeos_storage_set_god_root(uint64_t entity_id,
-                                                            uint64_t god_root_id) {
+extern "C" THREEOS_API int32_t threeos_storage_set_mind_palace(uint64_t entity_id,
+                                                            uint64_t mind_palace_id) {
   std::lock_guard<std::mutex> lock(g_mu);
   if (!g_initialized) {
     set_error("not initialized");
     return -1;
   }
-  if (!g_workspace.set_god_root(entity_id, god_root_id)) {
-    set_error("set_god_root failed");
+  if (!g_workspace.set_mind_palace(entity_id, mind_palace_id)) {
+    set_error("set_mind_palace failed");
     return -2;
   }
   g_centroids.rebuild(g_workspace);
@@ -1736,7 +1742,7 @@ extern "C" THREEOS_API int32_t threeos_storage_set_god_root(uint64_t entity_id,
   return 0;
 }
 
-extern "C" THREEOS_API int32_t threeos_storage_layout_god(uint64_t god_root_id,
+extern "C" THREEOS_API int32_t threeos_storage_layout_mind_palace(uint64_t mind_palace_id,
                                                           const ThreeOS_Pose* center) {
   std::lock_guard<std::mutex> lock(g_mu);
   if (!g_initialized) {
@@ -1747,8 +1753,8 @@ extern "C" THREEOS_API int32_t threeos_storage_layout_god(uint64_t god_root_id,
     set_error("null center");
     return -2;
   }
-  if (!g_workspace.layout_god_field(god_root_id, from_c(*center))) {
-    set_error("layout_god empty or unknown");
+  if (!g_workspace.layout_mind_palace_field(mind_palace_id, from_c(*center))) {
+    set_error("layout_mind_palace empty or unknown");
     return -3;
   }
   g_workspace.resolve_glyphs();
@@ -2184,6 +2190,285 @@ extern "C" THREEOS_API int32_t threeos_voodoo_cut_paste_into(uint64_t box_id) {
     set_error("cut paste-into refused");
     return -5;
   }
+  g_centroids.rebuild(g_workspace);
+  set_error("");
+  return 0;
+}
+
+namespace {
+
+void fill_multichoice_state(ThreeOS_MultiChoiceState* out) {
+  std::memset(out, 0, sizeof(*out));
+  out->open = g_multichoice.open() ? 1u : 0u;
+  out->mode = static_cast<uint32_t>(g_multichoice.mode());
+  out->section = static_cast<uint32_t>(g_multichoice.section());
+  out->hand = g_multichoice.hand();
+  out->center = to_c(g_multichoice.center());
+  out->min_radius_m = threeos::MultiChoiceEngine::kMainMinM;
+  out->max_radius_m = threeos::MultiChoiceEngine::kMainMaxM;
+  out->hovered_slot = g_multichoice.hovered_slot();
+  out->page_index = g_multichoice.page_index();
+  out->page_back_enabled = g_multichoice.page_back_enabled();
+  out->page_forward_enabled = g_multichoice.page_forward_enabled();
+  out->confirm_open = g_multichoice.confirm_open() ? 1u : 0u;
+  out->confirm_hovered = g_multichoice.confirm_hovered();
+  out->confirm_center = to_c(g_multichoice.confirm_center());
+  out->confirm_min_m = threeos::MultiChoiceEngine::kConfirmMinM;
+  out->confirm_max_m = threeos::MultiChoiceEngine::kConfirmMaxM;
+  out->context_box_id = g_multichoice.context_box();
+  out->pending_target_id = g_multichoice.pending_target();
+  out->pending_kind = static_cast<uint32_t>(g_multichoice.pending_kind());
+  out->cursor_inside = g_multichoice.cursor_inside_any() ? 1u : 0u;
+  copy_cstr(out->title, sizeof(out->title), g_multichoice.title());
+  copy_cstr(out->hover_label, sizeof(out->hover_label), g_multichoice.hover_label());
+  const auto* slots = g_multichoice.slots();
+  for (uint32_t i = 0; i < 8; ++i) {
+    out->slots[i].kind = static_cast<uint32_t>(slots[i].kind);
+    out->slots[i].enabled = slots[i].enabled;
+    out->slots[i].target_id = slots[i].target_id;
+    copy_cstr(out->slots[i].label, sizeof(out->slots[i].label), slots[i].label);
+  }
+}
+
+}  // namespace
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_multi_choice_state(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_MultiChoiceState));
+}
+extern "C" THREEOS_API uint32_t threeos_sizeof_multi_choice_slot(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_MultiChoiceSlot));
+}
+extern "C" THREEOS_API uint32_t threeos_sizeof_drive_root(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_DriveRoot));
+}
+
+extern "C" THREEOS_API int32_t threeos_drive_roots_set(const ThreeOS_DriveRoot* roots,
+                                                       uint32_t count) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  std::vector<threeos::DriveRootDesc> tmp;
+  tmp.reserve(count);
+  if (roots != nullptr) {
+    for (uint32_t i = 0; i < count; ++i) {
+      if (roots[i].id == 0) {
+        continue;
+      }
+      threeos::DriveRootDesc d;
+      d.id = roots[i].id;
+      d.name = roots[i].name;
+      tmp.push_back(std::move(d));
+    }
+  }
+  g_multichoice.set_available_roots(tmp.data(), static_cast<uint32_t>(tmp.size()));
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_favorite_set(uint64_t box_id, uint32_t favored) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!g_multichoice.set_favorite(box_id, favored != 0)) {
+    set_error("favorite set failed");
+    return -2;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API uint32_t threeos_favorite_get(uint64_t box_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return g_multichoice.is_favorite(box_id) ? 1u : 0u;
+}
+
+extern "C" THREEOS_API int32_t threeos_multichoice_open_drive(uint32_t hand,
+                                                              const ThreeOS_Pose* center) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (center == nullptr) {
+    set_error("null center");
+    return -2;
+  }
+  g_multichoice.open_drive_picker(hand, from_c(*center));
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_multichoice_open_folder(uint32_t hand,
+                                                               const ThreeOS_Pose* center,
+                                                               uint64_t box_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (center == nullptr || box_id == 0) {
+    set_error("null folder args");
+    return -2;
+  }
+  if (!g_multichoice.open_folder_context(hand, from_c(*center), box_id)) {
+    set_error("open folder context failed");
+    return -3;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API void threeos_multichoice_close(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return;
+  }
+  g_multichoice.close_all();
+}
+
+extern "C" THREEOS_API int32_t threeos_multichoice_tick(float cursor_x, float cursor_y,
+                                                        float cursor_z) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  g_multichoice.tick_hover(threeos::Vec3{cursor_x, cursor_y, cursor_z});
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_multichoice_confirm(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  g_multichoice.on_primary_confirm();
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_multichoice_get_state(ThreeOS_MultiChoiceState* out_state) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (out_state == nullptr) {
+    set_error("null state");
+    return -2;
+  }
+  fill_multichoice_state(out_state);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_multichoice_poll_action(uint32_t* out_action,
+                                                               uint64_t* out_target_id,
+                                                               uint32_t* out_kind) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  threeos::EntityId tid = 0;
+  threeos::MultiChoiceSlotKind kind = threeos::MultiChoiceSlotKind::Empty;
+  const auto action = g_multichoice.consume_action(&tid, &kind);
+  if (out_action) {
+    *out_action = static_cast<uint32_t>(action);
+  }
+  if (out_target_id) {
+    *out_target_id = tid;
+  }
+  if (out_kind) {
+    *out_kind = static_cast<uint32_t>(kind);
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_mind_palace_layout_next(uint64_t mind_palace_id,
+                                                       const ThreeOS_Pose* head,
+                                                       const char* display_name) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (mind_palace_id == 0 || head == nullptr) {
+    set_error("null mind palace layout args");
+    return -2;
+  }
+  threeos::Pose anchor{};
+  std::string err;
+  const std::string name = display_name ? display_name : "";
+  if (!threeos::place_next_mind_palace_anchor(from_c(*head), true, g_centroids,
+                                      g_voodoo.params().field_radius_m,
+                                      g_voodoo.params().field_height_m, name, &anchor, &err,
+                                      mind_palace_id)) {
+    set_error(err.c_str());
+    return -3;
+  }
+  g_centroids.set_mind_palace_anchor(mind_palace_id, anchor);
+  if (!g_workspace.layout_mind_palace_field(mind_palace_id, anchor)) {
+    set_error("layout_mind_palace empty or unknown");
+    return -4;
+  }
+  g_workspace.resolve_glyphs();
+  threeos::resolve_mutual_object_overlaps(g_workspace, from_c(*head), true,
+                                          g_workspace.field_spacing_m());
+  g_centroids.rebuild(g_workspace);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_storage_clear_field(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  // Dismiss portals first (Jump-to-Root must not tear Unity scene — only kernel field).
+  std::vector<uint64_t> ids;
+  ids.reserve(g_voodoo.portals().size());
+  for (const auto& p : g_voodoo.portals()) {
+    ids.push_back(p.id);
+  }
+  for (uint64_t id : ids) {
+    g_voodoo.dismiss_portal(id);
+  }
+  g_voodoo.cut_cancel();
+  for (const auto& e : g_workspace.entries()) {
+    g_workspace.set_in_field(e.id, false);
+  }
+  g_workspace.clear_selection();
+  g_workspace.clear_snap();
+  g_centroids.rebuild(g_workspace);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_field_resolve_overlaps(const ThreeOS_Pose* head) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  threeos::Pose h{};
+  bool hv = false;
+  if (head != nullptr) {
+    h = from_c(*head);
+    hv = true;
+  }
+  threeos::resolve_mutual_object_overlaps(g_workspace, h, hv, g_workspace.field_spacing_m());
   g_centroids.rebuild(g_workspace);
   set_error("");
   return 0;

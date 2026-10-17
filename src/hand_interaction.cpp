@@ -286,6 +286,8 @@ void HandInteractionEngine::tick_hand(uint32_t hand, const Pose& head, bool head
     }
     if (intent_palm == PalmMode::Down) {
       local.flags |= InteractionIntentFlags::VoodooFree;
+    } else if (intent_palm == PalmMode::Up) {
+      local.flags |= InteractionIntentFlags::MindPalaceMenu;
     }
   }
   if (s.ternary_pressed) {

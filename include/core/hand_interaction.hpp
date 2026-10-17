@@ -28,6 +28,7 @@ enum class InteractionIntentFlags : uint32_t {
   SecondaryHeld = 1u << 4,
   TernaryHeld = 1u << 5,
   VoodooFree = 1u << 6,  // secondary + palm down
+  MindPalaceMenu = 1u << 7,     // secondary + palm up (Multi-Choice)
 };
 
 inline InteractionIntentFlags operator|(InteractionIntentFlags a, InteractionIntentFlags b) {

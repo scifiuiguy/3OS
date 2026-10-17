@@ -11,19 +11,19 @@ namespace threeos {
 
 enum class CentroidKind : uint32_t {
   None = 0,
-  God = 1,
+  MindPalace = 1,
   Box = 2,
   Temporary = 3,  // near-portal temp centroid (Task 6.4)
 };
 
-struct GodRoot {
+struct MindPalaceRoot {
   EntityId id = 0;
   std::string name;
   Pose anchor{};
 };
 
 struct CentroidState {
-  EntityId id = 0;               // stable: god id or box entity id
+  EntityId id = 0;               // stable: mind palace id or box entity id
   CentroidKind kind = CentroidKind::None;
   EntityId linked_entity_id = 0; // same as id for 6.2
   uint32_t member_count = 0;
@@ -35,20 +35,20 @@ struct CentroidState {
 class CentroidRegistry {
  public:
   void clear();
-  void clear_gods();
+  void clear_mind_palaces();
 
-  /// Register a god root (imaginary parent). Returns id (0 on failure).
-  EntityId register_god(const std::string& name, const Pose& anchor);
-  bool set_god_anchor(EntityId god_id, const Pose& anchor);
-  const GodRoot* find_god(EntityId god_id) const;
-  const std::vector<GodRoot>& gods() const { return gods_; }
+  /// Register a mind palace root (imaginary parent). Returns id (0 on failure).
+  EntityId register_mind_palace(const std::string& name, const Pose& anchor);
+  bool set_mind_palace_anchor(EntityId mind_palace_id, const Pose& anchor);
+  const MindPalaceRoot* find_mind_palace(EntityId mind_palace_id) const;
+  const std::vector<MindPalaceRoot>& mind_palaces() const { return mind_palaces_; }
 
   /// Temporary centroid for a near portal (survives rebuild until cleared).
   EntityId register_temporary(const std::string& name, const Vec3& position);
   bool set_temporary_position(EntityId id, const Vec3& position);
   bool clear_temporary(EntityId id);
 
-  /// Rebuild from workspace: god roots + expanded boxes with in-field children.
+  /// Rebuild from workspace: mind palace roots + expanded boxes with in-field children.
   /// Temporary centroids are preserved across rebuild.
   void rebuild(const Workspace& workspace);
 
@@ -60,9 +60,9 @@ class CentroidRegistry {
                     Vec3* out_max) const;
 
  private:
-  EntityId next_god_id_ = 100;       // below workspace ids (2000+)
-  EntityId next_temp_id_ = 50;       // below gods
-  std::vector<GodRoot> gods_;
+  EntityId next_mind_palace_id_ = 100;       // below workspace ids (2000+)
+  EntityId next_temp_id_ = 50;       // below mind palaces
+  std::vector<MindPalaceRoot> mind_palaces_;
   std::vector<CentroidState> temps_;
   std::vector<CentroidState> centroids_;
 };

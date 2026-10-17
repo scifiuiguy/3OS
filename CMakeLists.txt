@@ -14,6 +14,8 @@ add_library(3os_kernel SHARED
   src/glyph_registry.cpp
   src/workspace.cpp
   src/hand_interaction.cpp
+  src/multi_choice.cpp
+  src/mind_palace_layout.cpp
   src/voodoo_volume.cpp
   src/voodoo_portal_space.cpp
   src/voodoo_stick_viz.cpp

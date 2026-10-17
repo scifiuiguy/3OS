@@ -6,16 +6,16 @@
 namespace threeos {
 
 void CentroidRegistry::clear() {
-  gods_.clear();
+  mind_palaces_.clear();
   temps_.clear();
   centroids_.clear();
-  next_god_id_ = 100;
+  next_mind_palace_id_ = 100;
   next_temp_id_ = 50;
 }
 
-void CentroidRegistry::clear_gods() {
-  gods_.clear();
-  next_god_id_ = 100;
+void CentroidRegistry::clear_mind_palaces() {
+  mind_palaces_.clear();
+  next_mind_palace_id_ = 100;
 }
 
 EntityId CentroidRegistry::register_temporary(const std::string& name, const Vec3& position) {
@@ -62,21 +62,21 @@ bool CentroidRegistry::clear_temporary(EntityId id) {
   return true;
 }
 
-EntityId CentroidRegistry::register_god(const std::string& name, const Pose& anchor) {
+EntityId CentroidRegistry::register_mind_palace(const std::string& name, const Pose& anchor) {
   if (name.empty()) {
     return 0;
   }
-  GodRoot g;
-  g.id = next_god_id_++;
+  MindPalaceRoot g;
+  g.id = next_mind_palace_id_++;
   g.name = name;
   g.anchor = anchor;
-  gods_.push_back(std::move(g));
-  return gods_.back().id;
+  mind_palaces_.push_back(std::move(g));
+  return mind_palaces_.back().id;
 }
 
-bool CentroidRegistry::set_god_anchor(EntityId god_id, const Pose& anchor) {
-  for (auto& g : gods_) {
-    if (g.id == god_id) {
+bool CentroidRegistry::set_mind_palace_anchor(EntityId mind_palace_id, const Pose& anchor) {
+  for (auto& g : mind_palaces_) {
+    if (g.id == mind_palace_id) {
       g.anchor = anchor;
       return true;
     }
@@ -84,9 +84,9 @@ bool CentroidRegistry::set_god_anchor(EntityId god_id, const Pose& anchor) {
   return false;
 }
 
-const GodRoot* CentroidRegistry::find_god(EntityId god_id) const {
-  for (const auto& g : gods_) {
-    if (g.id == god_id) {
+const MindPalaceRoot* CentroidRegistry::find_mind_palace(EntityId mind_palace_id) const {
+  for (const auto& g : mind_palaces_) {
+    if (g.id == mind_palace_id) {
       return &g;
     }
   }
@@ -115,8 +115,8 @@ bool CentroidRegistry::members_aabb(const Workspace& workspace, EntityId centroi
     if (!e.in_field) {
       continue;
     }
-    const bool match = (c->kind == CentroidKind::God)
-                           ? (e.parent_box == 0 && e.god_root_id == centroid_id)
+    const bool match = (c->kind == CentroidKind::MindPalace)
+                           ? (e.parent_box == 0 && e.mind_palace_id == centroid_id)
                            : (e.parent_box == centroid_id);
     if (!match) {
       continue;
@@ -152,12 +152,12 @@ void CentroidRegistry::rebuild(const Workspace& workspace) {
   }
   const auto& entries = workspace.entries();
 
-  // God centroids: average of in-field root children tagged with this god.
-  for (const auto& god : gods_) {
+  // MindPalace centroids: average of in-field root children tagged with this mind palace.
+  for (const auto& mp : mind_palaces_) {
     Vec3 sum{};
     uint32_t n = 0;
     for (const auto& e : entries) {
-      if (!e.in_field || e.parent_box != 0 || e.god_root_id != god.id) {
+      if (!e.in_field || e.parent_box != 0 || e.mind_palace_id != mp.id) {
         continue;
       }
       sum.x += e.pose.position.x;
@@ -169,13 +169,13 @@ void CentroidRegistry::rebuild(const Workspace& workspace) {
       continue;  // omit empty
     }
     CentroidState c;
-    c.id = god.id;
-    c.kind = CentroidKind::God;
-    c.linked_entity_id = god.id;
+    c.id = mp.id;
+    c.kind = CentroidKind::MindPalace;
+    c.linked_entity_id = mp.id;
     c.member_count = n;
     c.position = Vec3{sum.x / static_cast<float>(n), sum.y / static_cast<float>(n),
                       sum.z / static_cast<float>(n)};
-    c.name = god.name;
+    c.name = mp.name;
     centroids_.push_back(std::move(c));
   }
 
