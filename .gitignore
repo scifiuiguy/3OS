@@ -27,6 +27,12 @@ unity-*.log
 # Local Blender authoring (meshes / .blend / export WIP — not versioned)
 Blender/
 
+# Local one-off refactor / strip scripts (keep inject_3glyph.py + logcat helper)
+tools/_*
+
+# Glyph export scratch (canonical packs live as *.3glyph / Resources *.bytes)
+assets/glyphs/_tmp/
+
 # Build trees
 build/
 out/
