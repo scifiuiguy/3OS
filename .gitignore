@@ -66,3 +66,6 @@ Testing/
 .DS_Store
 Thumbs.db
 build-android-arm64/
+
+# Accidental Unity Hub license/config dumps at repo root (Editor lives under Program Files)
+/Unity/
