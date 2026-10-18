@@ -354,15 +354,17 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 
 #### Act I — MR open + GitHub + NPC agent (~⅓, new)
 
-- [ ] **Task 7.1: Final-demo staging scene opens in MR**
-  - [ ] Final-demo home scene (MR office geo already present); **default mode = MR** (not Mind Palace).
-  - [ ] Migrate current FS / voodoo / Multi-Choice functionality into this scene; place the Mind Palace **XR Origin** at the existing **`Player_Spawn_Point`** marker (same rig/pose baseline as the Palace scene — do not invent a second spawn).
-  - [ ] Place the **NPC** (android / SegHands + head from hands-test pipeline) under a **floor parent** used later for shrink-to-floor.
-  - [ ] Import the Mind Palace skybox from [``]() (bring the missing skybox asset into Final Demo / extend `reference//` — **no Asset Store pull**). Wire as VR-mode environment when Palace is summoned (Act II), not at cold open.
-- [ ] **Task 7.2: Togglable GitHub plane**
-  - [ ] World/near-field **plane** textured with the **3OS GitHub** page (static capture or WebView stand-in OK for the reel).
-  - [ ] **Toggle gesture:** **right palm up + right secondary pinch** (middle↔thumb). Each edge toggles the plane **on/off**.
-  - [ ] Demo use: visible for intro → dismiss → (optional) re-show at the very end after STREAM / wrap.
+- [x] **Task 7.1: Final-demo staging scene opens in MR** *(origin + NPC slice done; FS/voodoo/Multi-Choice migrate = follow-up)*
+  - [x] Final-demo home scene (`3OS_Final_DemoScene`); **default mode = MR** — office geo is **fake passthrough** (no real PT in any act). Palace skybox overlays later (7.7).
+  - [x] Prefab DemoScene **XR Origin** (+ Interaction Manager) → instance at **`Player_Spawn_Point`**. *(FS / voodoo / Multi-Choice harness migrate deferred to follow-up.)*
+  - [x] Prefab hands-test **PerfNPC** (head + SegHands); place under **`NPC_Floor_Parent`** for shrink-to-floor; remove Jarvis **v07** placeholder.
+  - [x] WispySky (`Assets/Wispy Sky/Materials/WispySkyboxMat.mat`) stored on `ThreeOSFinalDemoStage.palaceSkybox` — **not** applied at cold open; Act II wipe applies it over office geo.
+- [x] **Task 7.2: Togglable GitHub plane**
+  - [x] **Comp plate:** Stitched `Blender/screenshots/github-comp-1…5.png` → `Assets/3OS_FinalDemo/Textures/github_3os_page.png` (master width; row1+row2 full width; body ¾ left / ¼ sidebar with 4 over 5; **white** below 5).
+  - [x] World-fixed plane **24" wide**, **1.5 ft** ahead of XR Origin, **1 ft** below eye height; **one-shot** billboard toward eyes on spawn (not continuous). Default **ON**.
+  - [x] **Toggle gesture:** raw XR **right palm up + right secondary pinch**; edge toggles on/off (`ThreeOSFinalDemoGitHubGesture`).
+  - [x] Demo use: visible for intro → dismiss → re-show at end via same gesture.
+
 - [ ] **Task 7.3: NPC head focus-anchor → agent Multi-Choice widget (not a normal voodoo)**
   - [ ] Mark the NPC **head** node as a **focus anchor**.
   - [ ] On voodoo-gesture **release** targeting that head: do **not** spawn a regular far/near voodoo volume. Instead spawn a **near-field Multi-Choice widget** identical to the Mind Palace **drive-selection** widget geometry (2×2×2 octants + center hover math).
