@@ -10,6 +10,9 @@ marketing/
 # Local research notes / papers (not versioned)
 research/
 
+# Private prior-art reference clone (local only — never commit)
+reference/spatialgesturetext/
+
 # Local hardware / VDI planning (not versioned yet)
 3OS_Server_Prototype_Spec.md
 
