@@ -176,6 +176,21 @@ bool MultiChoiceEngine::open_folder_context(uint32_t hand, const Pose& center, E
   return true;
 }
 
+bool MultiChoiceEngine::open_agent(uint32_t hand, const Pose& center) {
+  close_all();
+  mode_ = MultiChoiceMode::Agent;
+  hand_ = hand;
+  center_ = center;
+  section_ = MultiChoiceSection::RootDrive;
+  page_index_ = 0;
+  confirm_armed_ = false;
+  page_back_enabled_ = 0;
+  page_forward_enabled_ = 0;
+  copy_label(title_, sizeof(title_), "Agent:");
+  rebuild_slots();
+  return true;
+}
+
 uint32_t MultiChoiceEngine::option_count_for_section() const {
   if (mode_ == MultiChoiceMode::FolderContext) {
     return 1;  // favorite heart only for now
@@ -264,12 +279,35 @@ void MultiChoiceEngine::fill_folder_context() {
              context_box_favored_ ? "Unfavorite" : "Favorite");
 }
 
+void MultiChoiceEngine::fill_agent() {
+  static constexpr const char* kLabels[8] = {
+      "Speak", "Review", "Dismiss", "Focus", "Revert", "Restore", "Shelve", "Submit",
+  };
+  for (uint32_t i = 0; i < 8; ++i) {
+    slots_[i] = {};
+    slots_[i].enabled = 1;
+    copy_label(slots_[i].label, sizeof(slots_[i].label), kLabels[i]);
+    if (i == 0) {
+      slots_[i].kind = MultiChoiceSlotKind::ActionSpeak;
+    } else {
+      slots_[i].kind = MultiChoiceSlotKind::ActionDemoChrome;
+    }
+  }
+  page_back_enabled_ = 0;
+  page_forward_enabled_ = 0;
+}
+
 void MultiChoiceEngine::rebuild_slots() {
   if (mode_ == MultiChoiceMode::Closed) {
     return;
   }
   if (mode_ == MultiChoiceMode::FolderContext) {
     fill_folder_context();
+    return;
+  }
+  if (mode_ == MultiChoiceMode::Agent) {
+    copy_label(title_, sizeof(title_), "Agent:");
+    fill_agent();
     return;
   }
   if (section_ == MultiChoiceSection::RootDrive) {
@@ -379,7 +417,8 @@ void MultiChoiceEngine::tick_hover(const Vec3& cursor) {
     }
   }
 
-  const bool use_pagination = mode_ == MultiChoiceMode::DrivePicker;
+  const bool use_pagination =
+      mode_ == MultiChoiceMode::DrivePicker;  // Agent / Folder: no page buttons
   const auto h = compute_hover(center_, cursor, kMainMinM, kMainMaxM, use_pagination);
   if (h.magnitude <= kMainMaxM) {
     cursor_inside_any_ = true;
@@ -497,6 +536,16 @@ bool MultiChoiceEngine::on_primary_confirm() {
   if (hovered_slot_ >= 0 && hovered_slot_ <= 7) {
     const auto& slot = slots_[static_cast<size_t>(hovered_slot_)];
     if (!slot.enabled) {
+      return false;
+    }
+    if (slot.kind == MultiChoiceSlotKind::ActionSpeak) {
+      pending_action_ = MultiChoiceAction::Speak;
+      action_target_ = 0;
+      action_kind_ = slot.kind;
+      return true;
+    }
+    if (slot.kind == MultiChoiceSlotKind::ActionDemoChrome) {
+      // Highlight/select only — no committed action for the reel.
       return false;
     }
     if (slot.kind == MultiChoiceSlotKind::ActionFavorite) {

@@ -13,6 +13,7 @@ enum class MultiChoiceMode : uint32_t {
   Closed = 0,
   DrivePicker = 1,
   FolderContext = 2,
+  Agent = 3,  // NPC agent menu (Task 7.3); no pagination
 };
 
 enum class MultiChoiceSection : uint32_t {
@@ -27,6 +28,8 @@ enum class MultiChoiceSlotKind : uint32_t {
   ActionFavorite = 3,  // folder-context slot 0
   ConfirmAdd = 4,
   ConfirmJump = 5,
+  ActionSpeak = 6,       // agent slot 0 (mic glyph)
+  ActionDemoChrome = 7,  // agent slots 1..7 (highlight only)
 };
 
 enum class MultiChoiceAction : uint32_t {
@@ -34,6 +37,7 @@ enum class MultiChoiceAction : uint32_t {
   Add = 1,
   JumpToRoot = 2,
   ToggleFavorite = 3,
+  Speak = 4,  // agent Speak confirm
 };
 
 /// Host-fed available drive root (Documents folder stand-in).
@@ -81,6 +85,8 @@ class MultiChoiceEngine {
   /// Fresh widget; closes any prior groups. Returns false if already closed args invalid.
   bool open_drive_picker(uint32_t hand, const Pose& center);
   bool open_folder_context(uint32_t hand, const Pose& center, EntityId box_id);
+  /// Agent menu (NPC head): 8 fixed slots, no pagination; Speak at fill index 0 (TLF).
+  bool open_agent(uint32_t hand, const Pose& center);
   void close_all();
 
   bool open() const { return mode_ != MultiChoiceMode::Closed; }
@@ -136,6 +142,7 @@ class MultiChoiceEngine {
   void fill_drive_page();
   void fill_favorites_page();
   void fill_folder_context();
+  void fill_agent();
   void open_confirm_strip(EntityId target, MultiChoiceSlotKind kind);
   static void copy_label(char* dst, size_t n, const std::string& s);
 

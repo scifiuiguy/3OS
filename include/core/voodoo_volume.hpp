@@ -275,6 +275,34 @@ class VoodooVolumeEngine {
 
   void reset();
 
+  /// Near-BB navel-rest seed pose (widget park for agent Multi-Choice; no orbit).
+  Pose near_rest_pose(const Pose& head, bool head_valid) const;
+
+  /// Host-published MR enclosure solids (OpenXR space). Finite OBBs from WorldMesh
+  /// colliders (walls, floor, ceiling) — far BB depenetrates only on overlap.
+  struct EnclosureBox {
+    Vec3 center{};
+    Vec3 half_extents{};
+    Quat orientation{};
+    uint32_t kind = 0;
+  };
+  static constexpr uint32_t kMaxEnclosureBoxes = 64;
+  void set_enclosure_boxes(const EnclosureBox* boxes, uint32_t count);
+  void clear_enclosure_boxes();
+
+  /// Optional MR room AABB (OpenXR). When enabled, far BB center is hard-clamped inside
+  /// (inset by half extents) so walls/floor/ceiling of the probed room are impenetrable.
+  void set_room_bounds(const Vec3& min_xyz, const Vec3& max_xyz, bool enabled);
+  void clear_room_bounds();
+
+  /// After a focus-anchor snap release: host should open agent Multi-Choice then clear.
+  struct PendingAgentOpen {
+    bool pending = false;
+    uint32_t hand = 0;
+    EntityId focus_id = 0;
+  };
+  PendingAgentOpen consume_pending_agent_open();
+
   /// Drive one hand. Pass live centroids + workspace for snap / park ghosts.
   void tick_hand(uint32_t hand, const InteractionIntents& intents, const Pose& hand_pose,
                  bool hand_valid, const Pose& head, bool head_valid, float dt_seconds,
@@ -316,6 +344,11 @@ class VoodooVolumeEngine {
   void update_far_while_dragging(uint32_t hand, const Pose& hand_pose, const Pose& head,
                                  bool head_valid, float dt_seconds,
                                  const CentroidRegistry& centroids, const Workspace& workspace);
+  /// If ideal `center` is past WorldMesh/room, raycast from `ray_origin` (drag-start far BB)
+  /// to that ideal point and place center on the first hit (+ corner nudge). When ideal is
+  /// inside the free volume, leave center unchanged (isometric drive). Returns wall contact.
+  bool constrain_far_center(Vec3& center, const Vec3& extents, const Pose& head, bool head_valid,
+                            Vec3* out_wall_into_room, const Vec3* ray_origin = nullptr) const;
   void update_arrow(uint32_t hand, const Pose& hand_pose, const Pose& head, bool head_valid,
                     const Vec3* stick_override);
   void rebuild_snap_nodes(uint32_t hand, const CentroidRegistry& centroids);
@@ -420,7 +453,6 @@ class VoodooVolumeEngine {
   void apply_near_extents(VoodooBoundingBox& bb) const;
   void apply_far_start_extents(VoodooBoundingBox& bb) const;
   Pose far_rest_pose(const Pose& head, bool head_valid) const;
-  Pose near_rest_pose(const Pose& head, bool head_valid) const;
   static Quat yaw_billboard_toward(const Vec3& from, const Pose& head, bool head_valid) {
     return voodoo_geom::yaw_billboard_toward(from, head, head_valid);
   }
@@ -451,6 +483,11 @@ class VoodooVolumeEngine {
   uint64_t next_group_id_ = 1;
   Pose last_head_{};
   bool last_head_valid_ = false;
+  PendingAgentOpen pending_agent_{};
+  std::vector<EnclosureBox> enclosure_boxes_{};
+  bool room_bounds_enabled_ = false;
+  Vec3 room_bounds_min_{};
+  Vec3 room_bounds_max_{};
   VoodooOrbitPacker orbit_{*this};
   GhostDragController ghost_drag_{*this};
   VoodooCutPaste cut_{*this};

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "glyph_id": "mic",
+  "display_name": "Microphone (Speak)",
+  "category": "app",
+  "priority": 50,
+  "applies_to_extensions": [],
+  "applies_to_mime": [],
+  "box_state": null,
+  "bounds_m": [0.08, 0.08, 0.08],
+  "tint_rgba": [0.85, 0.88, 0.92, 0.55]
+}

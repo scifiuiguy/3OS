@@ -14,6 +14,7 @@ enum class CentroidKind : uint32_t {
   MindPalace = 1,
   Box = 2,
   Temporary = 3,  // near-portal temp centroid (Task 6.4)
+  FocusAnchor = 4,  // world target (e.g. NPC head); snap ≠ portal content
 };
 
 struct MindPalaceRoot {
@@ -48,8 +49,13 @@ class CentroidRegistry {
   bool set_temporary_position(EntityId id, const Vec3& position);
   bool clear_temporary(EntityId id);
 
+  /// World focus anchor (NPC head, etc.). Survives rebuild; host updates pose each frame.
+  EntityId register_focus_anchor(const std::string& name, const Pose& pose);
+  bool set_focus_anchor_pose(EntityId id, const Pose& pose);
+  bool clear_focus_anchor(EntityId id);
+
   /// Rebuild from workspace: mind palace roots + expanded boxes with in-field children.
-  /// Temporary centroids are preserved across rebuild.
+  /// Temporary + FocusAnchor centroids are preserved across rebuild.
   void rebuild(const Workspace& workspace);
 
   const std::vector<CentroidState>& centroids() const { return centroids_; }
@@ -62,8 +68,10 @@ class CentroidRegistry {
  private:
   EntityId next_mind_palace_id_ = 100;       // below workspace ids (2000+)
   EntityId next_temp_id_ = 50;       // below mind palaces
+  EntityId next_focus_id_ = 20;      // below temps
   std::vector<MindPalaceRoot> mind_palaces_;
   std::vector<CentroidState> temps_;
+  std::vector<CentroidState> focus_anchors_;
   std::vector<CentroidState> centroids_;
 };
 

@@ -179,6 +179,407 @@ void VoodooVolumeEngine::reset() {
   ghost_drags_[0] = {};
   ghost_drags_[1] = {};
   pose_lerps_.clear();
+  pending_agent_ = {};
+  enclosure_boxes_.clear();
+  room_bounds_enabled_ = false;
+}
+
+namespace {
+
+Vec3 cross3(const Vec3& a, const Vec3& b) {
+  return Vec3{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+}
+
+Vec3 quat_rotate_full(const Quat& q, const Vec3& v) {
+  const Vec3 u{q.x, q.y, q.z};
+  const Vec3 uv = cross3(u, v);
+  const Vec3 uuv = cross3(u, uv);
+  return Vec3{v.x + 2.f * (q.w * uv.x + uuv.x), v.y + 2.f * (q.w * uv.y + uuv.y),
+              v.z + 2.f * (q.w * uv.z + uuv.z)};
+}
+
+Quat quat_conj(const Quat& q) { return Quat{-q.x, -q.y, -q.z, q.w}; }
+
+float aabb_support_on_axis(const Vec3& half, const Vec3& axis) {
+  return std::abs(axis.x) * half.x + std::abs(axis.y) * half.y + std::abs(axis.z) * half.z;
+}
+
+void expanded_obb_extents(const VoodooVolumeEngine::EnclosureBox& box, const Vec3& half_aabb,
+                          Vec3& out_ax, Vec3& out_ay, Vec3& out_az, float& ehx, float& ehy,
+                          float& ehz) {
+  const float hx = std::abs(box.half_extents.x);
+  const float hy = std::abs(box.half_extents.y);
+  const float hz = std::abs(box.half_extents.z);
+  out_ax = quat_rotate_full(box.orientation, Vec3{1.f, 0.f, 0.f});
+  out_ay = quat_rotate_full(box.orientation, Vec3{0.f, 1.f, 0.f});
+  out_az = quat_rotate_full(box.orientation, Vec3{0.f, 0.f, 1.f});
+  ehx = hx + aabb_support_on_axis(half_aabb, out_ax);
+  ehy = hy + aabb_support_on_axis(half_aabb, out_ay);
+  ehz = hz + aabb_support_on_axis(half_aabb, out_az);
+}
+
+bool aabb_overlaps_obb(const Vec3& center, const Vec3& half_aabb,
+                       const VoodooVolumeEngine::EnclosureBox& box) {
+  if (std::abs(box.half_extents.x) < 1e-6f && std::abs(box.half_extents.y) < 1e-6f &&
+      std::abs(box.half_extents.z) < 1e-6f) {
+    return false;
+  }
+  Vec3 ax, ay, az;
+  float ehx, ehy, ehz;
+  expanded_obb_extents(box, half_aabb, ax, ay, az, ehx, ehy, ehz);
+  const Vec3 local = quat_rotate_full(quat_conj(box.orientation),
+                                      Vec3{center.x - box.center.x, center.y - box.center.y,
+                                           center.z - box.center.z});
+  return std::abs(local.x) <= ehx && std::abs(local.y) <= ehy && std::abs(local.z) <= ehz;
+}
+
+/// Push world-AABB (center + half) out of OBB if overlapping. Returns push vector (world).
+bool depenetrate_aabb_vs_obb(Vec3& center, const Vec3& half_aabb,
+                             const VoodooVolumeEngine::EnclosureBox& box, Vec3& out_push) {
+  out_push = {};
+  if (!aabb_overlaps_obb(center, half_aabb, box)) {
+    return false;
+  }
+  Vec3 ax, ay, az;
+  float ehx, ehy, ehz;
+  expanded_obb_extents(box, half_aabb, ax, ay, az, ehx, ehy, ehz);
+  const Vec3 local = quat_rotate_full(quat_conj(box.orientation),
+                                      Vec3{center.x - box.center.x, center.y - box.center.y,
+                                           center.z - box.center.z});
+  const float px = ehx - std::abs(local.x);
+  const float py = ehy - std::abs(local.y);
+  const float pz = ehz - std::abs(local.z);
+  Vec3 push_local{};
+  if (px <= py && px <= pz) {
+    push_local.x = (local.x >= 0.f) ? px : -px;
+  } else if (py <= px && py <= pz) {
+    push_local.y = (local.y >= 0.f) ? py : -py;
+  } else {
+    push_local.z = (local.z >= 0.f) ? pz : -pz;
+  }
+  out_push = quat_rotate_full(box.orientation, push_local);
+  center.x += out_push.x;
+  center.y += out_push.y;
+  center.z += out_push.z;
+  return true;
+}
+
+/// Segment [0,1] from o toward o+d vs local AABB [-e,e]. Entry hit; outward normal in local.
+bool ray_enter_aabb_local(const Vec3& o, const Vec3& d, float ehx, float ehy, float ehz,
+                          float& t_hit, Vec3& n_local) {
+  float t0 = 0.f;
+  float t1 = 1.f;
+  int enter_axis = -1;
+  float enter_sign = 0.f;
+  const float e[3] = {ehx, ehy, ehz};
+  const float ro[3] = {o.x, o.y, o.z};
+  const float rd[3] = {d.x, d.y, d.z};
+  for (int a = 0; a < 3; ++a) {
+    if (std::abs(rd[a]) < 1e-9f) {
+      if (ro[a] < -e[a] || ro[a] > e[a]) {
+        return false;
+      }
+      continue;
+    }
+    float inv = 1.f / rd[a];
+    float t_near = (-e[a] - ro[a]) * inv;
+    float t_far = (e[a] - ro[a]) * inv;
+    float sign_near = -1.f;
+    if (t_near > t_far) {
+      std::swap(t_near, t_far);
+      sign_near = 1.f;
+    } else {
+      sign_near = (rd[a] > 0.f) ? -1.f : 1.f;
+    }
+    if (t_near > t0) {
+      t0 = t_near;
+      enter_axis = a;
+      enter_sign = sign_near;
+    }
+    if (t_far < t1) {
+      t1 = t_far;
+    }
+    if (t0 > t1) {
+      return false;
+    }
+  }
+  if (enter_axis < 0 || t0 < 0.f || t0 > 1.f) {
+    // Started inside or no entry on segment.
+    return false;
+  }
+  t_hit = t0;
+  n_local = {};
+  if (enter_axis == 0) {
+    n_local.x = enter_sign;
+  } else if (enter_axis == 1) {
+    n_local.y = enter_sign;
+  } else {
+    n_local.z = enter_sign;
+  }
+  return true;
+}
+
+/// Leaving an AABB interior along segment — first exit face; inward (into-volume) normal.
+bool ray_exit_aabb_world(const Vec3& o, const Vec3& d, const Vec3& bmin, const Vec3& bmax,
+                         float& t_hit, Vec3& n_inward) {
+  float t0 = 0.f;
+  float t1 = 1.f;
+  int exit_axis = -1;
+  float exit_sign = 0.f;
+  const float ro[3] = {o.x, o.y, o.z};
+  const float rd[3] = {d.x, d.y, d.z};
+  const float mn[3] = {bmin.x, bmin.y, bmin.z};
+  const float mx[3] = {bmax.x, bmax.y, bmax.z};
+  for (int a = 0; a < 3; ++a) {
+    if (std::abs(rd[a]) < 1e-9f) {
+      if (ro[a] < mn[a] || ro[a] > mx[a]) {
+        return false;
+      }
+      continue;
+    }
+    float inv = 1.f / rd[a];
+    float t_near = (mn[a] - ro[a]) * inv;
+    float t_far = (mx[a] - ro[a]) * inv;
+    if (t_near > t_far) {
+      std::swap(t_near, t_far);
+    }
+    if (t_near > t0) {
+      t0 = t_near;
+    }
+    if (t_far < t1) {
+      t1 = t_far;
+      exit_axis = a;
+      // Outward face normal is +axis if leaving through max, -axis through min.
+      exit_sign = (rd[a] > 0.f) ? 1.f : -1.f;
+    }
+    if (t0 > t1) {
+      return false;
+    }
+  }
+  if (exit_axis < 0 || t1 < 0.f || t1 > 1.f) {
+    return false;
+  }
+  t_hit = t1;
+  // Into-room = opposite of outward exit.
+  n_inward = {};
+  if (exit_axis == 0) {
+    n_inward.x = -exit_sign;
+  } else if (exit_axis == 1) {
+    n_inward.y = -exit_sign;
+  } else {
+    n_inward.z = -exit_sign;
+  }
+  return true;
+}
+
+}  // namespace
+
+void VoodooVolumeEngine::set_enclosure_boxes(const EnclosureBox* boxes, uint32_t count) {
+  enclosure_boxes_.clear();
+  if (boxes == nullptr || count == 0) {
+    return;
+  }
+  const uint32_t n = std::min(count, kMaxEnclosureBoxes);
+  enclosure_boxes_.reserve(n);
+  for (uint32_t i = 0; i < n; ++i) {
+    EnclosureBox b = boxes[i];
+    b.half_extents.x = std::abs(b.half_extents.x);
+    b.half_extents.y = std::abs(b.half_extents.y);
+    b.half_extents.z = std::abs(b.half_extents.z);
+    const float qlen = std::sqrt(b.orientation.x * b.orientation.x + b.orientation.y * b.orientation.y +
+                                 b.orientation.z * b.orientation.z + b.orientation.w * b.orientation.w);
+    if (qlen < 1e-6f) {
+      b.orientation = Quat{0.f, 0.f, 0.f, 1.f};
+    } else {
+      b.orientation.x /= qlen;
+      b.orientation.y /= qlen;
+      b.orientation.z /= qlen;
+      b.orientation.w /= qlen;
+    }
+    enclosure_boxes_.push_back(b);
+  }
+}
+
+void VoodooVolumeEngine::clear_enclosure_boxes() { enclosure_boxes_.clear(); }
+
+void VoodooVolumeEngine::set_room_bounds(const Vec3& min_xyz, const Vec3& max_xyz, bool enabled) {
+  if (!enabled) {
+    room_bounds_enabled_ = false;
+    return;
+  }
+  room_bounds_min_ = Vec3{std::min(min_xyz.x, max_xyz.x), std::min(min_xyz.y, max_xyz.y),
+                          std::min(min_xyz.z, max_xyz.z)};
+  room_bounds_max_ = Vec3{std::max(min_xyz.x, max_xyz.x), std::max(min_xyz.y, max_xyz.y),
+                          std::max(min_xyz.z, max_xyz.z)};
+  room_bounds_enabled_ = (room_bounds_max_.x - room_bounds_min_.x) > 0.05f &&
+                         (room_bounds_max_.y - room_bounds_min_.y) > 0.05f &&
+                         (room_bounds_max_.z - room_bounds_min_.z) > 0.05f;
+}
+
+void VoodooVolumeEngine::clear_room_bounds() { room_bounds_enabled_ = false; }
+
+bool VoodooVolumeEngine::constrain_far_center(Vec3& center, const Vec3& extents, const Pose& head,
+                                              bool head_valid, Vec3* out_wall_into_room,
+                                              const Vec3* ray_origin) const {
+  (void)head;
+  (void)head_valid;
+  if (out_wall_into_room != nullptr) {
+    *out_wall_into_room = {};
+  }
+  if (!room_bounds_enabled_ && enclosure_boxes_.empty()) {
+    return false;
+  }
+
+  const Vec3 half{0.5f * std::abs(extents.x), 0.5f * std::abs(extents.y),
+                  0.5f * std::abs(extents.z)};
+
+  auto inset_room = [&](Vec3& bmin, Vec3& bmax) -> bool {
+    if (!room_bounds_enabled_) {
+      return false;
+    }
+    bmin = Vec3{room_bounds_min_.x + half.x, room_bounds_min_.y + half.y,
+                room_bounds_min_.z + half.z};
+    bmax = Vec3{room_bounds_max_.x - half.x, room_bounds_max_.y - half.y,
+                room_bounds_max_.z - half.z};
+    return bmin.x <= bmax.x && bmin.y <= bmax.y && bmin.z <= bmax.z;
+  };
+
+  auto inside_free_volume = [&](const Vec3& c) {
+    Vec3 bmin, bmax;
+    if (inset_room(bmin, bmax)) {
+      if (c.x < bmin.x || c.x > bmax.x || c.y < bmin.y || c.y > bmax.y || c.z < bmin.z ||
+          c.z > bmax.z) {
+        return false;
+      }
+    }
+    for (const auto& box : enclosure_boxes_) {
+      if (aabb_overlaps_obb(c, half, box)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // Ideal isometric target is free — drive 3D as usual.
+  if (inside_free_volume(center)) {
+    return false;
+  }
+
+  const Vec3 origin = ray_origin != nullptr ? *ray_origin : center;
+  const Vec3 delta{center.x - origin.x, center.y - origin.y, center.z - origin.z};
+  const float dlen = std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+  if (dlen < 1e-6f) {
+    return false;
+  }
+
+  float best_t = 2.f;
+  Vec3 best_n{};
+  bool have_hit = false;
+
+  // WorldMesh solids: first entry into expanded OBB along start→ideal.
+  for (const auto& box : enclosure_boxes_) {
+    Vec3 ax, ay, az;
+    float ehx, ehy, ehz;
+    expanded_obb_extents(box, half, ax, ay, az, ehx, ehy, ehz);
+    const Vec3 local_o = quat_rotate_full(quat_conj(box.orientation),
+                                          Vec3{origin.x - box.center.x, origin.y - box.center.y,
+                                               origin.z - box.center.z});
+    const Vec3 local_d =
+        quat_rotate_full(quat_conj(box.orientation), delta);
+    float t = 0.f;
+    Vec3 n_local{};
+    if (!ray_enter_aabb_local(local_o, local_d, ehx, ehy, ehz, t, n_local)) {
+      continue;
+    }
+    if (t < best_t) {
+      best_t = t;
+      best_n = quat_rotate_full(box.orientation, n_local);
+      have_hit = true;
+    }
+  }
+
+  // Room shell: first exit from inset free AABB.
+  {
+    Vec3 bmin, bmax;
+    if (inset_room(bmin, bmax)) {
+      float t = 0.f;
+      Vec3 n_in{};
+      if (ray_exit_aabb_world(origin, delta, bmin, bmax, t, n_in) && t < best_t) {
+        best_t = t;
+        best_n = n_in;
+        have_hit = true;
+      }
+    }
+  }
+
+  if (!have_hit) {
+    // Ideal blocked but no segment hit (e.g. started buried) — soft fallback nudge.
+    for (const auto& box : enclosure_boxes_) {
+      Vec3 push{};
+      depenetrate_aabb_vs_obb(center, half, box, push);
+    }
+    Vec3 bmin, bmax;
+    if (inset_room(bmin, bmax)) {
+      center.x = clampf(center.x, bmin.x, bmax.x);
+      center.y = clampf(center.y, bmin.y, bmax.y);
+      center.z = clampf(center.z, bmin.z, bmax.z);
+    }
+    return false;
+  }
+
+  // Place BB center on ray hit, slightly toward start so we sit on the free side.
+  const float back = std::min(0.002f / dlen, best_t);
+  const float t_place = std::max(0.f, best_t - back);
+  center = Vec3{origin.x + delta.x * t_place, origin.y + delta.y * t_place,
+                origin.z + delta.z * t_place};
+
+  // Corner: nudge out of any second overlapping collider without abandoning the ray hit.
+  for (int pass = 0; pass < 4; ++pass) {
+    bool any = false;
+    for (const auto& box : enclosure_boxes_) {
+      Vec3 push{};
+      if (depenetrate_aabb_vs_obb(center, half, box, push)) {
+        any = true;
+      }
+    }
+    Vec3 bmin, bmax;
+    if (inset_room(bmin, bmax)) {
+      const float cx = center.x;
+      const float cy = center.y;
+      const float cz = center.z;
+      center.x = clampf(center.x, bmin.x, bmax.x);
+      center.y = clampf(center.y, bmin.y, bmax.y);
+      center.z = clampf(center.z, bmin.z, bmax.z);
+      if (center.x != cx || center.y != cy || center.z != cz) {
+        any = true;
+      }
+    }
+    if (!any) {
+      break;
+    }
+  }
+
+  // Wall face = ray hit normal (into room), horizontalized when mostly a wall.
+  const float nlen = std::sqrt(best_n.x * best_n.x + best_n.y * best_n.y + best_n.z * best_n.z);
+  if (nlen < 1e-6f) {
+    return false;
+  }
+  Vec3 n{best_n.x / nlen, best_n.y / nlen, best_n.z / nlen};
+  const float horiz = std::sqrt(n.x * n.x + n.z * n.z);
+  if (horiz >= 0.35f) {
+    n = Vec3{n.x / horiz, 0.f, n.z / horiz};
+    if (out_wall_into_room != nullptr) {
+      *out_wall_into_room = n;
+    }
+    return true;
+  }
+  return false;
+}
+
+VoodooVolumeEngine::PendingAgentOpen VoodooVolumeEngine::consume_pending_agent_open() {
+  const PendingAgentOpen out = pending_agent_;
+  pending_agent_ = {};
+  return out;
 }
 
 void VoodooVolumeEngine::clear_hand_session(uint32_t hand) {
@@ -686,7 +1087,12 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
 void VoodooVolumeEngine::rebuild_snap_nodes(uint32_t hand, const CentroidRegistry& centroids) {
   auto& hr = hands_[hand];
   hr.session.snap_nodes.clear();
-  if (hr.session.mode != VoodooMode::Snap || !hr.have_start_hand_) {
+  if (!hr.have_start_hand_) {
+    return;
+  }
+  // Snap mode: all live centroids except Temporary.
+  // Free-range: FocusAnchor only (NPC head → agent widget; Task 7.3).
+  if (hr.session.mode != VoodooMode::Snap && hr.session.mode != VoodooMode::FreeRange) {
     return;
   }
   const float reach = std::max(params_.arm_reach_m, 1e-3f);
@@ -700,6 +1106,9 @@ void VoodooVolumeEngine::rebuild_snap_nodes(uint32_t hand, const CentroidRegistr
 
   for (const auto& c : centroids.centroids()) {
     if (c.kind == CentroidKind::Temporary) {
+      continue;
+    }
+    if (hr.session.mode == VoodooMode::FreeRange && c.kind != CentroidKind::FocusAnchor) {
       continue;
     }
     VoodooSnapNode n;
@@ -735,13 +1144,14 @@ void VoodooVolumeEngine::update_far_while_dragging(uint32_t hand, const Pose& ha
              hand_pose.position.z - hr.start_hand_.position.z};
 
   EntityId snapped = 0;
-  if (hr.session.mode == VoodooMode::Snap) {
+  // Snap gravity for Snap (all centroids) and FreeRange (FocusAnchor-only nodes).
+  if (hr.session.mode == VoodooMode::Snap || hr.session.mode == VoodooMode::FreeRange) {
     const Vec3 flat = flat_forward(head, head_valid);
-  const Vec3 origin{hr.start_hand_.position.x - flat.x * kStickVizForwardOffsetM,
-                    hr.start_hand_.position.y - flat.y * kStickVizForwardOffsetM +
-                        kStickVizUpOffsetM,
-                    hr.start_hand_.position.z - flat.z * kStickVizForwardOffsetM};
-  hr.session.arrow.ray_origin = origin;
+    const Vec3 origin{hr.start_hand_.position.x - flat.x * kStickVizForwardOffsetM,
+                      hr.start_hand_.position.y - flat.y * kStickVizForwardOffsetM +
+                          kStickVizUpOffsetM,
+                      hr.start_hand_.position.z - flat.z * kStickVizForwardOffsetM};
+    hr.session.arrow.ray_origin = origin;
 
     rebuild_snap_nodes(hand, centroids);
     for (auto& n : hr.session.snap_nodes) {
@@ -813,13 +1223,21 @@ void VoodooVolumeEngine::update_far_while_dragging(uint32_t hand, const Pose& ha
         clampf(target.y, navel_y - params_.field_height_m, navel_y + params_.field_height_m);
   }
 
+  // Always compute ideal isometric target first. If past WorldMesh, raycast from
+  // drag-start far BB (near hand) → ideal and center on that hit (+ corner nudge).
+  Vec3 wall_into_room{};
+  const Vec3 ray_start = hr.rest_far_.position;
+  const bool on_wall =
+      constrain_far_center(target, target_ext, head, head_valid, &wall_into_room, &ray_start);
+
   const float dt = clampf(dt_seconds, 1e-4f, 0.1f);
   if (!hr.have_far_smoothed_) {
     hr.far_smoothed_ = target;
     hr.extents_smoothed_ = target_ext;
     hr.have_far_smoothed_ = true;
   } else {
-    const float tau = snapped != 0 ? 0.02f : kFarDampTauS;
+    // Snap faster onto wall hits so the BB tracks the raycast surface cleanly.
+    const float tau = (snapped != 0 || on_wall) ? 0.02f : kFarDampTauS;
     const float alpha = 1.f - std::exp(-dt / tau);
     hr.far_smoothed_.x += (target.x - hr.far_smoothed_.x) * alpha;
     hr.far_smoothed_.y += (target.y - hr.far_smoothed_.y) * alpha;
@@ -831,8 +1249,16 @@ void VoodooVolumeEngine::update_far_while_dragging(uint32_t hand, const Pose& ha
   }
 
   hr.session.far_bb.pose.position = hr.far_smoothed_;
-  hr.session.far_bb.pose.orientation =
-      yaw_billboard_toward(hr.far_smoothed_, head, head_valid);
+  if (on_wall) {
+    // Face into the room using the raycast hit normal (clean along the whole wall).
+    Pose aim{};
+    aim.position = Vec3{hr.far_smoothed_.x + wall_into_room.x, hr.far_smoothed_.y,
+                        hr.far_smoothed_.z + wall_into_room.z};
+    hr.session.far_bb.pose.orientation = yaw_billboard_toward(hr.far_smoothed_, aim, true);
+  } else {
+    hr.session.far_bb.pose.orientation =
+        yaw_billboard_toward(hr.far_smoothed_, head, head_valid);
+  }
   hr.session.far_bb.extents = hr.extents_smoothed_;
   hr.session.far_bb.aspect_x = params_.near_bb_voxels_x;
   hr.session.far_bb.aspect_y = params_.near_bb_voxels_y;
@@ -922,6 +1348,18 @@ void VoodooVolumeEngine::tick_hand(uint32_t hand, const InteractionIntents& inte
     if (hr.drag_hold_s_ < kMinHoldToParkS) {
       cancel_drag(hand);
     } else {
+      // Focus-anchor snap → agent Multi-Choice (no portal). Task 7.3.
+      const EntityId snap_id = hr.session.snapped_centroid_id;
+      if (snap_id != 0) {
+        if (const CentroidState* c = centroids.find(snap_id);
+            c != nullptr && c->kind == CentroidKind::FocusAnchor) {
+          pending_agent_.pending = true;
+          pending_agent_.hand = hand;
+          pending_agent_.focus_id = snap_id;
+          cancel_drag(hand);
+          return;
+        }
+      }
       park(hand, hand_pose, hand_valid, head, head_valid, centroids, workspace);
     }
     return;

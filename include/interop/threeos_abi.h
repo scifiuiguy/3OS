@@ -504,6 +504,23 @@ THREEOS_API int32_t threeos_voodoo_set_field_params(const ThreeOS_VoodooFieldPar
 THREEOS_API int32_t threeos_voodoo_get_session(uint32_t hand, ThreeOS_VoodooSession* out_session);
 THREEOS_API int32_t threeos_voodoo_get_drag_arrow(uint32_t hand, ThreeOS_VoodooDragArrow* out_arrow);
 
+/** MR enclosure solid OBB (OpenXR). Finite collider volume — not an infinite plane.
+ *  kind reserved (0 = solid WorldMesh). Replaces prior set; count 0 clears. */
+typedef struct ThreeOS_VoodooEnclosureBox {
+  ThreeOS_Vec3 center;
+  ThreeOS_Vec3 half_extents; /* local-axis half sizes (meters) */
+  ThreeOS_Quat orientation;  /* local → world */
+  uint32_t kind;
+  uint32_t _pad;
+} ThreeOS_VoodooEnclosureBox;
+
+THREEOS_API int32_t threeos_voodoo_set_enclosure_boxes(const ThreeOS_VoodooEnclosureBox* boxes,
+                                                      uint32_t count);
+
+/** MR room AABB (OpenXR). enabled=0 clears. Far BB is hard-clamped inside when set. */
+THREEOS_API int32_t threeos_voodoo_set_room_bounds(const ThreeOS_Vec3* min_xyz,
+                                                   const ThreeOS_Vec3* max_xyz, int32_t enabled);
+
 /* --- Centroids / mind palace roots (Phase 0.6 Task 6.2; additive) --- */
 
 enum ThreeOS_CentroidKind : uint32_t {
@@ -626,6 +643,7 @@ enum ThreeOS_MultiChoiceMode : uint32_t {
   THREEOS_MC_CLOSED = 0,
   THREEOS_MC_DRIVE_PICKER = 1,
   THREEOS_MC_FOLDER_CONTEXT = 2,
+  THREEOS_MC_AGENT = 3,
 };
 
 enum ThreeOS_MultiChoiceSection : uint32_t {
@@ -640,6 +658,8 @@ enum ThreeOS_MultiChoiceSlotKind : uint32_t {
   THREEOS_MC_SLOT_ACTION_FAVORITE = 3,
   THREEOS_MC_SLOT_CONFIRM_ADD = 4,
   THREEOS_MC_SLOT_CONFIRM_JUMP = 5,
+  THREEOS_MC_SLOT_ACTION_SPEAK = 6,
+  THREEOS_MC_SLOT_ACTION_DEMO_CHROME = 7,
 };
 
 enum ThreeOS_MultiChoiceAction : uint32_t {
@@ -647,6 +667,7 @@ enum ThreeOS_MultiChoiceAction : uint32_t {
   THREEOS_MC_ACTION_ADD = 1,
   THREEOS_MC_ACTION_JUMP_TO_ROOT = 2,
   THREEOS_MC_ACTION_TOGGLE_FAVORITE = 3,
+  THREEOS_MC_ACTION_SPEAK = 4,
 };
 
 /** One Multi-Choice option slot (40 bytes). */
@@ -705,7 +726,16 @@ THREEOS_API uint32_t threeos_favorite_get(uint64_t box_id);
 THREEOS_API int32_t threeos_multichoice_open_drive(uint32_t hand, const ThreeOS_Pose* center);
 THREEOS_API int32_t threeos_multichoice_open_folder(uint32_t hand, const ThreeOS_Pose* center,
                                                     uint64_t box_id);
+/** Agent menu (NPC); center typically near-BB navel rest. */
+THREEOS_API int32_t threeos_multichoice_open_agent(uint32_t hand, const ThreeOS_Pose* center);
 THREEOS_API void threeos_multichoice_close(void);
+
+/* --- Focus anchors (Task 7.3; additive) --- */
+THREEOS_API uint64_t threeos_focus_anchor_register(const char* name, const ThreeOS_Pose* pose);
+THREEOS_API int32_t threeos_focus_anchor_set_pose(uint64_t id, const ThreeOS_Pose* pose);
+THREEOS_API int32_t threeos_focus_anchor_clear(uint64_t id);
+/** Near-BB navel-rest seed pose from head (agent widget park). */
+THREEOS_API int32_t threeos_voodoo_near_rest_pose(const ThreeOS_Pose* head, ThreeOS_Pose* out_pose);
 THREEOS_API int32_t threeos_multichoice_tick(float cursor_x, float cursor_y, float cursor_z);
 THREEOS_API int32_t threeos_multichoice_confirm(void);
 THREEOS_API int32_t threeos_multichoice_get_state(ThreeOS_MultiChoiceState* out_state);

@@ -365,22 +365,24 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
   - [x] **Toggle gesture:** raw XR **right palm up + right secondary pinch**; edge toggles on/off (`ThreeOSFinalDemoGitHubGesture`).
   - [x] Demo use: visible for intro → dismiss → re-show at end via same gesture.
 
-- [ ] **Task 7.3: NPC head focus-anchor → agent Multi-Choice widget (not a normal voodoo)**
-  - [ ] Mark the NPC **head** node as a **focus anchor**.
-  - [ ] On voodoo-gesture **release** targeting that head: do **not** spawn a regular far/near voodoo volume. Instead spawn a **near-field Multi-Choice widget** identical to the Mind Palace **drive-selection** widget geometry (2×2×2 octants + center hover math).
-  - [ ] **No pagination:** remove / hide page buttons; single page of **8** options only.
-  - [ ] Option slots (mock labels; non-Speak are non-functional demo chrome):
-    | Slot | Label / affordance |
-    | --- | --- |
-    | Speak | **Extruded microphone glyph** (no text) |
-    | Review | text |
-    | Dismiss | text |
-    | Focus | text |
-    | Revert | text |
-    | Restore | text |
-    | Shelve | text |
-    | Submit | text |
-  - [ ] Only **Speak** is interactive for the reel; other nodes may highlight/select but perform no action.
+- [x] **Task 7.3: NPC head focus-anchor → agent Multi-Choice widget (not a normal voodoo)**
+  - [x] Mark the NPC **head** as the **only** MR focus anchor for 0.7 (Task 7.8 office-anchor list **cancelled**). `CentroidKind::FocusAnchor` + `ThreeOSFinalDemoNpcFocusAnchor`.
+  - [x] **Open:** snap **or** free-range voodoo (**primary or secondary** + palm down) **snap-to** that head focus anchor; on **release** do **not** open a normal far/near voodoo — spawn the agent Multi-Choice instead (`PendingAgentOpen` → `open_agent`).
+  - [x] **Widget pose:** park at the usual **near-BB navel rest** (`threeos_voodoo_near_rest_pose` / `near_rest_pose`).
+  - [x] Geometry = Mind Palace drive-selection Multi-Choice (2×2×2 octants + center hover math). **No pagination** (hide page buttons); single page of **8** options. Mode `MultiChoiceMode::Agent`.
+  - [x] Fill order (core `multi_choice.hpp`): **0 TLF, 1 TRF, 2 BLF, 3 BRF, 4 TLB, 5 TRB, 6 BLB, 7 BRB** (front toward user). Labels follow this index order:
+    | Idx | Octant | Label / affordance |
+    | --- | --- | --- |
+    | 0 | TLF | **Speak** — extruded **microphone** `mic.3glyph` (no text) |
+    | 1 | TRF | Review (text) |
+    | 2 | BLF | Dismiss (text) |
+    | 3 | BRF | Focus (text) |
+    | 4 | TLB | Revert (text) |
+    | 5 | TRB | Restore (text) |
+    | 6 | BLB | Shelve (text) |
+    | 7 | BRB | Submit (text) |
+  - [x] Only **Speak** is interactive for the reel (`MultiChoiceAction::Speak` / `OnAgentSpeak`); other nodes may highlight/select but perform no action.
+  - [x] Harness migrate: `ThreeOSFinalDemo73Setup` prefabs DemoScene `3OS_Harness` into Final Demo + wires NPC focus anchor.
 - [ ] **Task 7.4: Speak / mic → EQ visualizer → clip 01 → clip 02 → shrink-out**
   - [ ] **Widget appear:** agent Multi-Choice instantiates at **0% scale** and **expand-lerps from its center** to full size with a **tiny overshoot** curve (pop-in), then settles at 100%.
   - [ ] **Mic toggle on:** selecting Speak arms “listening.” Spawn a **3D EQ visualizer** above the widget: a **row of small cube primitives**, **10% opacity black** material. Each cube has a **parent anchor at its bottom face**; scaling that anchor on **Y** stretches the cube into a tall rectangle (per-band amplitude). Drive bands from mic input or a convincing stand-in while armed.
@@ -404,22 +406,20 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
   - [ ] **Thumb close (Palace → MR):** glyph swaps **"VR" → "MR"**; skybox wipe plays **forward** (user-outward cylindrical blast → horizon → wink out) revealing the MR office again. Glyph sequence is the reverse of the MR→Palace transition.
   - [ ] Bidirectional wipe + reverse glyph order required for UX; both directions appear in the filmed path.
   - [ ] Core intents + host shader/adapter for the wipe (plane/cylinder math in core or documented host contract).
-- [ ] **Task 7.8: Focus anchors on office elements**
-  - [ ] Mark desk Box, wall **4K monitor**, floor Unreal footprint volume, and other scripted props as **focus anchors** usable by voodoo / selection / app-surface spawn (NPC head already covered in 7.3).
-  - [ ] Invisible rectangular volume over floor Unreal content: same aspect rules as a normal voodoo far BB; Unreal logo mapped on the floor under it. **No real Unreal runtime** — Asset Store stand-in only.
-- [ ] **Task 7.9: Dual-anchor Box (Palace vs MR desk)**
+- [ ] **Task 7.8: Dual-anchor Box (Palace vs MR desk)** *(was 7.9; old 7.8 office focus-anchors cancelled — NPC head only)*
   - [ ] Same directory/Box retains a Mind Palace field pose **and** a world-mesh / desk pose in MR; opening Palace is “breathing room” for large FS edits, then dismiss back to the desk anchor.
   - [ ] Demo path: open the Box that received the Palace paste while in MR via normal voodoo controls.
-- [ ] **Task 7.10: App surface — Blender beside Unreal**
+- [ ] **Task 7.9: App surface — Blender beside Unreal** *(was 7.10)*
   - [ ] From the desk Box voodoo: pull the Blender source for an asset animating in the Unreal volume; dismiss that voodoo; **double-pinch** the Blender file → loading widget over that hand.
   - [ ] **Palm toward floor, fingers splayed:** spawn a floor square with Blender logo where the palm points. Localize center with **average of eye-gaze target + palm-normal target** (rare surface-control case).
   - [ ] Perimeter loading bar (animating blue line renderer); on complete, Blender instance anchors there and shows the same t-posed character as in the Unreal volume (side-by-side apps in one frustum). Stand-in apps OK for the reel.
-- [ ] **Task 7.11: Monitor voodoo — spectator drop + STREAM**
-  - [ ] Voodoo aimed at the large wall 4K monitor: same far/near shell **plus** chrome **below** the scissors cut button (extra affordances).
+  - [ ] Floor Unreal stand-in: invisible rectangular volume (normal far-BB aspect rules) + Unreal logo on floor — **no** focus-anchor requirement; **no real Unreal runtime**.
+- [ ] **Task 7.10: Monitor voodoo — spectator drop + STREAM** *(was 7.11)*
+  - [ ] Voodoo aimed at the large wall 4K monitor: same far/near shell **plus** chrome **below** the scissors cut button (extra affordances). *(Normal voodoo aim — not a focus anchor.)*
   - [ ] Draw voodoo to the Blender floor instance without walking over; grab mini t-pose ghost → drop into monitor voodoo → character appears on the monitor for non-MR spectators.
   - [ ] **STREAM** button (below cut): dismisses that voodoo and drives the monitor with the user’s **1st-person MR view**, including real-time comp of floor Blender + Unreal instances.
 
-**Quest / film gate (0.7):** Scripted walkthrough on device (or Editor MR simulation): **MR open** → GitHub plane toggle → NPC head widget → Speak/EQ → clip 01 → Speak/EQ → clip 02 + floor shrink → **Palace wipe** → FS cut-paste → **MR wipe** → desk Box → Blender floor spawn → monitor drop → STREAM → (optional) GitHub plane again. Unreal/Blender may be stand-ins; anchors, wipe, NPC playlist, and mic silence cue must be real.
+**Quest / film gate (0.7):** Scripted walkthrough on device (or Editor MR simulation): **MR open** → GitHub plane toggle → NPC head widget → Speak/EQ → clip 01 → Speak/EQ → clip 02 + floor shrink → **Palace wipe** → FS cut-paste → **MR wipe** → desk Box → Blender floor spawn → monitor drop → STREAM → (optional) GitHub plane again. Unreal/Blender may be stand-ins; **NPC-head focus anchor**, wipe, NPC playlist, and mic silence cue must be real.
 
 ---
 
@@ -600,7 +600,7 @@ Do not duplicate the full Unity checklist here. Use **[3OS_Unity/IMPLEMENTATION_
 | **0.2–0.4** | Proxies (functional), telekinesis, storage glyphs / FS cut |
 | **0.5** | Hands + controllers parity on device |
 | **0.6** | Snap / free-range voodoo volumes (BB, centroids, near ghosts) |
-| **0.7** | Final demo opens in MR: GitHub plane, NPC agent widget + Speak/EQ → clips 01/02 + floor shrink; then Palace wipe ↔ MR office anchors / monitor STREAM |
+| **0.7** | Final demo opens in MR: GitHub plane, NPC head focus-anchor → agent widget + Speak/EQ → clips 01/02 + floor shrink; then Palace wipe ↔ MR desk / monitor STREAM |
 | **0.8** | Multi-select + multi-volume moves |
 | **0.9** | Layouts / frustum / anchors |
 | **1.0** | Enclosure mask + shader adapters + AI command hooks |

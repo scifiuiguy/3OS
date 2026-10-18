@@ -8,9 +8,11 @@ namespace threeos {
 void CentroidRegistry::clear() {
   mind_palaces_.clear();
   temps_.clear();
+  focus_anchors_.clear();
   centroids_.clear();
   next_mind_palace_id_ = 100;
   next_temp_id_ = 50;
+  next_focus_id_ = 20;
 }
 
 void CentroidRegistry::clear_mind_palaces() {
@@ -56,6 +58,50 @@ bool CentroidRegistry::clear_temporary(EntityId id) {
     return false;
   }
   temps_.erase(it, temps_.end());
+  centroids_.erase(std::remove_if(centroids_.begin(), centroids_.end(),
+                                  [id](const CentroidState& c) { return c.id == id; }),
+                   centroids_.end());
+  return true;
+}
+
+EntityId CentroidRegistry::register_focus_anchor(const std::string& name, const Pose& pose) {
+  CentroidState c;
+  c.id = next_focus_id_++;
+  c.kind = CentroidKind::FocusAnchor;
+  c.linked_entity_id = c.id;
+  c.member_count = 1;
+  c.position = pose.position;
+  c.name = name.empty() ? "focus" : name;
+  if (c.name.size() > 15) {
+    c.name.resize(15);
+  }
+  focus_anchors_.push_back(c);
+  centroids_.push_back(c);
+  return c.id;
+}
+
+bool CentroidRegistry::set_focus_anchor_pose(EntityId id, const Pose& pose) {
+  for (auto& f : focus_anchors_) {
+    if (f.id == id) {
+      f.position = pose.position;
+      for (auto& c : centroids_) {
+        if (c.id == id) {
+          c.position = pose.position;
+        }
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+bool CentroidRegistry::clear_focus_anchor(EntityId id) {
+  const auto it = std::remove_if(focus_anchors_.begin(), focus_anchors_.end(),
+                                 [id](const CentroidState& f) { return f.id == id; });
+  if (it == focus_anchors_.end()) {
+    return false;
+  }
+  focus_anchors_.erase(it, focus_anchors_.end());
   centroids_.erase(std::remove_if(centroids_.begin(), centroids_.end(),
                                   [id](const CentroidState& c) { return c.id == id; }),
                    centroids_.end());
@@ -146,9 +192,12 @@ bool CentroidRegistry::members_aabb(const Workspace& workspace, EntityId centroi
 
 void CentroidRegistry::rebuild(const Workspace& workspace) {
   centroids_.clear();
-  // Preserve temporary near-portal centroids.
+  // Preserve temporary near-portal centroids + world focus anchors.
   for (const auto& t : temps_) {
     centroids_.push_back(t);
+  }
+  for (const auto& f : focus_anchors_) {
+    centroids_.push_back(f);
   }
   const auto& entries = workspace.entries();
 

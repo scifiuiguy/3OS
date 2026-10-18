@@ -11,6 +11,7 @@
 #include "storage/glyph_registry.hpp"
 #include "storage/workspace.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -390,6 +391,14 @@ float tick_voodoo_frame(const ThreeOS_InteropInputFrame* frame) {
     }
     g_voodoo.tick_hand(vh, vintents, vhand, hand_ok, head_pose, head_valid, dt, g_centroids,
                        g_workspace);
+  }
+  // Focus-anchor snap release → agent Multi-Choice at near-BB navel rest (Task 7.3).
+  {
+    const auto pa = g_voodoo.consume_pending_agent_open();
+    if (pa.pending) {
+      const threeos::Pose center = g_voodoo.near_rest_pose(head_pose, head_valid);
+      g_multichoice.open_agent(pa.hand, center);
+    }
   }
   g_voodoo.tick_portals(dt, head_pose, head_valid);
   g_voodoo.tick_pose_lerps(dt, g_workspace);
@@ -1604,6 +1613,57 @@ extern "C" THREEOS_API int32_t threeos_voodoo_set_field_params(const ThreeOS_Voo
   return 0;
 }
 
+extern "C" THREEOS_API int32_t threeos_voodoo_set_enclosure_boxes(
+    const ThreeOS_VoodooEnclosureBox* boxes, uint32_t count) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (count > 0 && boxes == nullptr) {
+    set_error("null enclosure boxes");
+    return -2;
+  }
+  if (count == 0) {
+    g_voodoo.clear_enclosure_boxes();
+    set_error("");
+    return 0;
+  }
+  threeos::VoodooVolumeEngine::EnclosureBox tmp[threeos::VoodooVolumeEngine::kMaxEnclosureBoxes];
+  const uint32_t n = std::min(count, threeos::VoodooVolumeEngine::kMaxEnclosureBoxes);
+  for (uint32_t i = 0; i < n; ++i) {
+    tmp[i].center = from_c(boxes[i].center);
+    tmp[i].half_extents = from_c(boxes[i].half_extents);
+    tmp[i].orientation = from_c(boxes[i].orientation);
+    tmp[i].kind = boxes[i].kind;
+  }
+  g_voodoo.set_enclosure_boxes(tmp, n);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_set_room_bounds(const ThreeOS_Vec3* min_xyz,
+                                                              const ThreeOS_Vec3* max_xyz,
+                                                              int32_t enabled) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!enabled) {
+    g_voodoo.clear_room_bounds();
+    set_error("");
+    return 0;
+  }
+  if (min_xyz == nullptr || max_xyz == nullptr) {
+    set_error("null room bounds");
+    return -2;
+  }
+  g_voodoo.set_room_bounds(from_c(*min_xyz), from_c(*max_xyz), true);
+  set_error("");
+  return 0;
+}
+
 static void fill_voodoo_bb(ThreeOS_VoodooBoundingBox* out, const threeos::VoodooBoundingBox& b) {
   std::memset(out, 0, sizeof(*out));
   out->open = b.open ? 1u : 0u;
@@ -2321,6 +2381,93 @@ extern "C" THREEOS_API int32_t threeos_multichoice_open_folder(uint32_t hand,
     set_error("open folder context failed");
     return -3;
   }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_multichoice_open_agent(uint32_t hand,
+                                                              const ThreeOS_Pose* center) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (center == nullptr) {
+    set_error("null center");
+    return -2;
+  }
+  g_multichoice.open_agent(hand, from_c(*center));
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API uint64_t threeos_focus_anchor_register(const char* name,
+                                                              const ThreeOS_Pose* pose) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return 0;
+  }
+  if (pose == nullptr) {
+    set_error("null pose");
+    return 0;
+  }
+  const char* n = (name != nullptr && name[0] != '\0') ? name : "focus";
+  const uint64_t id = g_centroids.register_focus_anchor(n, from_c(*pose));
+  set_error(id != 0 ? "" : "focus register failed");
+  return id;
+}
+
+extern "C" THREEOS_API int32_t threeos_focus_anchor_set_pose(uint64_t id,
+                                                             const ThreeOS_Pose* pose) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (id == 0 || pose == nullptr) {
+    set_error("null focus args");
+    return -2;
+  }
+  if (!g_centroids.set_focus_anchor_pose(id, from_c(*pose))) {
+    set_error("unknown focus anchor");
+    return -3;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_focus_anchor_clear(uint64_t id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (id == 0) {
+    set_error("null id");
+    return -2;
+  }
+  if (!g_centroids.clear_focus_anchor(id)) {
+    set_error("unknown focus anchor");
+    return -3;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_voodoo_near_rest_pose(const ThreeOS_Pose* head,
+                                                             ThreeOS_Pose* out_pose) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (head == nullptr || out_pose == nullptr) {
+    set_error("null near-rest args");
+    return -2;
+  }
+  const threeos::Pose p = g_voodoo.near_rest_pose(from_c(*head), /*head_valid=*/true);
+  *out_pose = to_c(p);
   set_error("");
   return 0;
 }
