@@ -346,7 +346,7 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 **Goal:** Ship the **final product demo reel** in three acts. **Act I (~⅓):** open in the **MR office**, introduce 3OS via a togglable GitHub plane, then engage a **3D agent (NPC)** with head+hands performance clips. **Acts II–III (~⅔):** existing scope — summon the **Mind Palace** for rapid FS management, then transition back to MR for desk Box / Blender / Unreal / monitor STREAM. The Mind Palace remains a **VR overlay** over an MR-enabled office; summon/dismiss with a gesture; the same Box can have different spatial anchors in VR vs world-mesh MR.
 
 **Story beat (filmed order):**
-1. **MR cold open** — XR Origin + NPC already in the office. Show GitHub plane for intro; dismiss. Voodoo the NPC head → agent Multi-Choice widget → Speak (mic) → “talk” → NPC clip 01. Speak again → NPC clip 02, then NPC shrinks into the floor.
+1. **MR cold open** — XR Origin + NPC already in the office, NPC held on **frame 0 of clip 01** before engagement. Show GitHub plane for intro; dismiss. Voodoo the NPC head → agent Multi-Choice widget → Speak (mic) → “talk” → NPC clip 01. Speak again → NPC clip 02, then NPC shrinks into the floor.
 2. **Mind Palace** — Open-book VR toggle; FS cut-paste / third Palace node (as already scoped).
 3. **Back to MR** — Desk-anchored Box edited in VR; Blender beside Unreal; monitor spectator drop + STREAM. Optionally re-summon GitHub plane for the close.
 
@@ -383,16 +383,18 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
     | 7 | BRB | Submit (text) |
   - [x] Only **Speak** is interactive for the reel (`MultiChoiceAction::Speak` / `OnAgentSpeak`); other nodes may highlight/select but perform no action.
   - [x] Harness migrate: `ThreeOSFinalDemo73Setup` prefabs DemoScene `3OS_Harness` into Final Demo + wires NPC focus anchor.
-- [ ] **Task 7.4: Speak / mic → EQ visualizer → clip 01 → clip 02 → shrink-out**
-  - [ ] **Widget appear:** agent Multi-Choice instantiates at **0% scale** and **expand-lerps from its center** to full size with a **tiny overshoot** curve (pop-in), then settles at 100%.
-  - [ ] **Mic toggle on:** selecting Speak arms “listening.” Spawn a **3D EQ visualizer** above the widget: a **row of small cube primitives**, **10% opacity black** material. Each cube has a **parent anchor at its bottom face**; scaling that anchor on **Y** stretches the cube into a tall rectangle (per-band amplitude). Drive bands from mic input or a convincing stand-in while armed.
-  - [ ] **End-of-utterance cue:** after the user has **begun** speaking, wait until **1.0 s of silence**, then: mic toggles **off**, EQ **hides**, and NPC starts **performance slot 01** (`android_hands_perf_01.json` + `jarvis_voice_clip_01`, mouth amp as in hands test).
-  - [ ] **Second turn:** user selects Speak again → EQ returns → same begin-speak + **1.0 s silence** cue → mic off / EQ hide → play **slot 02** (`android_hands_perf_02.json` + `jarvis_voice_clip_02`).
-  - [ ] **Exit beat:** during the **last 1.0 s** of clip 02, **lerp NPC root scale → 0** under the **floor parent** (disappear into the floor). In parallel, the agent widget **shrink-scale-lerps into its center** (to 0%); when finished, **deallocate** the widget (and EQ if still present).
-  - [ ] **Host-only OK for 0.7:** recorder already lives in the hands test scene; final scene needs playlist player + mic/EQ/widget glue. Promote a thin core ABI later only if other hosts need the same clip format.
-- [ ] **Task 7.5: Performance asset bind**
-  - [ ] Ship both JSON/audio pairs under stable Final Demo paths (Performances + Audio); final scene references by slot, not absolute machine paths.
-  - [ ] NPC bind: head + hands (+ finger hinges) from JSON drive matching transforms; mouth amp from playing `AudioSource`.
+- [x] **Task 7.4: Speak / mic → EQ visualizer → clip 01 → clip 02 → shrink-out**
+  - [x] **Cold pose (frame 0):** on Final Demo load, before the player engages Speak / mic, bind the NPC to the **first frame of performance slot 01** (`android_hands_perf_01.json`) — head + hands (+ finger hinges) held on that static pose with **no audio / no playback**. Slot 01 play still starts only after the first end-of-utterance cue. NPC stays under **`NPC_Floor_Parent`** (shrink pivot).
+  - [x] **Widget appear:** agent Multi-Choice instantiates at **0% scale** and **expand-lerps from its center** to full size with a **tiny overshoot** curve (pop-in), then settles at 100%. Re-run pop-in whenever the agent widget is **reopened** (demo restart without app reboot).
+  - [x] **Mic toggle on:** selecting Speak arms “listening” (**real Quest mic**). Spawn a **3D EQ visualizer** above the widget: **8–12** small cube primitives, **10% opacity black** material. Each cube has a **parent anchor at its bottom face**; scaling that anchor on **Y** stretches the cube into a tall rectangle (per-band amplitude).
+  - [x] **End-of-utterance cue:** after real mic energy + begin-speak, **~0.3 s relative silence** cues the NPC. **If mic levels stay flat, do not timer-interrupt** — **second Speak** while listening is the reliable cue. **Mouth returns to rest scale** when each cue finishes.
+  - [x] **Second turn:** widget **stays open**. User selects Speak again (allowed even while clip 01 is still playing — **do not stop** clip 01 yet) → EQ returns → same begin-speak + silence / second-Speak cue → mic off / EQ hide → play **slot 02**. If clip 01 is **still playing when clip 02 is cued**, stop clip 01 then.
+  - [x] **Exit beat:** during the **last 0.5 s** of clip 02 JSON playback, **lerp `NPC_Floor_Parent` scale → 0**. In parallel, agent widget **shrink-scale-lerps to 0%** over **0.5 s**. **Do not deallocate** the widget (keep Act I restartable).
+  - [x] **Act I reset gesture:** **both palms down + dual ternary (ring) pinch** → restore NPC floor scale, agent widget pop-in scale, cold pose, and Speak turn index so the reel can restart without rebooting.
+  - [x] **Host-only OK for 0.7:** extract Final Demo playlist player from hands-test capture controller; no new core ABI. Persist clips under **`persistentDataPath/3OS_FinalDemoPerf/`** (never `AndroidHandsPerf/`) so test-scene re-records cannot clobber Final Demo files.
+- [x] **Task 7.5: Performance asset bind**
+  - [x] Ship both JSON/audio pairs under stable Final Demo paths (Performances + Audio / StreamingAssets); final scene references by slot. On first run, copy JSON into `3OS_FinalDemoPerf/` **only if missing**.
+  - [x] NPC bind: head + hands (+ finger hinges) from JSON drive matching transforms; mouth amp from playing `AudioSource`; **force mouth rest** after each slot ends.
 
 #### Acts II–III — Mind Palace then back to MR (~⅔, prior 0.7 scope unchanged)
 
