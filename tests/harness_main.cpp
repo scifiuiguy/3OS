@@ -2712,6 +2712,73 @@ int main() {
                    (intents.flags & THREEOS_INTENT_MIND_PALACE_MENU) != 0 ? 1u : 0u, 1u) &&
          ok;
 
+    // ModeToggleArmed + ModeTogglePulse (open-book + latched dual thumb-close).
+    {
+      auto fill_book_hand = [](ThreeOS_HandSample* h, float xSign) {
+        h->tracked = 1;
+        h->tip_flags = 0x1Fu;
+        // Palm toward head at (0,1.6,0): palms at y=1.35, z=-0.25, normals +Z toward face.
+        h->index_proximal = {0.12f * xSign, 1.35f, -0.25f};
+        h->thumb_tip = {0.12f * xSign + 0.04f * xSign, 1.35f, -0.25f};  // thumbs out
+        h->index_tip = {0.12f * xSign + 0.01f * xSign, 1.33f, -0.24f};
+        h->middle_tip = {0.12f * xSign, 1.33f, -0.24f};
+        h->ring_tip = {0.12f * xSign - 0.01f * xSign, 1.33f, -0.24f};
+        h->palm_normal = {0.f, 0.15f, 0.95f};
+        h->palm_mode_valid = 0;
+      };
+      ThreeOS_HandSample bL{};
+      ThreeOS_HandSample bR{};
+      fill_book_hand(&bL, -1.f);
+      fill_book_hand(&bR, 1.f);
+      // Thumbs open (away from knuckle) for arm-only frame.
+      bL.thumb_tip = {-0.20f, 1.35f, -0.25f};
+      bR.thumb_tip = {0.20f, 1.35f, -0.25f};
+      threeos_interaction_set_hands(&bL, &bR);
+      ThreeOS_InteropInputFrame bf{};
+      bf.frame_index = 9100;
+      bf.time_seconds = 91.0;
+      bf.tracking_flags = THREEOS_TRACK_HEAD;
+      bf.head.position = {0.f, 1.6f, 0.f};
+      bf.head.orientation = {0.f, 0.f, 0.f, 1.f};
+      ThreeOS_InteropTransformDelta bd{};
+      ok = (threeos_tick(&bf, &bd) == 0) && ok;
+      ThreeOS_InteractionIntents bi{};
+      ok = (threeos_interaction_get_intents(&bi) == 0) && ok;
+      ok = expect_eq("mode.armed_open_thumbs",
+                     (bi.flags & THREEOS_INTENT_MODE_TOGGLE_ARMED) != 0 ? 1u : 0u, 1u) &&
+           ok;
+      ok = expect_eq("mode.no_pulse_open",
+                     (bi.flags & THREEOS_INTENT_MODE_TOGGLE_PULSE) != 0 ? 1u : 0u, 0u) &&
+           ok;
+
+      // Close thumbs to knuckles → pulse + latch.
+      bL.thumb_tip = bL.index_proximal;
+      bL.thumb_tip.x -= 0.01f;
+      bR.thumb_tip = bR.index_proximal;
+      bR.thumb_tip.x += 0.01f;
+      threeos_interaction_set_hands(&bL, &bR);
+      bf.frame_index = 9101;
+      bf.time_seconds = 91.05;
+      ok = (threeos_tick(&bf, &bd) == 0) && ok;
+      ok = (threeos_interaction_get_intents(&bi) == 0) && ok;
+      ok = expect_eq("mode.pulse_on_close",
+                     (bi.flags & THREEOS_INTENT_MODE_TOGGLE_PULSE) != 0 ? 1u : 0u, 1u) &&
+           ok;
+
+      // Held closed next frame → armed, no second pulse.
+      bf.frame_index = 9102;
+      bf.time_seconds = 91.10;
+      threeos_interaction_set_hands(&bL, &bR);
+      ok = (threeos_tick(&bf, &bd) == 0) && ok;
+      ok = (threeos_interaction_get_intents(&bi) == 0) && ok;
+      ok = expect_eq("mode.latched_no_repulse",
+                     (bi.flags & THREEOS_INTENT_MODE_TOGGLE_PULSE) != 0 ? 1u : 0u, 0u) &&
+           ok;
+      ok = expect_eq("mode.still_armed",
+                     (bi.flags & THREEOS_INTENT_MODE_TOGGLE_ARMED) != 0 ? 1u : 0u, 1u) &&
+           ok;
+    }
+
     threeos_multichoice_close();
 
     // Mutual bump + N MindPalace layout.

@@ -1,3 +1,4 @@
+using ThreeOS;
 using UnityEngine;
 
 /// <summary>
@@ -13,11 +14,14 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
     [SerializeField] Transform npcRoot;
 
     [Header("Mind Palace (Act II)")]
-    [Tooltip("WispySky (or swap) — applied over office geo when Palace wipe runs; not at cold open.")]
+    [Tooltip("WispySky Mat2 (6-face) — applied over office geo when Palace wipe runs; not at cold open.")]
     [SerializeField] Material palaceSkybox;
 
     [Header("Act I — GitHub plane")]
     [SerializeField] ThreeOSFinalDemoGitHubPlane githubPlane;
+
+    /// <summary>Host mode flag for Task 7.7 — false = MR office, true = Palace/VR skybox.</summary>
+    bool _inPalace;
 
     public Transform PlayerSpawn => playerSpawn;
     public Transform XrOrigin => xrOrigin;
@@ -25,8 +29,12 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
     public Transform NpcRoot => npcRoot;
     public Material PalaceSkybox => palaceSkybox;
     public ThreeOSFinalDemoGitHubPlane GithubPlane => githubPlane;
+    public bool InPalace => _inPalace;
 
-    /// <summary>Apply or clear the Palace skybox (used by future VR↔MR wipe).</summary>
+    /// <summary>
+    /// Ambient skybox only. Visible Palace cover is the camera-locked overlay in
+    /// <see cref="ThreeOSFinalDemoModeToggle"/> (draws over office geo without changing mesh queues).
+    /// </summary>
     public void SetPalaceSkyboxActive(bool active)
     {
         if (active)
@@ -38,5 +46,38 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
         {
             RenderSettings.skybox = null;
         }
+    }
+
+    /// <summary>Set MR/Palace mode. Overlay settle is owned by ModeToggle wipe / sync.</summary>
+    public void SetInPalace(bool inPalace)
+    {
+        _inPalace = inPalace;
+        SetPalaceSkyboxActive(inPalace);
+    }
+
+    void Awake()
+    {
+        // Cold open is MR; Task 7.7 toggle owns later transitions.
+        SetPalaceSkyboxActive(_inPalace);
+        EnsureModeToggle();
+    }
+
+    void Start()
+    {
+        // Bridge may spawn after Stage Awake (harness boot order).
+        EnsureModeToggle();
+    }
+
+    void EnsureModeToggle()
+    {
+        var toggle = FindFirstObjectByType<ThreeOSFinalDemoModeToggle>();
+        if (toggle == null)
+        {
+            var go = new GameObject("FinalDemoModeToggle");
+            toggle = go.AddComponent<ThreeOSFinalDemoModeToggle>();
+        }
+
+        var bridge = FindFirstObjectByType<ThreeOSBridge>();
+        toggle.Configure(this, bridge);
     }
 }

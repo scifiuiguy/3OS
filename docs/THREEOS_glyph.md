@@ -70,6 +70,8 @@ Inside the GLB JSON chunk, on the **root** glTF object:
 | `box.3glyph` | `box_closed` | default closed Box glyph (`box_state: "closed"`) |
 | `box_open.3glyph` | `box_open` | open Box glyph (`box_state: "open"`) |
 | `scissors.3glyph` | `scissors` | UI cut affordance (voodoo portal scissors button; `category: "app"`) |
+| `mr.3glyph` | `mr_toggle` | Beveled extruded **MR** text — Mind Palace mode-toggle glyph (Task 7.7; rare text glyph) |
+| `vr.3glyph` | `vr_toggle` | Beveled extruded **VR** text — Mind Palace mode-toggle glyph (Task 7.7; rare text glyph) |
 
 Ready-to-paste JSON for each pack: [`docs/glyph_packs/`](glyph_packs/).
 

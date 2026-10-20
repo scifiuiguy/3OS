@@ -371,6 +371,8 @@ enum ThreeOS_InteractionIntentFlags : uint32_t {
   THREEOS_INTENT_TERNARY_HELD = 1u << 5,
   THREEOS_INTENT_VOODOO_FREE = 1u << 6, /* secondary hold + palm down */
   THREEOS_INTENT_MIND_PALACE_MENU = 1u << 7,    /* secondary hold + palm up (Multi-Choice) */
+  THREEOS_INTENT_MODE_TOGGLE_ARMED = 1u << 8,   /* open-book pose held (MR↔VR) */
+  THREEOS_INTENT_MODE_TOGGLE_PULSE = 1u << 9, /* latched dual-thumb-close confirm edge */
 };
 
 enum ThreeOS_VoodooMode : uint32_t {

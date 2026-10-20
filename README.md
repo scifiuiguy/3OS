@@ -86,7 +86,7 @@ It follows, though, that if you INCREASE the number of interactive fragments (or
 
 ### Why then is the boot interface of EVERY XR OS patterned after Apple and Android?
 
-The author of 3OS suspects it's primarily because companies like Meta and HTC hired the smartest people in the world on the subject of UI, and they were too smart for their own good. People who have their doctorates in HCI, bless their hearts, probably told everyone at these companies that raycast has 2X the throughput of any other option in XR, which is true, therefore everything BUT raycast is DOA. Case closed.
+The author of 3OS suspects it's primarily because companies like Meta and HTC hired the smartest people in the world on the subject of UI, and they were too smart for their own good. People who have their doctorates in HCI probably told everyone at these companies that raycast has 2X the throughput of any other option in XR, which is technically true, therefore everything BUT raycast is DOA. Case closed?
 
 That case needs to be reopened. They were right about the data, but wrong about the conclusion. Raycast discourages bimanual interaction, so its 2X throughput is cancelled by nearly always being used one-hand-at-a-time, whereas volumetric isometric models feel effortless with two hands. Add to that the fact that raycast squashes the field to a plane, destroying the entire value proposition of XR as a productivity booster when it can only use 10% of its own adjacency and multitasking potential, and here we are 10 years after the launch of modern VR, and we still can't copy/paste two files into a folder at once.
 
@@ -113,12 +113,12 @@ XR has millions of interaction zones in each frustum which would enable adjacenc
 
 **2) WIMP Insufficiency:** The crutch of WIMP denies the use of the depth vector in concert with common 2D table layouts (i.e. WIMP makes 3D matrix and cluster layouts impossible), which occludes the vast potential utility of the XR field almost entirely, which in turn masks the throughput jank of the default raycasting interaction model. Raycasting successfully hides how terribly slow it is by forcing us to drive our Ferrari at 5mph as though that's how fast all racecars drive. A model that can enable hands or cursors to hover in any subdivision of the field with equivalent effort must replace the legacy model. 
 
-Raycast has won the XR OS implmementation battle so far by putting up HCI speed test numbers that double volumetric isometric competitors only because the tests in research studies are never done apples-to-apples according to real-world applications. In the real world, users only use raycast with one hand, not two, and apples-to-apples interfaces built to take full advantage of adjacency have rarely been tested in HCI studies at all. The author of 3OS can build apples-to-apples tests that prove raycast actually has slower throughput in the real world than volumetric isometric techniques under fair criteria, and that's before accounting for the value of volumetric isometric models having access to every depth layer of the far field simultaneously.
+Raycast has won the XR OS implementation battle so far by putting up HCI speed test numbers that double volumetric isometric competitors only because the tests in research studies are never done apples-to-apples according to real-world applications. In the real world, users only use raycast with one hand, not two, and apples-to-apples interfaces built to take full advantage of adjacency have rarely been tested in HCI studies at all. The author of 3OS can build apples-to-apples tests that prove raycast actually has slower throughput in the real world than volumetric isometric techniques under fair criteria, and that's before accounting for the value of volumetric isometric models having access to every depth layer of the far field simultaneously.
 
 
-**3) Perspective vs. Isometric Spatial awareness:** We see in perspective, but perspective can warp our mind's eye of Euclidean space. Our short arms define the near field where perspective causes almost unnoticeable size warping, thus our mind's eye for hand coordination is formed isometrically. We think of 3D space the way it actually is... true width, depth, and height have an equal relationship, not a scalar one. We know the object moving away is not actually shrinking, but if we need to use a magical interface to reach out and touch that object, we should not expect our hands to easily convert to angular space where farther objects require scaled hand motions. To access the far field with equivalent efficacy to the near field, we need to use an volumetric isometric interaction model, one that treats hand motion in the near field identically to the far field.
+**3) Perspective vs. Isometric Spatial awareness:** We see in perspective, but perspective can warp our mind's eye of Euclidean space. Our short arms define the near field where perspective causes almost unnoticeable size warping, thus our mind's eye for hand coordination is formed isometrically. We think of 3D space the way it actually is... true width, depth, and height have an equal relationship, not a scalar one. We know the object moving away is not actually shrinking, but if we need to use a magical interface to reach out and touch that object, we should not expect our hands to easily convert to angular space where farther objects require scaled hand motions. To access the far field with equivalent efficacy to the near field, we need to use a volumetric isometric interaction model, one that treats hand motion in the near field identically to the far field.
 
-Long story short - an XR OS interface that works at rapid speed for enterprise MUST use a voluemtric isometric model, NOT a raycast model. It must be volume-based, not surface-based. Raycast has no chance of achieving speeds competitive to 2D desktops. Volemtric isometric models can beat desktop speeds if they're built to careful specs. Solve this problem, and enterprise adoption of XR can begin as soon as we have sunglasses-form-factor HMDs capable of MR and ergo-safe hand tracking (e.g. hand tracking FOV of Quest).
+Long story short - an XR OS interface that works at rapid speed for enterprise MUST use a volumetric isometric model, NOT a raycast model. It must be volume-based, not surface-based. Raycast has no chance of achieving speeds competitive to 2D desktops. Volumetric isometric models can beat desktop speeds if they're built to careful specs. Solve this problem, and enterprise adoption of XR can begin as soon as we have sunglasses-form-factor HMDs capable of MR and ergo-safe hand tracking (e.g. hand tracking FOV of Quest).
 
 </details>
 
@@ -166,7 +166,7 @@ See [spatial_os_trivariate_validation.md](spatial_os_trivariate_validation.md) f
 
 <a id="the-3os-unified-interaction-state-machine"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🔄 The 3OS Unified Interaction State Machine</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🔄 Field Unification State Machine</summary>
 
 To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR selection systems, 3OS routes all user intent through a deterministic, cascading three-stage state machine.
 
@@ -175,32 +175,37 @@ To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR s
 (World Proxy Half-Dome)         (Double Proxy Voxel Grid)       (Velocity-Mapped CRUD Action)
 ```
 
-### State 1: Macro-Targeting (The World-in-Miniature Proxy)
+### State 1: Macro-Targeting (The World-in-Miniature Proxy A.K.A. "voodoo drop")
 * **The Problem:** 
 
-  Humans cannot easily gaze at or raycast an empty voxel in which to instantiate or manage far field elements. A single stationary gaze vector penetrates thousands of voxels simultaneously. The ability to choose any one voxel in the entire field must be rapid and intuitive.
+  Humans cannot easily gaze at or hand-raycast to an empty voxel in which to instantiate or manage far field elements. Perspective-based techniques are insufficient for fast-twitch control of the far field. A single stationary gaze vector penetrates thousands of voxels simultaneously, potentially intersecting hundreds of objects, or none. Raycast can handle only one. The ability to choose any one voxel in the entire field must be rapid and intuitive for enterprise speed.
+
 * **The Solution:** 
   
-  Via gesture or button press, the user instantiates a localized, downscaled translucent **World Proxy Half-Dome** within comfortable, nearly-at-rest reach. 
+  Via gesture or button press, the user instantiates a localized, downscaled **Invisible Isometric Field Proxy** within comfortable, elbow-nearly-at-rest reach. The proxy has two types, snap and free-range, each mapped to a different gesture. The snap proxy contains a cluster of focus anchor visualizers to target, whereas the free-range proxy has no widget, allowing unbiased manual placement of the far-field voodoo volume anywhere in the field. The default ratio of the actual field to the invisible proxy miniature is 50-to-1 at default parameters in an open field e.g. the Mind Palace. These parameters flex to the size of the room, typically constraining down in MR since most MR indoor rooms are less than 50' wide. 
+  
+* **Isometric, Not Perspective:**
 
-### State 2: Micro-Resolution (The Double-Proxy Voxel Lattice)
-* **The Mechanism:** 
+  For every 1' the user moves their hand on X, Y, or Z, the new voodoo volume moves 50' on that same axis. This world-to-user proxy is technically a World-In-Miniature technique except it provides no mini-map widget because none is needed. The technique is meant for fast-twitch action to rapidly grab a chunk of volume from anywhere in the far field. It's a technique not intended to be held long. It has a small offset allowing the new far-field voodoo volume to instantiate a few feet forward of the user, just out of reach and out of the way of its near-field voodoo copy. Importantly, this is not a "go-go" solution, a term popularized by a 90s research study that referenced Go-Go-Gadget, though it might easily be mistaken for one. Go-go variations are perspective-based. The Voodoo drop is isometric, a key distinction for accessing the whole field uniformly. It feels like egocentric raycast or go-go in that it feels like your intent is shooting out of your hand or body, but then the wacky and unpredictable fast-far-and-slow-near speed variations of the target are magically normalized by the isometric mapping.
 
-  The moment a coarse region is selected in the World Proxy Half-Dome, that specific slice of space instantly blooms into a **Double-Proxy Voxel Grid** directly in front of the user's primary workspace. The chunk of empty space is proxied to the user. Simultaneously, the user's hand or cursor is proxied out into that chunk in the far field.
+### State 2: Micro-Resolution (The Double-Proxied Voxel Lattice A.K.A. "voodoo volume")
+* **The Mechanism:**
+
+  The moment a coarse region is selected via the voodoo drop, that specific chunk of space instantly blooms into a **Double-Proxy Voxel Lattice** directly in front of the user's primary workspace. The chunk of empty space is proxied to the user. Simultaneously, the user's point cursors are proxied out into that chunk in the far field.
 * **Lattice Visualization:** 
 
-  The hidden coordinate structure of that far field volume is rendered locally as a subtle, wireframe volumetric lattice.
+  The hidden coordinate structure of that far field volume can be rendered locally as a subtle, wireframe volumetric lattice, indicating the snappable layout as new objects enter that space.
 * **Decoupled Selection:** 
 
-  The user drives a point cursor that is a 1:1 Euclidean replica of the pinch midpoint (not parented to the hand), then offset **4″** along floor-parallel user-forward and **2″** up, so the hand does not occlude the proxy. The user is free to gaze at the actual fragment in the far field, using the peripheral proxy as a remote control device, or if the fragment is too far away for good visual fidelity, the user can look primarily at the proxy instead. Cursor hover and selection can initiate CRUD actions, especially CREATE functions if the current proxy contains empty voxel space. Menu options e.g. Create New Box (3D equivalent of a folder) or Create New Object (3D equivalent of a file) are typically presented in matrix layout as long as there are more than four options.
+  The user drives a point cursor that is a 1:1 Euclidean replica of the thumb. Since other digits typically move through space to meet a mostly stationary thumb during pinch, the thumb is the ideal target for an offset point cursor. The offset relative to the user's body puts the cursor slight forward and upward of the hand, so the hand does not occlude the near-field voodoo content. The user is free to gaze at the actual fragment in the far field, using the peripheral proxy as a remote control device, or if the fragment is too far away for good visual fidelity, the user can look primarily at the proxy instead. Cursor hover and selection can initiate CRUD actions, especially CREATE functions if the current proxy contains empty voxel space. Menu options e.g. Create New Box (3D equivalent of a folder) or Create New Object (3D equivalent of a file) are typically presented in matrix layout as long as there are more than four options.
 
 ### State 3: Possession & Transformation (Telekinesis Engine)
 * **The Mechanism:** 
 
-  An already created object can be hovered by sending a point cursor inside its volume rather than raycasting onto its surface. Once hovered, the user can select it with a gesture, usually index pinch. Once selected, the user has the option to use the proxy (a voodoo doll) as a transformation remote control for **Velocity-Based translation and/or rotation**.
+  An already created object can be hovered by sending a point cursor inside its volume rather than raycasting onto its surface. Once hovered, the user can select it with primary pinch. Once selected, the user has the option to use the proxy (a voodoo doll) as a transformation remote control for either direct manipulation or remote **Velocity-Based translation and/or rotation**.
 * **Kinetic Economy:** 
 
-  Tiny, low-fatigue wrist gestures generate acceleration and velocity vectors that scale proportionally, gliding objects effortlessly across the field.
+  Tiny, low-fatigue wrist gestures generate acceleration and velocity vectors that scale proportionally, gliding objects effortlessly across the field in straight lines rather than the unpredictable arcs of raycast fishing line actions.
 * **Momentum & Friction:** 
 
   The system incorporates virtual inertia. Releasing an asset with momentum allows it to slide naturally through the voxels and settle based on an OS-level spatial friction coefficient.
@@ -210,24 +215,25 @@ To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR s
 
 ---
 
-<a id="volumetric-workspace-management-portals-teleportation"></a>
+<a id="voodoo-volumes"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🌀 Volumetric Workspace Management: Voodoo Volumes</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🌀 Voodoo Volumes</summary>
 
 3OS bypasses the slow, physics-based fishing-line-reeling or lassoing of legacy XR by utilizing **Non-Euclidean Voodoo Volumes**.
 
+* **The Voodoo Drop:** The user sees an object or cluster of objects in the far field and decides to interact. They initiate the voodoo drop gesture (see Control Basics). The object or cluster is likely to be part of some focus group recognized by 3OS, enabling a rapid drag motion to snap-lock onto the target. The user release the gesture. A voodoo volume appears in hand's reach containing voodoo dolls of the object or cluster.
 * **Voodoo Volume Dragging:** If a double-proxy voodoo volume is open, dragging an object from the near field into the voodoo volume teleports that object out into the far-field. Vice versa, dragging an object out of a voodoo volume teleports it from its far field volume into the near field. The need to grab onto a far field object with raycast and reel it in is entirely eliminated. The concept is heavily inspired by the Poros Framework (see Prior Art #6).
 * **Cross-Proxy Voodoo Volume Dragging:** If multiple double-proxy voodoo volumes are open, dragging an asset out of one local volume and dropping it into another triggers an instantaneous teleportation from volume A to volume B in the far field, essentially letting the object travel through two wormholes at once.
-* **The World-In-Miniature Drag/Drop:** To move a near field object out into the far field rapidly, the user need not open a voodoo volume first. The user can activate the object as though it itself is a voodoo volume, which allows a simple drag/drop gesture to send the object anywhere into the far field via the same technique as creating a voodoo volume.
+
 
 
 </details>
 
 ---
 
-<a id="volumetric-topology-system-architecture"></a>
+<a id="volumetric-topology"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🗂️ Volumetric Topology & System Architecture</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🗂️ Volumetric Topology</summary>
 
 ### 1. The Selection Frustum
 Multi-selection is resolved via drag to scale a dynamic bounding **Selection Frustum** inside a near-field voodoo volume. The possessed group behaves rigidly, preserving relative spatial offsets during velocity-mapped transformations.
@@ -256,30 +262,88 @@ Until extensive UX testing can be done on densely populated fields, it is assume
 
 ---
 
-<a id="architectural-enclosure-world-mesh-penetration"></a>
+<a id="field-rings"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧱 Architectural Enclosure & World Mesh Penetration</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">⭕ Field Rings</summary>
 
-3OS strictly decouples Newtonian physics from spatial containment boundaries to preserve environmental stability and presence. These rules apply to all data structures the OS recognizes. These structures are analogous to files and folders of other operating systems, but they use different metaphors in 3D. For example, folders are boxes in 3OS. Files are objects whose low-poly prismatic geometry is defined by the application that generates the data, much like applications define file types and icons in other operating systems.
+### Understanding the Field in 3OS
 
-* **Global vs. Local Mode:** 3OS is in global mode by default, meaning if the user opens a box (i.e. drills into a folder) the contents of that box will emerge out of the box without dismissing the contents of the parent file structure. If the user opts to toggle global mode to local mode, then opening a box dismisses the objects at the parent level before revealing the contents of the box.
-* **Rigidbody Matrix:** Set to `Disabled` by default for each object. The user can opt in a given object's properties to toggle physics on for that object, allowing it to receive gravity, collide with world geo, etc. Newly created objects float statically in zero-gravity space to eliminate continuous structural management chores. For OS objects, the user must manually turn gravity on if desired, but they should understand that full use of 3OS capability means allowing most objects to float.
-* **Enclosure Engine:** Active by default with a `Strict` policy. Leveraging semantic AI mesh pipelines, the system enforces a hard spatial floor constraint—preventing floating voxels from clipping through physical floorboards or sinking into unreachable space even if their rigidbodies are disabled or they have none.
-* **Semantic Masking:** For walls and ceilings, users can unlock constraints to place items "over-the-horizon" (e.g., a weather widget on a balcony). The OS cleanly cuts the rendering mesh at the wall boundary plane, creating a crisp, non-clipping partition illusion. 3OS has parameterized input enabling other service-layer systems of the HMD to provide planar definitions of such boundaries if desired.
+For decades, HCI research has subdivided the interactable spatial field into two main categories:
+
+#### Near Field: 
+  * everything your fingertips can reach
+#### Far Field: 
+  * everything your fingertips can't reach
+
+These are the root categories of an interactive field because they require two different interaction techniques. Users may grab objects in the near field and may expect them to have physics-based and/or skeuomorphic properties, whereas some form of raycasting or telekinesis is needed to reach far-field objects.
+
+### Deeper Subcategories:
+
+#### The Pseudo-Near Field
+
+In 3OS, the goal is always to merge chunks of the far field into the near field instantly to take advantage of the proprioceptive power of near field interaction, yet 3OS also avoids physics-based and skeuomorphic interactions by default since neither lend themselves to clusters of objects that can take advantage of the whole far field by avoiding gravity and occlusion. Thus, all interactive UI objects in 3OS are ghostly by default. They float and are translucent.
+
+When these ghostly 3OS objects enter into the near field, the user does not put a hand directly inside them for manipulation. Instead, the user's hand drives a point cursor (offset a few inches forward and above the hand by a parameterized amount). The point cursor enables the user to slightly extend their near-field reach. They gain proprioception over that extended space because the cursor feels like yet another joint of their arm, which widens the near field. We call this extension the pseudo-near field (an outer shell of the near field), and most 3OS UIs live in this pseudo space when called in from the far field. This technique is crucial for comfort and efficiency:
+
+3OS UIs are usually contextual widgets for far-field objects, meaning they operate as remote controls meant to utilize peripheral vision. The hands with good neutral elbow position for good ergo are slightly too low for good peripheral cues if they're sharing the same space with these widgets, which means you'd have to move the widgets too low for periphery, or make the user hold their hands too high for comfort. The solution is separation of the hands from the widgets with a slight offset via point cursors. Pseudo-near field widgets driven by point cursors are the best-of-both-worlds: comfort and efficiency in one interface.
+
+#### The Two Rings of the Far Field
+
+The far field is gigantic. It makes sense to subdivide it as soon as we begin using it for large and complex clusters of objects. The immediate far field (radius of ~20ft), allows for exponentially more clarity via less perspective size warping and parallax stereoscopy than the rest of the far field. In 3OS, we think of the far field in two parts:
+
+  #### The Working Ring
+    This is the closer section of the far field, typically defined by ~20ft radius from the user in all directions. This range is not parameterized by 3OS because it is a mental guideline for users, not a requirement. It helps to keep a field organized by keeping objects that need frequent manipulation closer in the far field.
+  #### The Storage Ring
+    Likewise, objects that may sit untouched for hours, days, or weeks belong in the outer ring of the far field (beyond 20ft range) where they can be brought into the working ring once they become relevant for new tasks.
+
+These ring subdivisions are not necessary in every context, but they exist to support the most complex enterprise interactions available, including rapid file management, 3D visual node-based programming, 3D data visualization, etc.
+
+</details>
+
+---
+
+<a id="MR versus VR"></a>
+<details>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧱 MR versus VR</summary>
+
+3OS strictly decouples Newtonian physics from spatial containment boundaries to preserve efficacy of fast-twitch volumetric controls in a variety of field shapes and sizes. These rules apply to all data structures, analogous to files and folders having properties and attributes in other operating systems, but they use different metaphors in 3D. For example, folders are boxes in 3OS. Files are objects whose low-poly prismatic geometry is defined by the application that generates the data, much like applications define file types and icons in other operating systems.
+
+* **Field Roots vs. Child Boxes:** If the user opens a box (i.e. drills into a folder) the contents of that box will emerge out of the box without dismissing the contents of the parent file structure. If the user wants to isolate the field to visualize just the contents of that box, they can favorite it and open it as a Field Root, meaning the current field itself IS that box. In this way, the Mind Palace begins by mapping the default field to the root directory of the first hard drive it can access, but any descendent box/folder can become a Field Root.
+* **Rigidbody Matrix:** Set to `Disabled` by default for each object. The user can opt in a given object's properties to toggle physics on for that object, allowing it to receive gravity, collide with world geo, etc. The 3OS SDK will also give 3rd parties the ability to generate objects that may have basic 3OS physics toggled on by default, or they may be driven by a physics engine defined by the app. Newly created objects float statically by default. For OS objects, the user must manually turn gravity on if desired, but they should understand that full use of 3OS capability means allowing most objects to float.
+* **Floor Collision:** Active by default with a `Strict` policy. Leveraging semantic AI mesh pipelines, the system enforces a hard spatial floor constraint—preventing floating voxels from clipping through physical floorboards or sinking into unreachable space even if their rigidbodies are disabled or they have none. 3OS assumes by default that OS objects will never intend to clip through the user's floor plane. This restriction can be toggled off per-object.
+* **Transitions between MR and VR:** 3OS seamlessly toggles between MR and VR, assuming that MR is an immediate application staging workspace while VR is by default a file management workspace. That said, apps and files are able to cross-pollinate at will. You can run an app in the VR Mind Palace and you can bring files and folders (objects and boxes) from the VR Mind Palace into the MR workspace. In MR, the environment is typically constrained by indoor world mesh provided by the HMD's scan of the room, typically a square or rectangular office space with four walls, a ceiling, and a floor. This space may have basic contours that turn it non-rectangular, and 3OS will accommodate a variety of room shapes. 3OS will also attenuate field range sensitivity of all of its controls in MR when less total field space is accessible so that control sensitivity maps well to each environment, sort of like mouse sensitivity needing to map to screens of different resolutions or multi-screen configurations.
 
 
 </details>
 
 ---
 
+<a id="Apps-vs-Objects-vs-Assets-vs-Icons"></a>
+<details>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🎲 Apps vs. Objects vs. Assets vs. Icons</summary>
+
+### What is an object?
+
+Spatial computing can naturally blur the lines between all metaphors for categorizing data. If a file is an object now, what is the 3D mesh that becomes visible when you open that object? It's also an object, but it's inside the context/volume of an app instance. For example, if you double-pinch a Blender file in 3OS, you're double-pinching a Blender object. A Blender volume will open. Inside, it will display a 3D asset, e.g. a t-rex mesh. That t-rex mesh is also an object within the Blender app. The Blender logo glyph is an object in the OS just outside that volume that was used to launch an instance of Blender, which displayed another object. They're two types of objects sharing the same 3D space. This blurring of metaphors may take some time for users accustomed to clear distinctions between icons versus assets. In 3OS, icons are 3D glyphs, which technically is a type of asset. In 2D, icons are technically just low-resolution images, but they tend not to share canvas space in confusing ways because 2D windows occlude the OS window that launched them, whereas in 3D it will be common to have plenty of room for the launcher and the launchee to hold persistent, adjacent space. 
+
+### What is an app?
+
+Technically, in 3OS, an app is still an executable list of instructions. But in similar fashion to the confusing nature of glyphs versus assets, an app could be a complex toolchain like Blender, or it could be a simple widget program designed to do nothing more than animate a t-rex object at the OS level. That t-rex executable is not a glyph, but it's not just an asset. It's an asset with unique behaviors. It's an app object, operating outside the bounds of an app volume because the object IS the app and the app IS the object. These distinctions that seemed pertinent between icons, objects, assets, and apps in 2D computing may break down entirely one day in spatial computing, but for now they will hold as long as we live in a world where 2D and 3D computing coexist in hybrid workflows, as in 3OS.
+
+
+</details>
+
+---
+
+
 <a id="common-3d-element-types"></a>
 <details>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🎲 Common 3D Element Types</summary>
 
-### 1) Objects
+### 1) Objects (Files... but 3D)
   3OS is intended for full cross-compatibility with desktop OS interfaces because the file metaphor remains intact in an extruded 3D-ified form. A file is an OBJECT in 3OS. A folder is a BOX. Their icons are no longer icons. They're glyphs, low-poly prismatic pieces of geometry that can represent the brand of the app that generated the object. In addition, 3OS will support treating media as objects as well, including audio clips, video clips, images, 3D assets, and point-cloud-based assets (particle effects and/or Gaussian splat assets).
 
-### 2) Glyphs (`.3glyph`)
+### 2) Glyphs (`.3glyph`) (Icons... but 3D)
   A **glyph** is a specific type of object, a volumetric file type icon: a small, semi-transparent mesh plus associative metadata in one file. Packs are valid **glTF Binary (GLB)** renamed to **`.3glyph`**, with a root vendor extension `THREEOS_glyph` (schema, injector, and demo packs: [`docs/THREEOS_glyph.md`](docs/THREEOS_glyph.md)).
 
   **What lives in the pack (author-controlled):** mesh, UVs, textures, and `THREEOS_glyph` metadata (id, associations, tint hints, bounds). End users and companies are free to author branded looks with full UV/texture control inside the GLB.
@@ -308,7 +372,7 @@ Until extensive UX testing can be done on densely populated fields, it is assume
 
   Content files (e.g. a user’s `report.pdf` or demo `simple.glb`) are **not** glyph packs — they keep their normal formats. Only the OS icon that *represents* that type is a `.3glyph`.
 
-### 3) Boxes
+### 3) Boxes (Folders... but 3D)
   Boxes in 3OS are the 3D equivalent of folders in legacy platforms. They can expand/collapse all of their contents into the current field, and they are the control source for a variety of spatial arrangements. 3OS has a global box mode and a local box mode, meaning expansion of a box can automatically trigger collapse of any currently-expanded other boxes in local mode, or expansion can be cumulative with all other expanded boxes in global mode. 3OS deals with spatial collision resolution of nearest neighbors by bumping newcomers into the closest available adjacent space. Global and Local box modes are only relevant in Manual Arrangement Mode. In Matrix and Cluster Modes, nested child boxes expand to fill space in separate matrices or clusters above the parent matrices or clusters.
 
   **Options** (equivalent of View options in File Explorer):
@@ -321,32 +385,35 @@ Until extensive UX testing can be done on densely populated fields, it is assume
   * **Agent-Generated:** All objects default to a custom 3D layout generated by an AI assistant per user instructions, including advanced filtering, combinations of clusters and matrices of multi-condition criteria, etc.
 
 
-### 4) Voodoo Volumes
+### 4) Voodoo Volumes (Command Line Directory Navigation... but 3D)
   These are the workhorse of 3OS, merging the near and far field via non-Euclidean portal behaviors. To engage one, the user can manifest a World Proxy Half Dome which represents a miniature model of the entire field. While holding the gesture, the user drags a point cursor through the interior of the Half Dome, and a far-field voodoo volume instantiates and moves in concert around the actual field. By releasing this same gesture that opened the Half Dome, the user chooses where to drop the far field voodoo volume. Upon placing it, a near-field voodoo volume immediately replaces the half dome, opening the other end of the portal. Now any contents or empty space in that part of the far field are suddenly in hand's reach in the near field. Any objects or boxes encapsulated by the voodoo volume now show a ghostly copy of themselves easily within the user's reach. Likewise, the user can place a point cursor or hand into the voodoo volume and a ghostly copy of their cursor or hand will appear out on the other end of the portal in the far field. The user is welcome to gaze at either the near-field voodoo volume or the far-field voodoo volume. The voodoo volume's bounding box can be pinched/stretched to scale the far-field bounding box while the near field bounding box remains the same ergonomically-perfect size. If an object in the volume is dragged in real far-field space, the far field bounding box will scale up to keep it in scope. Meanwhile, the bounding box of the near field volume will remain the same size, causing its inner contents to appear to scale down. The bounding box can also be single-hand dragged for velocity-based translation of the far-field bounding box. And finally, the voodoo volume will have a button at its top back right corner to collapse the portal.
 
-### 5) Voodoo Widgets
-  These are peripheral remote control devices. They appear temporarily just forward of the hand that engages the associated action, and they disappear as soon as the action is complete. The most common use is for remote transformations (dragging/rotating far-field objects). These widgets visualize the hand's current action state e.g. a vector arrow to confirm drag is currently active at a specific velocity. For rotation, the widget is a miniature voodoo copy the object so that any tumbling action can happen accurately even if the actual object is too distant to make out.
+### 5) Voodoo Widgets (sort of like sidebars in apps... but 3D)
+  These are peripheral remote control devices. They appear temporarily just forward of the hand that engages the associated action, and they disappear as soon as the action is complete. The most common use is for remote transformations (dragging/rotating/changing state for far-field objects). These widgets visualize the hand's current action state e.g. a vector arrow to confirm drag is currently active at a specific velocity. For rotation, the widget is a miniature voodoo copy the object so that any tumbling action can happen accurately even if the actual object is too distant to make out.
 
-### 6) Focus Anchors
+### 6) Focus Anchors (sort of like LOD-based GPS pins in map search... but 3D)
   These are the invisible backbone enabling voodoo snapping to work so rapidly. At the top level of 3OS, each open directory has contents potentially strewn about in a matrix or cluster, but a voodoo volume can latch onto that entire cluster instantly because it contains an invisible centroid, a Focus Anchor. Every directory has a focus anchor allowing voodoo volumes to snap to them and summon a voodoo doll of their contents into the near field for easy control. Focus Anchors are a key feature that will be available in the 3OS 3rd party SDK as well. When a 3rd party app launches, it is in multitasking mode by default, meaning it shares the same global field as everything else, including the file system and other open apps. But if the user sends a voodoo volume into the 3rd party app's bounding box, the OS won't have any default anchors to snap to, leaving the user to fish around the app's volume manually. Thus, it is important for 3rd party apps to define focus anchors early on because it enables the user to instantly summon access to any collection of elements within the app. This is a key advantage of 3OS because it enables the app content to BE the interface. If, for example, it's a CAD program, it can be designed such that every part automatically has a focus anchor, thus the developer can allow the user to pull/inspect/edit any part instantly without needing to code a custom UI. The OS already enables it.
 
-### 8) Application Volumes
-  In 3OS, applications exist within 3D volumes rather than within 2D windows. Unmaximized volumes default to the 2x2x3 (WxDxH) aspect ratio of the default 3OS voodoo volume. 3rd party developers can use the 3OS SDK to configure their app manifest to launch minimized or maximized. Unlike 2D windows that have three states (minimized, default, and maximized), 3OS app volumes have four states: minimized, default, max_MR, and max_VR. This is because an app maximized in MR is assumed to take priority over all available space in the room, yet still must respect the boundaries of the room as its bounding box, whereas in VR the app's volume can expand to encapsulate infinite space. 3OS can be toggled from MR to VR with a gesture, and applications can be launched in either mode, so the maximize button dynamically fills the available space in either MR or VR. Maximizing one app minimizes all other open apps, sending them each a message that their render pipelines and tick loops can sleep, and they can await a re-focus message in standby. Minimized apps retain memory allocation, but minimize and re-focus callbacks can be used to preform appropriate memory management for perf op.
+### 7) Application Volumes (Application Windows... but 3D)
+  In 3OS, applications exist within 3D volumes rather than within 2D windows. Unmaximized volumes default to the 2x2x3 (WxDxH) aspect ratio of the default 3OS voodoo volume. 3rd party developers can use the 3OS SDK to configure their app manifest to launch minimized or maximized. Unlike 2D windows that have three states (minimized, default, and maximized), 3OS app volumes have four states: minimized, default, max_MR, and max_VR. This is because an app maximized in MR is assumed to take priority over all available space in the room, yet still must respect the boundaries of the room as its bounding box, whereas in VR the app's volume can expand to encapsulate infinite space. 3OS can be toggled from MR to VR with a gesture, and applications can be launched in either mode, so the maximize button dynamically fills the available space in either MR or VR. Maximizing one app minimizes all other open apps, sending them each a message that their render pipelines and tick loops can sleep, and they can await a re-focus message in standby. Minimized apps retain memory allocation, but minimize and re-focus callbacks can be used to perform appropriate memory management for perf op.
 
-### 7) 3D Buttons
+### 8) Point Cursors (Mouse Cursors... but 3D)
+  In 3OS, point cursors are nodes in 3D space tied to the thumb of each hand by an offset slightly forward of the body and upward. Point cursors are designed to resolve the conflicting needs of good ergonomics (restful elbows = low hands) versus peripheral widgets (too low for good peripheral visibility if ergo is good). Point cursors also resolve hand occlusion issues. Similarly to the magnifier popover in touchscreen texting when large fingers occlude letters and the letters need to be blown up and lifted above the fingers, point cursors allow near field widgets to be lifted slightly so they can be controlled without the hands covering up the value of their visible changes during hover, selection, etc.
+
+### 9) 3D Buttons (Buttons... but 3D)
   In 3OS, buttons are typically depicted as translucent cubes or other simple volumetric prisms, often with smoothed edges. Text labels may hover near, above, below, or inside the geometry, typically shaded over the top of their geo to enable clear legibility even if geo occludes any part of the text. Buttons in 3OS are volumetric, meaning cursors don't hover ONTO them; they hover INTO them. If touched directly by virtual hands, the button surface has no physics properties. The hand travels through it as though it is a ghost. We call it a button to avoid confusion around functionality. It is an event trigger handler just like any other button, but it does not reside on a surface, nor is it to be pressed. It floats in mid air, needing no flat panel to rest upon. A cursor enters into it from any vector and triggers a hover-state glow effect or other visual cue. During hover, the user performs a gesture, usually index-to-thumb pinch, to activate the button.
 
-### 8) Matrices
+### 10) Matrices (Table layouts... but 3D)
   Elements in legacy UI lay out on X and Y dimensions in table form. In a voxel-based OS, utilizing even one more interactive plane ahead of or behind the first plane unlocks more grid positions with less travel distance. For instance, a 4x4 or 2x8 table of elements in a 2D UI is much better laid out as a 2x2x2 matrix in 3OS. A minimum adjacency analysis on any collection of items will show matrices are ergonomically better and faster than tables.
 
-### 9) Clusters
+### 11) Clusters (2D clusters... but 3D)
   Similar to matrices, but spatial positioning is more loose in that the objects need not align on any kind of local Euclidean grid. Instead, they operate on a set of min-max adjacency parameters from their nearest neighbors, usually grouped in close proximity due to some shared attribute.
 
-### 10) Spherical Multi-Choice Nodes
+### 12) Spherical Multi-Choice Nodes (Radio buttons... but 3D)
   A 3D-ified radio button element. 3OS supports easy creation of these spherical interfaces which are similar to desktop radio button lists in that alternate choices (A or B or C etc.) are arranged near each other, but in 3OS they can occupy uniform angular space around a center point. They may render as segments of a sphere, or each as 3D buttons floating in a formation. The cursor's vector relative to the center point changes hover state enabling highlight of one of the elements in that collection. This interface style is the highest-performance voxel-based multiple-choice option because it eliminates any possibility of overshoot errors. The multi-choice node may have an extra core node at its center which could be an extra multi-choice option or a neutral "none" option, and it may also have an out-of-bounds limit radius encapsulating the group.
 
-### 11) Sync Planes
-  Generally, planar UI in 3OS is discouraged. Default UI elements are volumetric and isometric, whereas planar elements typically require perspective-based raycasting for far field interaction, which is not impossible, but it must be custom-built case-by-case at the service and application layers. In general, if a planar UI exists in 3OS, it typically represents the virtual twin of a physical screen in an MR context. For instance, in a room with 12 2-monitor workstations mounted to its walls, any pair of monitors might be in use with WIMP-style UI elements on-screen. 3OS will be able to render that screen's output at any size via a sync plane, but more likely the sync plane will be invisible and superimposed over the physical screen it represents, enabling remote control interaction. Sync planes will feature API integration and transition between 2D and 3D elements. The WIMP instance running on the 2D screens would be rendered by the same server as the OS driving the eyewear, thus it holds an inventory of all shared interactive elements, which means an HMD user could use a voodoo volume to target the screen itself, or target one of its open windows, e.g. a File Explorer. Once the 2D File Explorer window is targeted, it would automatically be converted to its 3D representation in the near field in the same fashion as using a 3D-to-3D voodoo volume. This 2D-to-3D transition can work identically for any 3rd party software. For example, a control widget in a 2D Autodesk Maya window might be pulled into 3D MR space via a voodoo volume if Autodesk developers used the 3OS SDK to enable that functionality.
+### 13) Sync Planes (2D UI brought into 3D)
+  Generally, planar UI in 3OS is discouraged. Default UI elements are volumetric and isometric, whereas planar elements typically require perspective-based raycasting for far field interaction, which is not impossible, but it must be custom-built case-by-case at the service and application layers since 3OS offers no built-in raycast and recommends against 3rd parties using it too. In general, if a planar UI exists in 3OS, it typically represents the virtual twin of a physical screen in an MR context. For instance, in a room with 12 2-monitor workstations mounted to its walls, any pair of monitors might be in use with WIMP-style UI elements on-screen. 3OS will be able to render that screen's output at any size via a sync plane, but more likely the sync plane will be invisible and superimposed over the physical screen it represents, enabling remote control interaction. Sync planes will feature API integration and transition between 2D and 3D elements. The WIMP instance running on the 2D screens would be rendered by the same server as the OS driving the eyewear, thus it holds an inventory of all shared interactive elements, which means an HMD user could use a voodoo volume to target the screen itself, or target one of its open windows, e.g. a File Explorer. Once the 2D File Explorer window is targeted, it would automatically be converted to its 3D representation in the near field in the same fashion as using a 3D-to-3D voodoo volume. This 2D-to-3D transition can work identically for any 3rd party software. For example, a control widget in a 2D Autodesk Maya window might be pulled into 3D MR space via a voodoo volume if Autodesk developers used the 3OS SDK to enable that transition.
 
 
 </details>
@@ -362,7 +429,7 @@ At the advent of modern VR with the Oculus Kickstarter, millions of us dreamed o
 
 Hardware engineers are doing their part to shrink the technology to near-sunglasses form factor. As we approach elimination of this ergo bottleneck, it's well-past time for the OS layer to have provided a uniform 3D UI paradigm capable of enabling all 3D software compatibility, including CAD, VFX tools, and game engines to run in a cohesive single environment with multitasking (e.g. Maya and Unreal both running in a shared field). 
 
-3OS encourages 3rd parties not to think of their ported app as a floating window. In 3OS, floating windows are like command-line tools. Power users may need them occasionally, but most users should prefer engaging directly with the 3D content. For example, it may be challenging to picture all of Autodesk Maya's many features working without the panoply of sidebars and menus and dropdowns, but it can be done with a little imagination. It is likely to include conversion of 2D sidebars into 3D widgets that are summon-able per-context relative to the content itself. Widgets are also achnorable to any rolling standing desk as a feature of the 3OS Server spec, but for the most part, <b>the content itself IS the interface.</b>
+3OS encourages 3rd parties not to think of their ported app as a floating window. In 3OS, floating windows are like command-line tools. Power users may need them occasionally, but most users should prefer engaging directly with the 3D content. For example, it may be challenging to picture all of Autodesk Maya's many features working without the panoply of sidebars and menus and dropdowns, but it can be done with a little imagination. It is likely to include conversion of 2D sidebars into 3D widgets that are summon-able per-context relative to the content itself. Widgets are also anchorable to any rolling standing desk as a feature of the 3OS Server spec, but for the most part, <b>the content itself IS the interface.</b>
 
 3OS aims to support XR app multitasking despite its immense perf op challenges. The first professional deployments of 3OS are intended to run on on-prem VDI servers with plenty of horsepower to handle the job, and 3OS aims to provide an SDK for enterprise 3rd parties to finally port their apps natively into XR.
 
@@ -525,7 +592,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 ### 3. Proprioceptive Interaction Models — 1997
 *   **Citation:** Mine, M. R., Brooks Jr, F. P., & Sequin, C. H. (1997). "Moving objects in space: Exploiting proprioception in virtual-environment interaction." *Proceedings of the 24th annual conference on Computer graphics and interactive techniques (SIGGRAPH '97)*, 19–26.
-*   **Significance to 3OS:** Proved that humans possess a highly accurate, innate biological awareness of their hands' positions relative to their body frames without requiring constant visual feedback (**proprioception**). This serves as the scientific bedrock for the **3OS Drummer's Law of Biomechanical Subordination**—keeping the shoulder girdle (coracobrachialis) completely neutral while the wrist and fingers drive intent inside near-field workspaces, i.e. peripheral remote controls in the near field manipulate objects in the far field.
+*   **Significance to 3OS:** Proved that humans possess a highly accurate, innate biological awareness of their hands' positions relative to their body frames without requiring constant visual feedback (**proprioception**). This serves as the scientific bedrock for the **3OS Drummer's Law**—keeping the shoulder girdle (coracobrachialis) completely neutral while the wrist and fingers drive intent inside near-field workspaces, i.e. peripheral remote controls in the near field manipulate objects in the far field.
 
 ### 4. The Foundational Voodoo Dolls Paper — 1999
 *   **Citation:** Pierce, J. S., Stearns, B. C., & Pausch, R. (1999). "Voodoo Dolls: Seamless Interaction at Multiple Scales in Virtual Environments." *Proceedings of the 1999 symposium on Interactive 3D graphics (I3D '99)*, 141–145.
@@ -534,7 +601,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 ### 5. Pointing at Trivariate Targets — 2004
 
 *   **Citation:** Grossman, T., & Balakrishnan, R. (2004). "Pointing at trivariate targets in 3D environments." *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '04)*, 447–454.
-*   **Significance to 3OS:** Introduced an important equation derived from Fitt's Law that models a 6DOF hand's ability to hit voxel-based targets in 3D space at maximum speed without overshoot. 3OS relies on a slight modification of this equation to determine the default 3" voxel size (see spatial_os_trivariate_validation.md).
+*   **Significance to 3OS:** Introduced an important equation derived from Fitts' Law that models a 6DOF hand's ability to hit voxel-based targets in 3D space at maximum speed without overshoot. 3OS relies on a slight modification of this equation to determine the default 3" voxel size (see spatial_os_trivariate_validation.md).
 
 
 ### 6. The Poros Framework — 2021
@@ -546,7 +613,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 *   **Significance to 3OS:** Evaluated and validated that using spatial computer vision and semantic machine intelligence are crucial for streamlining the associations between world mesh geo and virtual content that fully utilizes the context of that geo.
 
 ### 8. Fitts' Law + XR Review of 122 studies  — 2025
-*   **Citation:** Amini, M., Stuertzlinger, W., Teather, R.J., & Batmaz, A.U. "A Systematic Review of Fitt's Law in 3D Extended Reality" *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.
+*   **Citation:** Amini, M., Stuerzlinger, W., Teather, R.J., & Batmaz, A.U. "A Systematic Review of Fitts' Law in 3D Extended Reality" *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.
 *   **Significance to 3OS:** Identified that only 36% of XR HCI studies of the past several decades (44 total) that focused on throughput performance had targeted virtual hand (point cursor) interaction models, whereas more than 50% targeted raycast techniques. The other 14% were eye tracking studies.
 
 
@@ -590,7 +657,7 @@ The 3OS interface layer reserves all primary event triggers and secondary-palm-d
 
 ### Hover and Selection
 
-Buttons in 3OS are 3D and volumetric by default, meaning point cursors hover INTO them rather than raycast cursors hovering ONTO them. When a point cursor enters or exits the volume of a 3D button, its hover state toggles. While hovered, primary pinch activates the buttton. Similarly, hover and pinch in an object flags that object as currently selected. Multi-choice nodes work in the same way, except hover is defined by an angular relationship between the cursor and a center point between a group of buttons.
+Buttons in 3OS are 3D and volumetric by default, meaning point cursors hover INTO them rather than raycast cursors hovering ONTO them. When a point cursor enters or exits the volume of a 3D button, its hover state toggles. While hovered, primary pinch activates the button. Similarly, hover and pinch in an object flags that object as currently selected. Multi-choice nodes work in the same way, except hover is defined by an angular relationship between the cursor and a center point between a group of buttons.
 
 ### Multi-Selection
 
@@ -603,46 +670,6 @@ Palm-down + Primary-pinch-hold begins voodoo volume selection. Drag position of 
 ### Toggling the Mind Palace
 
 To toggle the Mind Palace (MR-office-to-VR-hard-drive or vice versa), the user turns both flat palms toward their face like an open book, thumbs out in opposite directions. This calls up the current toggle status. It will read either "MR" or "VR". Closing the thumbs simultaneously will toggle MR to VR or vice versa.
-
-</details>
-
----
-
-<a id="field-rings"></a>
-<details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">⭕ Field Rings</summary>
-
-### Understanding the Field in 3OS
-
-For decades, HCI research has subdivided the interactable spatial field into two main categories:
-
-#### Near Field: 
-  * everything your fingertips can reach
-#### Far Field: 
-  * everything your fingertips can't reach
-
-These are the root categories of an interactive field because they require two different interaction techniques. Users may grab objects in the near field and may expect them to have physics-based and/or skeumorphic properties, whereas some form of raycasting or telekinesis is needed to reach far-field objects.
-
-### Deeper Subcategories:
-
-#### The Pseudo-Near Field
-
-In 3OS, the goal is always to merge chunks of the far field into the near field instantly to take advantage of the proprioceptive power of near field interaction, yet 3OS also avoids physics-based and skeumorphic interactions by default since neither lend themselves to clusters of objects that can take advantage of the whole far field by avoiding gravity and occlusion. Thus, all interactive UI objects in 3OS are ghostly by default. They float and are translucent.
-
-When these ghostly 3OS objects enter into the near field, the user does not put a hand directly inside them for manipulation. Instead, the user's hand drives a point cursor (offset a few inches forward and above the hand by a parameterized amount). The point cursor enables the user to slightly extend their near-field reach. They gain proprioception over that extended space because the cursor feels like yet another joint of their arm, which widens the near field. We call this extension the pseudo-near field (an outer sheel of the near field), and most 3OS UIs live in this pseudo space when called in from the far field. This technique is crucial for comfort and efficiency:
-
-3OS UIs are usually contextual widgets for far-field objects, meaning they operate as remote controls meant to utilize peripheral vision. The hands with good neutral elbow position for good ergo are slightly too low for good peripheral cues if they're sharing the same space with these widgets, which means you'd have to move the widgets too low for periphery, or make the user hold their hands too high for comfort. The solution is separation of the hands from the widgets with a slight offset via point cursors. Pseudo-near field widgets driven by point cursors are the best-of-both-worlds: comfort and efficiency in one interface.
-
-#### The Two Rings of the Far Field
-
-The far field is gigantic. It makes sense to subdivide it as soon as we begin using it for large and complex clusters of objects. The immediate far field (radius of ~20ft), allows for exponentially more clarity via less perspective size warping and parallax stereoscopy than the rest of the far field. In 3OS, we think of the far field in two parts:
-
-  #### The Working Ring
-    This is the closer section of the far field, typically defined by ~20ft radius from the user in all directions. This range is not parameterized by 3OS because it is a mental guideline for users, not a requirement. It helps to keep a field organized by keeping objects that need frequent manipulation closer in the far field.
-  #### The Storage Ring
-    Likewise, objects that may sit untouched for hours, days, or weeks belong in the outer ring of the far field (beyond 20ft range) where they can be brought into the working ring once they become relevant for new tasks.
-
-These ring subdivisions are not necessary in every context, but they exist to support the most complex enterprise interactions available, including rapid file management, 3D visual node-based programming, 3D data visualization, etc.
 
 </details>
 

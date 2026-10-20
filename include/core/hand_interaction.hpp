@@ -29,6 +29,8 @@ enum class InteractionIntentFlags : uint32_t {
   TernaryHeld = 1u << 5,
   VoodooFree = 1u << 6,  // secondary + palm down
   MindPalaceMenu = 1u << 7,     // secondary + palm up (Multi-Choice)
+  ModeToggleArmed = 1u << 8,    // open-book pose held (MR↔VR glyph)
+  ModeTogglePulse = 1u << 9,    // latched dual-thumb-close edge → confirm toggle
 };
 
 inline InteractionIntentFlags operator|(InteractionIntentFlags a, InteractionIntentFlags b) {
@@ -115,6 +117,12 @@ class HandInteractionEngine {
   static Vec3 cursor_probe_hand(uint32_t hand, const Vec3& midpoint, const Pose& head,
                                 bool head_valid);
   static float approach_scale(float distance_m, float thresh_m);
+  /// Open-book base (palms/fingers/sep) vs enter (base + thumbs out). Used by 0.7 Task 7.7.
+  static bool open_book_base(const HandSample& left, const HandSample& right, const Pose& head,
+                             bool head_valid);
+  static bool open_book_enter(const HandSample& left, const HandSample& right, const Pose& head,
+                              bool head_valid);
+  static bool thumb_closed(const HandSample& hand, bool was_closed);
 
  private:
   struct HandRuntime {
@@ -137,10 +145,16 @@ class HandInteractionEngine {
   static PinchChannel pick_driving_channel(const HandSample& s, float thresh_m, float* out_d);
   static Vec3 pair_midpoint(const HandSample& s, PinchChannel ch);
 
+  void tick_mode_toggle(const Pose& head, bool head_valid);
+
   HandRuntime hands_[2]{};
   PointCursor cursors_[2]{};
   InteractionIntents intents_{};
   float pinch_thresh_m_ = kDefaultPinchThreshM;
+  bool mode_toggle_armed_sticky_ = false;   // entered with thumbs out; holds through thumb close
+  bool mode_toggle_thumb_latched_ = false;  // held closed after pulse until dual open
+  bool mode_toggle_left_thumb_closed_ = false;
+  bool mode_toggle_right_thumb_closed_ = false;
 };
 
 }  // namespace threeos

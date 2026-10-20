@@ -35,6 +35,10 @@ void HandInteractionEngine::reset() {
   cursors_[1] = {};
   intents_ = {};
   pinch_thresh_m_ = kDefaultPinchThreshM;
+  mode_toggle_armed_sticky_ = false;
+  mode_toggle_thumb_latched_ = false;
+  mode_toggle_left_thumb_closed_ = false;
+  mode_toggle_right_thumb_closed_ = false;
 }
 
 void HandInteractionEngine::set_hands(const HandSample& left, const HandSample& right) {
@@ -107,6 +111,175 @@ float HandInteractionEngine::approach_scale(float distance_m, float thresh_m) {
   }
   const float t = distance_m / thresh_m;
   return kCursorScaleMin + (1.f - kCursorScaleMin) * t;
+}
+
+namespace {
+
+constexpr float kModeTogglePalmTowardHead = 0.50f;
+constexpr float kModeToggleFingerClusterM = 0.060f;
+constexpr float kModeToggleThumbOutM = 0.015f;
+constexpr float kModeToggleThumbCloseEnterM = 0.038f;
+constexpr float kModeToggleThumbCloseExitM = 0.058f;
+constexpr float kModeToggleBookSepMinM = 0.06f;
+constexpr float kModeToggleBookSepMaxM = 0.50f;
+constexpr float kModeToggleHeightDeltaMaxM = 0.20f;
+
+Vec3 palm_proxy(const HandSample& s) {
+  if (s.has_tips(0x10u)) {
+    return s.index_proximal;
+  }
+  // Average available tips.
+  Vec3 acc{};
+  int n = 0;
+  auto add = [&](uint32_t bit, const Vec3& p) {
+    if (s.has_tips(bit)) {
+      acc.x += p.x;
+      acc.y += p.y;
+      acc.z += p.z;
+      ++n;
+    }
+  };
+  add(0x1u, s.thumb_tip);
+  add(0x2u, s.index_tip);
+  add(0x4u, s.middle_tip);
+  add(0x8u, s.ring_tip);
+  if (n == 0) {
+    return {};
+  }
+  const float inv = 1.f / static_cast<float>(n);
+  return Vec3{acc.x * inv, acc.y * inv, acc.z * inv};
+}
+
+bool fingers_unsplayed(const HandSample& s) {
+  // Need at least two finger tips (index/middle/ring) to judge cluster.
+  Vec3 tips[3];
+  int n = 0;
+  if (s.has_tips(0x2u)) {
+    tips[n++] = s.index_tip;
+  }
+  if (s.has_tips(0x4u)) {
+    tips[n++] = s.middle_tip;
+  }
+  if (s.has_tips(0x8u)) {
+    tips[n++] = s.ring_tip;
+  }
+  if (n < 2) {
+    return false;
+  }
+  float max_d = 0.f;
+  for (int i = 0; i < n; ++i) {
+    for (int j = i + 1; j < n; ++j) {
+      max_d = std::max(max_d, dist(tips[i], tips[j]));
+    }
+  }
+  return max_d <= kModeToggleFingerClusterM;
+}
+
+bool palm_toward_head(const HandSample& s, const Pose& head) {
+  if (!s.has_tips(0x1u) && !s.has_tips(0x10u)) {
+    return false;
+  }
+  const Vec3 palm = palm_proxy(s);
+  const Vec3 to_head = normalize_or(
+      Vec3{head.position.x - palm.x, head.position.y - palm.y, head.position.z - palm.z},
+      Vec3{0.f, 0.f, -1.f});
+  const Vec3 n = normalize_or(s.palm_normal, to_head);
+  return n.x * to_head.x + n.y * to_head.y + n.z * to_head.z >= kModeTogglePalmTowardHead;
+}
+
+bool thumb_outward(const HandSample& s, uint32_t hand /*0 L, 1 R*/, const Pose& head,
+                   bool head_valid) {
+  if (!s.has_tips(0x1u)) {
+    return false;
+  }
+  const Vec3 palm = palm_proxy(s);
+  const Vec3 fwd = head_valid ? HandInteractionEngine::floor_forward(head) : Vec3{0.f, 0.f, 1.f};
+  const Vec3 right = normalize_or(Vec3{fwd.z, 0.f, -fwd.x}, Vec3{1.f, 0.f, 0.f});
+  const Vec3 thumb_off{s.thumb_tip.x - palm.x, s.thumb_tip.y - palm.y, s.thumb_tip.z - palm.z};
+  // Left thumb out → −right; right thumb out → +right.
+  const float lateral = thumb_off.x * right.x + thumb_off.z * right.z;
+  return hand == 0 ? (lateral <= -kModeToggleThumbOutM) : (lateral >= kModeToggleThumbOutM);
+}
+
+}  // namespace
+
+bool HandInteractionEngine::thumb_closed(const HandSample& hand, bool was_closed) {
+  if (!hand.tracked || !hand.has_tips(0x1u) || !hand.has_tips(0x10u)) {
+    return false;
+  }
+  const float d = dist(hand.thumb_tip, hand.index_proximal);
+  if (was_closed) {
+    return d <= kModeToggleThumbCloseExitM;
+  }
+  return d <= kModeToggleThumbCloseEnterM;
+}
+
+bool HandInteractionEngine::open_book_base(const HandSample& left, const HandSample& right,
+                                           const Pose& head, bool head_valid) {
+  if (!head_valid || !left.tracked || !right.tracked) {
+    return false;
+  }
+  if (!palm_toward_head(left, head) || !palm_toward_head(right, head)) {
+    return false;
+  }
+  if (!fingers_unsplayed(left) || !fingers_unsplayed(right)) {
+    return false;
+  }
+  const Vec3 lp = palm_proxy(left);
+  const Vec3 rp = palm_proxy(right);
+  const float sep = dist(lp, rp);
+  if (sep < kModeToggleBookSepMinM || sep > kModeToggleBookSepMaxM) {
+    return false;
+  }
+  if (std::fabs(lp.y - rp.y) > kModeToggleHeightDeltaMaxM) {
+    return false;
+  }
+  return true;
+}
+
+bool HandInteractionEngine::open_book_enter(const HandSample& left, const HandSample& right,
+                                            const Pose& head, bool head_valid) {
+  if (!open_book_base(left, right, head, head_valid)) {
+    return false;
+  }
+  return thumb_outward(left, 0, head, head_valid) && thumb_outward(right, 1, head, head_valid);
+}
+
+void HandInteractionEngine::tick_mode_toggle(const Pose& head, bool head_valid) {
+  const HandSample& L = hands_[0].sample;
+  const HandSample& R = hands_[1].sample;
+
+  // Enter requires thumbs out; stay armed through thumb-close while base pose holds.
+  if (open_book_enter(L, R, head, head_valid)) {
+    mode_toggle_armed_sticky_ = true;
+  } else if (!open_book_base(L, R, head, head_valid)) {
+    mode_toggle_armed_sticky_ = false;
+  }
+  const bool armed = mode_toggle_armed_sticky_;
+
+  mode_toggle_left_thumb_closed_ = thumb_closed(L, mode_toggle_left_thumb_closed_);
+  mode_toggle_right_thumb_closed_ = thumb_closed(R, mode_toggle_right_thumb_closed_);
+  const bool both_closed = mode_toggle_left_thumb_closed_ && mode_toggle_right_thumb_closed_;
+
+  bool pulse = false;
+  if (!armed) {
+    // Cancel arming: drop latch so a later arm needs a fresh close edge.
+    mode_toggle_thumb_latched_ = false;
+  } else if (mode_toggle_thumb_latched_) {
+    if (!both_closed) {
+      mode_toggle_thumb_latched_ = false;
+    }
+  } else if (both_closed) {
+    mode_toggle_thumb_latched_ = true;
+    pulse = true;
+  }
+
+  if (armed) {
+    intents_.flags |= InteractionIntentFlags::ModeToggleArmed;
+  }
+  if (pulse) {
+    intents_.flags |= InteractionIntentFlags::ModeTogglePulse;
+  }
 }
 
 PinchChannel HandInteractionEngine::pick_driving_channel(const HandSample& s, float thresh_m,
@@ -353,6 +526,9 @@ void HandInteractionEngine::tick(const Pose& head, bool head_valid, double time_
   if (pick >= 0) {
     intents_ = hands_[static_cast<size_t>(pick)].pending_intents;
   }
+
+  // Dual-hand MR↔VR open-book is OR'd after preferred-hand aggregation.
+  tick_mode_toggle(head, head_valid);
 }
 
 }  // namespace threeos

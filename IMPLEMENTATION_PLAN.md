@@ -343,12 +343,12 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 ---
 
 ### 🎬 Phase 0.7: Final Demo — MR Intro → Mind Palace ↔ MR Office (v0.7.0)
-**Goal:** Ship the **final product demo reel** in three acts. **Act I (~⅓):** open in the **MR office**, introduce 3OS via a togglable GitHub plane, then engage a **3D agent (NPC)** with head+hands performance clips. **Acts II–III (~⅔):** existing scope — summon the **Mind Palace** for rapid FS management, then transition back to MR for desk Box / Blender / Unreal / monitor STREAM. The Mind Palace remains a **VR overlay** over an MR-enabled office; summon/dismiss with a gesture; the same Box can have different spatial anchors in VR vs world-mesh MR.
+**Goal:** Ship the **final product demo reel** in three acts. **Act I (~⅓):** open in the **MR office**, introduce 3OS via a togglable GitHub plane, then engage a **3D agent (NPC)** with head+hands performance clips. **Acts II–III (~⅔):** summon the **Mind Palace** for rapid FS management, then transition back to MR for desk Box / Blender floor spawn beside Unreal. *(Monitor spectator drop + STREAM was **7.10** — **86’d** for 0.7.)* The Mind Palace remains a **VR overlay** over an MR-enabled office; summon/dismiss with a gesture; the same Box can have different spatial anchors in VR vs world-mesh MR.
 
 **Story beat (filmed order):**
 1. **MR cold open** — XR Origin + NPC already in the office, NPC held on **frame 0 of clip 01** before engagement. Show GitHub plane for intro; dismiss. Voodoo the NPC head → agent Multi-Choice widget → Speak (mic) → “talk” → NPC clip 01. Speak again → NPC clip 02, then NPC shrinks into the floor.
 2. **Mind Palace** — Open-book VR toggle; FS cut-paste / third Palace node (as already scoped).
-3. **Back to MR** — Desk-anchored Box edited in VR; Blender beside Unreal; monitor spectator drop + STREAM. Optionally re-summon GitHub plane for the close.
+3. **Back to MR** — Desk-anchored Box edited in VR; Blender floor spawn FX beside Unreal (loading glyph → laser perimeter → badge → logos → DemonA wipe). Optionally re-summon GitHub plane for the close. **No STREAM.**
 
 **Depends on:** 0.6 voodoo / MindPalace / Multi-Choice (debug closed). Multi-select (**0.8**) is not required for the scripted path. *(Inserted ahead of multi-select / layouts / enclosure.)* Hand-performance JSON **01/02** + matched audio already captured in the Android hands test scene (`Assets/3OS_FinalDemo/Performances/`, `Assets/Audio/jarvis_voice_clip_0{1,2}`).
 
@@ -402,26 +402,47 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
   - [ ] Seed / register a **3rd** MindPalace root (Quest `Documents/3OS_Demo3` or project stand-in) so the Palace demo has three nodes without new layout math.
   - [ ] Quest fixture: dual cut-paste of two directories into a destination Box remains the primary Palace beat (existing scissors + bump).
 - [ ] **Task 7.7: VR ↔ MR toggle gesture + skybox wipe**
-  - [ ] Filmed path: after Act I, use this gesture to **enter** Mind Palace (**MR → VR**), then later **return** to the office (**VR → MR**).
+  - [ ] **Delivery target / done when:** on device (or Editor MR simulation), the open-book + thumb-close flow can **round-trip** — **MR → VR (Palace)** and **VR → MR (office)** and **back again** — with matching glyph swap + skybox wipe each way. That reversible toggle is the confirmation test that 7.7 is complete (not a one-shot enter/exit).
+  - [ ] **0.7 scope for 7.7:** wipe + **host mode flag** + toggle glyph only. Do **not** require undeferring Mind Palace FS roots / glyphs (7.6) for this task to pass.
+  - [ ] Filmed path still uses the same gesture after Act I to **enter** Mind Palace (**MR → VR**), then later **return** to the office (**VR → MR**); film may only show one enter/return, but implementation must support repeated toggling.
   - [ ] **Open-book gesture:** both palms toward the user’s eyes, fingers unsplayed, palms aligned like an open book, thumbs out L/R. On register (palms + thumbs in starting position), spawn the beveled toggle glyph between the hands showing the **current** mode: **"MR"** while in MR, **"VR"** while in the Palace.
-  - [ ] **Thumb close (MR → Palace):** thumbs against palm blade (threshold distance to base index knuckle). Glyph swaps **"MR" → "VR"**; run the skybox wipe **in reverse** of the Palace→MR blast (inward / reverse cylindrical wipe with feathered edge) so the Mind Palace skybox **closes in** over the office.
-  - [ ] **Thumb close (Palace → MR):** glyph swaps **"VR" → "MR"**; skybox wipe plays **forward** (user-outward cylindrical blast → horizon → wink out) revealing the MR office again. Glyph sequence is the reverse of the MR→Palace transition.
+  - [ ] **Toggle glyphs:** author beveled **extruded text** `MR` / `VR` in Blender → `.3glyph` (rare text-glyph exception; most glyphs stay symbol meshes). Packs: `mr.3glyph` / `vr.3glyph`.
+  - [ ] **Cancel before confirm:** if open-book breaks **before** the thumbs trigger fires, **dismiss the glyph** and do **not** change mode / start wipe.
+  - [ ] **Thumb close (confirm):** thumbs against palm blade (threshold distance to base index knuckle). **Wipe begins on this edge.** Glyph swaps to the destination mode label. Dual-thumb close uses **enter/exit hysteresis latch** so a held close cannot re-fire every frame (must open past exit before the next pulse). After a pulse, open-book may stay armed for an immediate toggle-back once thumbs re-open and close again.
+  - [ ] **MR → Palace:** glyph **"MR" → "VR"**; skybox wipe **in reverse** of the Palace→MR blast (inward / reverse cylindrical wipe with feathered edge) so the Mind Palace skybox **closes in** over the office.
+  - [ ] **Palace → MR:** glyph **"VR" → "MR"**; skybox wipe plays **forward** (user-outward cylindrical blast → horizon → wink out) revealing the MR office again.
+  - [ ] **Wipe duration:** default **0.5 s** (tunable; may slow later).
   - [ ] Bidirectional wipe + reverse glyph order required for UX; both directions appear in the filmed path.
-  - [ ] Core intents + host shader/adapter for the wipe (plane/cylinder math in core or documented host contract).
+  - [ ] **Open-book geometry (host XR joints + HUD):** both palms face user (dot thresh); index/middle/ring dirs parallel to each other and orthogonal to palm normal; tip-cluster unsplayed (enter **and** continuous cancel); thumbs ortho to palm + finger axis (**enter only**, dropped once armed so thumbs can close). World HUD + logcat `[3OS][OpenBook]` gate flips.
+  - [ ] **Palace layering (baseline first):** Sky Overlay + `ZTest Always` draws **over everything** (confirmed). Then opt keep-list items (hands → cursors → HUD → glyphs) in front one at a time. Settled Palace still voids MR `Office` root. Avoid queue wars / LEqual cutouts until baseline is solid.
+  - [ ] **Core ABI intents** (still present): `ModeToggleArmed` / `ModeTogglePulse`. Host open-book is authoritative for Quest arm/pulse; core OR'd when available. Pulse = latched dual-thumb-close edge. Host drives glyph + wipe + mode flag.
 - [ ] **Task 7.8: Dual-anchor Box (Palace vs MR desk)** *(was 7.9; old 7.8 office focus-anchors cancelled — NPC head only)*
   - [ ] Same directory/Box retains a Mind Palace field pose **and** a world-mesh / desk pose in MR; opening Palace is “breathing room” for large FS edits, then dismiss back to the desk anchor.
   - [ ] Demo path: open the Box that received the Palace paste while in MR via normal voodoo controls.
 - [ ] **Task 7.9: App surface — Blender beside Unreal** *(was 7.10)*
-  - [ ] From the desk Box voodoo: pull the Blender source for an asset animating in the Unreal volume; dismiss that voodoo; **double-pinch** the Blender file → loading widget over that hand.
-  - [ ] **Palm toward floor, fingers splayed:** spawn a floor square with Blender logo where the palm points. Localize center with **average of eye-gaze target + palm-normal target** (rare surface-control case).
-  - [ ] Perimeter loading bar (animating blue line renderer); on complete, Blender instance anchors there and shows the same t-posed character as in the Unreal volume (side-by-side apps in one frustum). Stand-in apps OK for the reel.
+  - [ ] From the desk Box voodoo: pull the Blender source for an asset animating in the Unreal volume; dismiss that voodoo.
+  - [ ] **Double-pinch the Blender model file** → immediately spawn a **small spinning loading glyph** **above and slightly forward** of the **double-pinch hand** (that hand is the one that must later palm-drop the instance). No floor spawn yet.
+  - [ ] **Palm-drop arming (line-renderer start):** while the loading glyph is up, begin the floor perimeter line-renderer animation only when **both** hold:
+    - **Fingers sufficiently splayed** (spread threshold vs closed fist / pinch), and
+    - **Palm aiming toward the floor** (palm-normal · world-down / floor-up **dot-product threshold**).
+  - [ ] **Cancel / reset:** if palm leaves the toward-floor dot threshold **or** fingers close up past the splay threshold mid-trace, **cancel and reset** the line-renderer animation (no partial commit). Loading glyph may remain until a clean arm succeeds or the user cancels the hand flow.
+  - [ ] **Localization:** place the imaginary base plane where the palm points; center = **average of eye-gaze floor hit + palm-normal floor hit** (rare surface-control case) when both are valid.
+  - [ ] **Line renderer (loading perimeter):**
+    - Traces the **edge of an imaginary base plane** matching the **in-scene `Blender_Badge` base-plane size** (same footprint as the staged badge mesh).
+    - Material/texture with a **basic feathered opacity edge** (glowing laser look).
+    - Color = **agent Multi-Choice widget blue** for now (`~0.45, 0.78, 0.95`).
+    - On full perimeter complete → proceed to mesh reveal sequence (below).
+  - [ ] **Staged hierarchy (`Blender Group` parent):** all objects that become “the Blender instance” live under this parent. Keep them inactive / zero-scale / shader-hidden until their step fires.
+  - [ ] **Reveal sequence (strict order):**
+    1. **`Blender_Badge`** is the **first** actual mesh to become visible. After the line renderer finishes tracing, instantiate / activate it at **0% scale** in the **center** of the traced square. **Lerp yaw** while **lerp-scaling** until it lands at **exactly the dimensions drawn by the line renderer** (footprint match).
+    2. Immediately after badge settle: all four **`Blender_Logo`** children under `Blender Group` **simultaneously** lerp-scale **0% → 100%** with a **~10% overshoot** then settle.
+    3. Then meshes under **`DemonA`**: **shader-wipe reveal toe→head / bottom→top**, **plasma-esque feathered wipe edge**, default duration **0.5 s** (quick).
+  - [ ] After the sequence: Blender instance is anchored on the floor beside the Unreal stand-in (same t-posed character as in the Unreal volume; side-by-side apps in one frustum). Stand-in apps OK for the reel.
   - [ ] Floor Unreal stand-in: invisible rectangular volume (normal far-BB aspect rules) + Unreal logo on floor — **no** focus-anchor requirement; **no real Unreal runtime**.
-- [ ] **Task 7.10: Monitor voodoo — spectator drop + STREAM** *(was 7.11)*
-  - [ ] Voodoo aimed at the large wall 4K monitor: same far/near shell **plus** chrome **below** the scissors cut button (extra affordances). *(Normal voodoo aim — not a focus anchor.)*
-  - [ ] Draw voodoo to the Blender floor instance without walking over; grab mini t-pose ghost → drop into monitor voodoo → character appears on the monitor for non-MR spectators.
-  - [ ] **STREAM** button (below cut): dismisses that voodoo and drives the monitor with the user’s **1st-person MR view**, including real-time comp of floor Blender + Unreal instances.
+- [x] **Task 7.10: Monitor voodoo — spectator drop + STREAM** *(was 7.11)* — **86’d / cancelled for 0.7**
+  - [x] Dropped from the filmed Final Demo path (no monitor voodoo chrome, spectator drop, or STREAM beat in 0.7). Revisit later only if a post-0.7 reel needs it; do not block Acts II–III gate.
 
-**Quest / film gate (0.7):** Scripted walkthrough on device (or Editor MR simulation): **MR open** → GitHub plane toggle → NPC head widget → Speak/EQ → clip 01 → Speak/EQ → clip 02 + floor shrink → **Palace wipe** → FS cut-paste → **MR wipe** → desk Box → Blender floor spawn → monitor drop → STREAM → (optional) GitHub plane again. Unreal/Blender may be stand-ins; **NPC-head focus anchor**, wipe, NPC playlist, and mic silence cue must be real.
+**Quest / film gate (0.7):** Scripted walkthrough on device (or Editor MR simulation): **MR open** → GitHub plane toggle → NPC head widget → Speak/EQ → clip 01 → Speak/EQ → clip 02 + floor shrink → **Palace wipe** → FS cut-paste → **MR wipe** → desk Box → **Blender floor spawn** (double-pinch loading glyph → splay+palm-down laser perimeter → `Blender_Badge` → logos → `DemonA` wipe) → (optional) GitHub plane again. **No 7.10 STREAM.** Unreal/Blender may be stand-ins; **NPC-head focus anchor**, wipe, NPC playlist, mic silence cue, and Blender spawn FX must be real.
 
 ---
 
@@ -588,6 +609,7 @@ Capture design notes and UX instincts that are not ready for checklist tasks. No
 - [ ] **Parent-Box collapse (shelved from 0.6):** X-close on the **parent Box ghost** collapses voodoo contents into that Box (except objects dragged in from the near field); destroy content ghosts; leave parent ghost at the base ready to reopen.
 - [ ] **0.6 headless + Quest gate (shelved):** Formal harness/Quest smoke for snap/free-range, centroids, gravity, aspect lock, summon/temp centroid, deadzone arming, scissors, bump-lerp, MindPalace picker (6.7) — promote when closing the phase.
 - *(Final demo / MR NPC+GitHub intro / 3rd MindPalace / Palace↔MR office reel **promoted to Phase 0.7**.)*
+- *(0.7 Task **7.10** monitor voodoo / STREAM **86’d** from the filmed path — see Phase 0.7 checklist.)*
 - [ ] **Remote / cloud / hypervisor drives (unscheduled):** Beyond Quest `Documents/…`, ingest wireless/LAN volumes and cloud providers (Google Drive, OneDrive, iCloud) as Multi-Choice MindPalace options when they come online. Includes understanding how Proxmox / ESXi (and similar) expose drives to the client so the same picker UI can list them — no phase number yet (likely folds into VDI / enterprise work later).
 
 ---
@@ -602,7 +624,7 @@ Do not duplicate the full Unity checklist here. Use **[3OS_Unity/IMPLEMENTATION_
 | **0.2–0.4** | Proxies (functional), telekinesis, storage glyphs / FS cut |
 | **0.5** | Hands + controllers parity on device |
 | **0.6** | Snap / free-range voodoo volumes (BB, centroids, near ghosts) |
-| **0.7** | Final demo opens in MR: GitHub plane, NPC head focus-anchor → agent widget + Speak/EQ → clips 01/02 + floor shrink; then Palace wipe ↔ MR desk / monitor STREAM |
+| **0.7** | Final demo opens in MR: GitHub plane, NPC head focus-anchor → agent widget + Speak/EQ → clips 01/02 + floor shrink; Palace wipe ↔ MR desk; Blender floor spawn FX (no monitor STREAM — 7.10 cancelled) |
 | **0.8** | Multi-select + multi-volume moves |
 | **0.9** | Layouts / frustum / anchors |
 | **1.0** | Enclosure mask + shader adapters + AI command hooks |

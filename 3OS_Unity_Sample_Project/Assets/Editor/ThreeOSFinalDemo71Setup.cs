@@ -23,7 +23,7 @@ public static class ThreeOSFinalDemo71Setup
     const string XrOriginPrefabPath = PrefabFolder + "/XR_Origin_FinalDemo.prefab";
     const string XrImPrefabPath = PrefabFolder + "/XR_InteractionManager_FinalDemo.prefab";
     const string NpcPrefabPath = PrefabFolder + "/PerfNPC_FinalDemo.prefab";
-    const string WispySkyMatPath = "Assets/Wispy Sky/Materials/WispySkyboxMat.mat";
+    const string WispySkyMatPath = "Assets/Wispy Sky/Materials/WispySkyboxMat2.mat";
     const string HeadPrefabPath =
         "Assets/3OS_FinalDemo/Application Demos/Jarvis/NPC_Head_Scale_Node.prefab";
     const string LeftHandPrefabPath =
