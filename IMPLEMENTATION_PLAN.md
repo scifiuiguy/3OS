@@ -401,24 +401,52 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 - [ ] **Task 7.6: Third MindPalace node (`3OS_Demo3`)**
   - [ ] Seed / register a **3rd** MindPalace root (Quest `Documents/3OS_Demo3` or project stand-in) so the Palace demo has three nodes without new layout math.
   - [ ] Quest fixture: dual cut-paste of two directories into a destination Box remains the primary Palace beat (existing scissors + bump).
-- [ ] **Task 7.7: VR ↔ MR toggle gesture + skybox wipe**
-  - [ ] **Delivery target / done when:** on device (or Editor MR simulation), the open-book + thumb-close flow can **round-trip** — **MR → VR (Palace)** and **VR → MR (office)** and **back again** — with matching glyph swap + skybox wipe each way. That reversible toggle is the confirmation test that 7.7 is complete (not a one-shot enter/exit).
-  - [ ] **0.7 scope for 7.7:** wipe + **host mode flag** + toggle glyph only. Do **not** require undeferring Mind Palace FS roots / glyphs (7.6) for this task to pass.
-  - [ ] Filmed path still uses the same gesture after Act I to **enter** Mind Palace (**MR → VR**), then later **return** to the office (**VR → MR**); film may only show one enter/return, but implementation must support repeated toggling.
-  - [ ] **Open-book gesture:** both palms toward the user’s eyes, fingers unsplayed, palms aligned like an open book, thumbs out L/R. On register (palms + thumbs in starting position), spawn the beveled toggle glyph between the hands showing the **current** mode: **"MR"** while in MR, **"VR"** while in the Palace.
-  - [ ] **Toggle glyphs:** author beveled **extruded text** `MR` / `VR` in Blender → `.3glyph` (rare text-glyph exception; most glyphs stay symbol meshes). Packs: `mr.3glyph` / `vr.3glyph`.
-  - [ ] **Cancel before confirm:** if open-book breaks **before** the thumbs trigger fires, **dismiss the glyph** and do **not** change mode / start wipe.
-  - [ ] **Thumb close (confirm):** thumbs against palm blade (threshold distance to base index knuckle). **Wipe begins on this edge.** Glyph swaps to the destination mode label. Dual-thumb close uses **enter/exit hysteresis latch** so a held close cannot re-fire every frame (must open past exit before the next pulse). After a pulse, open-book may stay armed for an immediate toggle-back once thumbs re-open and close again.
-  - [ ] **MR → Palace:** glyph **"MR" → "VR"**; skybox wipe **in reverse** of the Palace→MR blast (inward / reverse cylindrical wipe with feathered edge) so the Mind Palace skybox **closes in** over the office.
-  - [ ] **Palace → MR:** glyph **"VR" → "MR"**; skybox wipe plays **forward** (user-outward cylindrical blast → horizon → wink out) revealing the MR office again.
-  - [ ] **Wipe duration:** default **0.5 s** (tunable; may slow later).
-  - [ ] Bidirectional wipe + reverse glyph order required for UX; both directions appear in the filmed path.
-  - [ ] **Open-book geometry (host XR joints + HUD):** both palms face user (dot thresh); index/middle/ring dirs parallel to each other and orthogonal to palm normal; tip-cluster unsplayed (enter **and** continuous cancel); thumbs ortho to palm + finger axis (**enter only**, dropped once armed so thumbs can close). World HUD + logcat `[3OS][OpenBook]` gate flips.
-  - [ ] **Palace layering (baseline first):** Sky Overlay + `ZTest Always` draws **over everything** (confirmed). Then opt keep-list items (hands → cursors → HUD → glyphs) in front one at a time. Settled Palace still voids MR `Office` root. Avoid queue wars / LEqual cutouts until baseline is solid.
-  - [ ] **Core ABI intents** (still present): `ModeToggleArmed` / `ModeTogglePulse`. Host open-book is authoritative for Quest arm/pulse; core OR'd when available. Pulse = latched dual-thumb-close edge. Host drives glyph + wipe + mode flag.
-- [ ] **Task 7.8: Dual-anchor Box (Palace vs MR desk)** *(was 7.9; old 7.8 office focus-anchors cancelled — NPC head only)*
-  - [ ] Same directory/Box retains a Mind Palace field pose **and** a world-mesh / desk pose in MR; opening Palace is “breathing room” for large FS edits, then dismiss back to the desk anchor.
-  - [ ] Demo path: open the Box that received the Palace paste while in MR via normal voodoo controls.
+- [x] **Task 7.7: VR ↔ MR toggle gesture + skybox wipe**
+  - [x] **Delivery target / done when:** on device (or Editor MR simulation), the open-book + thumb-close flow can **round-trip** — **MR → VR (Palace)** and **VR → MR (office)** and **back again** — with matching glyph swap + skybox wipe each way. That reversible toggle is the confirmation test that 7.7 is complete (not a one-shot enter/exit).
+  - [x] **0.7 scope for 7.7:** wipe + **host mode flag** + toggle glyph only. Do **not** require undeferring Mind Palace FS roots / glyphs (7.6) for this task to pass. *(Palace FS contents re-enabled under **7.8**.)*
+  - [x] Filmed path still uses the same gesture after Act I to **enter** Mind Palace (**MR → VR**), then later **return** to the office (**VR → MR**); film may only show one enter/return, but implementation must support repeated toggling.
+  - [x] **Open-book gesture:** both palms toward the user’s eyes, fingers unsplayed, palms aligned like an open book, thumbs out L/R. On register (palms + thumbs in starting position), spawn the beveled toggle glyph between the hands showing the **current** mode: **"MR"** while in MR, **"VR"** while in the Palace.
+  - [x] **Toggle glyphs:** author beveled **extruded text** `MR` / `VR` in Blender → `.3glyph` (rare text-glyph exception; most glyphs stay symbol meshes). Packs: `mr.3glyph` / `vr.3glyph`.
+  - [x] **Cancel before confirm:** if open-book breaks **before** the thumbs trigger fires, **dismiss the glyph** and do **not** change mode / start wipe. *(Also cancel if open-book base breaks mid-arm; thumb-closing motion gate removed.)*
+  - [x] **Thumb close (confirm):** thumbs against palm blade (threshold distance to base index knuckle). **Wipe begins on this edge.** Glyph swaps to the destination mode label **at wipe start**. Dual-thumb close uses **enter/exit hysteresis latch** so a held close cannot re-fire every frame (must open past exit before the next pulse). After a pulse, open-book may stay armed for an immediate toggle-back once thumbs re-open and close again.
+  - [x] **MR → Palace:** glyph **"MR" → "VR"**; skybox wipe **in reverse** of the Palace→MR blast (inward / reverse cylindrical wipe with feathered edge) so the Mind Palace skybox **closes in** over the office.
+  - [x] **Palace → MR:** glyph **"VR" → "MR"**; skybox wipe plays **forward** (user-outward cylindrical blast → horizon → wink out) revealing the MR office again.
+  - [x] **Wipe duration:** default **0.5 s** (tunable; may slow later).
+  - [x] Bidirectional wipe + reverse glyph order required for UX; both directions appear in the filmed path.
+  - [x] **Open-book geometry (host XR joints + HUD):** both palms face user (dot thresh); index/middle/ring dirs parallel to each other and orthogonal to palm normal; tip-cluster unsplayed (enter **and** continuous cancel); thumbs ortho to palm + finger axis (**enter only**, dropped once armed so thumbs can close). World HUD + logcat `[3OS][OpenBook]` gate flips.
+  - [x] **Palace layering (baseline first):** Sky Overlay + `ZTest Always` draws **over everything** (confirmed). Keep-list (hands → cursors → HUD → glyphs) in front via Overlay queue. Settled Palace still voids MR `Office` root. WispySky Mat2 for cleaner seams.
+  - [x] **Core ABI intents** (still present): `ModeToggleArmed` / `ModeTogglePulse`. Host open-book is authoritative for Quest arm/pulse; core OR'd when available. Pulse = latched dual-thumb-close edge. Host drives glyph + wipe + mode flag.
+- [x] **Task 7.8: Palace contents + dual-anchor Box (Palace vs MR desk)** *(was 7.9; old 7.8 office focus-anchors cancelled — NPC head only)*
+  - [x] **Delivery target / done when:** after sky wipe into VR, Mind Palace **boxes + object glyphs** scale in (no pop); MR stand-in world-mesh **colliders do not block** Palace motion; on wipe back to MR, non-selected Palace content scales out and deallocates while a **current selection persists into MR** (demo: select a 3D model file in Palace → return to MR with that file still present for later open / Blender spawn in 7.9). **Device-verified** (scale-in, colliders, MR persist).
+  - [x] **Context:** Palace FS roots / box+object instantiation were **deferred / cancelled in the Final Demo scene** while 7.7 focused on the skybox. Re-enabled under this task (not during the wipe).
+
+  ##### 7.8.a MR world-mesh colliders — MR only
+  - [x] Stand-in office **wall / floor / ceiling colliders** (world-mesh substitutes) must be **active in MR only**.
+  - [x] On enter VR / Palace (wipe **start**): **disable** WorldMesh colliders + stop enclosure publish so they cannot stop a voodoo volume’s motion in the Mind Palace (`ThreeOSVoodooController.SetWorldMeshCollisionActive`).
+  - [x] On return to MR (wipe **start**): **re-enable** them.
+  - [x] Skybox overlay already occludes office **geo**; this task is collision-only (do not rely on visual void for physics).
+
+  ##### 7.8.b Introduce Palace boxes + objects (after wipe)
+  - [x] Do **not** instantiate Palace field contents during the sky wipe. Wait until the **skybox transition is complete** (`WipeSettled` → Palace).
+  - [x] Then instantiate (or re-enable) all Mind Palace **boxes and object glyphs** via undefer (`TryRevealPalaceAtSpawn` / soft-restore).
+  - [x] **World origin:** lay out using **`Player_Spawn_Point` position + yaw** (`PoseFromSpawnTransform`) — **not** HMD / `_layoutHeadPose` for Final Demo reveal.
+  - [x] **Cluster = one MindPalace node** (entire field matrix for that palace, e.g. `3OS_Demo` / `3OS_Demo2`) — not per-glyph or per-open-box.
+  - [x] **No pop-in:** each MindPalace **cluster** starts at **~0% scale** and lerp-scales to **100%** over **0.5 s** (hide pending → centroid pivots).
+  - [x] Scale pivot = that cluster’s **centroid** (transient pivot; unparent on complete).
+  - [x] **All clusters animate simultaneously** (same 0.5 s window right after wipe end).
+  - [x] Clean SmoothStep 0→100% lerp (ExpandedBox-style pivot).
+
+  ##### 7.8.c Dismiss Palace contents (wipe back to MR) + selection persist
+  - [x] On gesture **VR → MR**, run dismiss **in parallel with the sky wipe** (`WipeStarted`): **scale each non-selected MindPalace cluster down to 0%**, then soft-dismiss (`StorageSetInField(false)` + hide views).
+  - [x] **Exception — current selection:** must **not** scale down or dealloc. It **stays at its current world pose** and **re-anchors to MR**.
+  - [x] **MR re-anchor (demo minimum):** on VR→MR, selected object **detaches** (`SetMindPalaceRoot(0)`), records original mp id, anim-locks world pose; logical MR anchor = **`Player_Spawn_Point`**. Full multi-anchor → parking lot.
+  - [x] **Return to Palace (MR→VR) with persisted selection:** re-attach original MindPalace id; **keep world pose** at MR location (anim lock; do not snap into field matrix).
+  - [x] Demo beat path wired for select → MR persist → later **7.9**.
+  - [x] Soft-dismiss avoids `StorageClear` so selection entity survives.
+
+  ##### 7.8.d Dual-anchor Box (Palace vs MR desk) — demo slice
+  - [x] **0.7 demo:** MR anchor for the **persisted selection** via `Player_Spawn_Point` (7.8.c) bridges toward 7.9; full multi-anchor storage not required.
+  - [x] Full dual-anchor Box desk path + “open persisted file in MR → Blender spawn” are **out of 7.8 scope** (parking lot multi-anchor + **Task 7.9**).
 - [ ] **Task 7.9: App surface — Blender beside Unreal** *(was 7.10)*
   - [ ] From the desk Box voodoo: pull the Blender source for an asset animating in the Unreal volume; dismiss that voodoo.
   - [ ] **Double-pinch the Blender model file** → immediately spawn a **small spinning loading glyph** **above and slightly forward** of the **double-pinch hand** (that hand is the one that must later palm-drop the instance). No floor spawn yet.
@@ -442,7 +470,7 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 - [x] **Task 7.10: Monitor voodoo — spectator drop + STREAM** *(was 7.11)* — **86’d / cancelled for 0.7**
   - [x] Dropped from the filmed Final Demo path (no monitor voodoo chrome, spectator drop, or STREAM beat in 0.7). Revisit later only if a post-0.7 reel needs it; do not block Acts II–III gate.
 
-**Quest / film gate (0.7):** Scripted walkthrough on device (or Editor MR simulation): **MR open** → GitHub plane toggle → NPC head widget → Speak/EQ → clip 01 → Speak/EQ → clip 02 + floor shrink → **Palace wipe** → FS cut-paste → **MR wipe** → desk Box → **Blender floor spawn** (double-pinch loading glyph → splay+palm-down laser perimeter → `Blender_Badge` → logos → `DemonA` wipe) → (optional) GitHub plane again. **No 7.10 STREAM.** Unreal/Blender may be stand-ins; **NPC-head focus anchor**, wipe, NPC playlist, mic silence cue, and Blender spawn FX must be real.
+**Quest / film gate (0.7):** Scripted walkthrough on device (or Editor MR simulation): **MR open** → GitHub plane toggle → NPC head widget → Speak/EQ → clip 01 → Speak/EQ → clip 02 + floor shrink → **Palace wipe** → Palace clusters **scale in** (MR colliders off) → FS cut-paste / **select 3D model** → **MR wipe** + non-selected clusters **scale out** (selection **persists**) → desk Box / open persisted file → **Blender floor spawn** (double-pinch loading glyph → splay+palm-down laser perimeter → `Blender_Badge` → logos → `DemonA` wipe) → (optional) GitHub plane again. **No 7.10 STREAM.** Unreal/Blender may be stand-ins; **NPC-head focus anchor**, wipe, Palace content intro/dismiss, selection carry into MR, NPC playlist, mic silence cue, and Blender spawn FX must be real.
 
 ---
 
@@ -611,6 +639,7 @@ Capture design notes and UX instincts that are not ready for checklist tasks. No
 - *(Final demo / MR NPC+GitHub intro / 3rd MindPalace / Palace↔MR office reel **promoted to Phase 0.7**.)*
 - *(0.7 Task **7.10** monitor voodoo / STREAM **86’d** from the filmed path — see Phase 0.7 checklist.)*
 - [ ] **Remote / cloud / hypervisor drives (unscheduled):** Beyond Quest `Documents/…`, ingest wireless/LAN volumes and cloud providers (Google Drive, OneDrive, iCloud) as Multi-Choice MindPalace options when they come online. Includes understanding how Proxmox / ESXi (and similar) expose drives to the client so the same picker UI can list them — no phase number yet (likely folds into VDI / enterprise work later).
+- [ ] **Multi-anchor objects/boxes (unscheduled; seeded by 7.8.c demo):** Any object or Box in Mind Palace should carry **multiple spatial anchors** — **one per MindPalace field** it has occupied, **plus one MR / world-mesh desk anchor**. Mode toggles switch which anchor relationship is active without destroying the others; world pose may stay put while logical parent/centroid relinks (see 7.8.c persist). **0.7 only needs the MR anchor** on the carried selection (`Player_Spawn_Point`). Flesh out ABI + host storage (pose slots, field ids, promote/demote, Box dual-anchor desk path) in a later milestone — not required to close 7.8.
 
 ---
 
@@ -624,7 +653,7 @@ Do not duplicate the full Unity checklist here. Use **[3OS_Unity/IMPLEMENTATION_
 | **0.2–0.4** | Proxies (functional), telekinesis, storage glyphs / FS cut |
 | **0.5** | Hands + controllers parity on device |
 | **0.6** | Snap / free-range voodoo volumes (BB, centroids, near ghosts) |
-| **0.7** | Final demo opens in MR: GitHub plane, NPC head focus-anchor → agent widget + Speak/EQ → clips 01/02 + floor shrink; Palace wipe ↔ MR desk; Blender floor spawn FX (no monitor STREAM — 7.10 cancelled) |
+| **0.7** | Final demo opens in MR: GitHub plane, NPC head focus-anchor → agent widget + Speak/EQ → clips 01/02 + floor shrink; Palace wipe (7.7 done) → Palace content scale-in / collider gate / selection persist (7.8) ↔ MR desk; Blender floor spawn FX (no monitor STREAM — 7.10 cancelled) |
 | **0.8** | Multi-select + multi-volume moves |
 | **0.9** | Layouts / frustum / anchors |
 | **1.0** | Enclosure mask + shader adapters + AI command hooks |

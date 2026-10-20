@@ -79,5 +79,14 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
 
         var bridge = FindFirstObjectByType<ThreeOSBridge>();
         toggle.Configure(this, bridge);
+
+        var contents = FindFirstObjectByType<ThreeOSFinalDemoPalaceContents>();
+        if (contents == null)
+        {
+            var go = new GameObject("FinalDemoPalaceContents");
+            contents = go.AddComponent<ThreeOSFinalDemoPalaceContents>();
+        }
+
+        contents.Configure(this, toggle);
     }
 }

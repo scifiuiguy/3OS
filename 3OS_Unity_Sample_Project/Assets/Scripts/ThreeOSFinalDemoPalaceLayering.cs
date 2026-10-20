@@ -67,24 +67,108 @@ public sealed class ThreeOSFinalDemoPalaceLayering : MonoBehaviour
     public void PromoteKeepList()
     {
         RefreshKeepRenderers();
-        for (var i = 0; i < _keepRenderers.Count; i++)
+        ApplyKeepQueueToRenderers(_keepRenderers);
+        _keepPromoted = true;
+    }
+
+    /// <summary>
+    /// 7.8 — Mind Palace FS glyphs/boxes + voodoo chrome use Geometry (~3000) and sit under
+    /// the sky Overlay (5000 + ZTest Always). Promote them to the keep-list queue.
+    /// </summary>
+    public void PromotePalaceContentGlyphs()
+    {
+        PromotePalaceWorldChrome();
+    }
+
+    /// <summary>Glyphs, labels, voodoo wires/arrows/snap dots — anything that must clear the sky.</summary>
+    public void PromotePalaceWorldChrome()
+    {
+        _palaceGlyphRends.Clear();
+        var roots = FindObjectsByType<Transform>(FindObjectsSortMode.None);
+        for (var i = 0; i < roots.Length; i++)
         {
-            var r = _keepRenderers[i];
+            var t = roots[i];
+            if (t == null)
+                continue;
+            var n = t.name;
+            var isGlyphRoot = t.parent == null &&
+                              (n.StartsWith("Glyph_", System.StringComparison.Ordinal) ||
+                               n.StartsWith("Ghost_", System.StringComparison.Ordinal));
+            var isClusterPivot = n.StartsWith("3OS_PalaceClusterPivot",
+                System.StringComparison.Ordinal);
+            var isVoodooChrome =
+                n.StartsWith("3OS_Voodoo", System.StringComparison.Ordinal) ||
+                n.StartsWith("3OS_InsertArrow", System.StringComparison.Ordinal) ||
+                n.StartsWith("3OS_VoodooDragArrow", System.StringComparison.Ordinal) ||
+                n.StartsWith("3OS_GhostDragArrow", System.StringComparison.Ordinal) ||
+                n.StartsWith("3OS_PortalDismiss", System.StringComparison.Ordinal) ||
+                n.StartsWith("3OS_PortalScissors", System.StringComparison.Ordinal) ||
+                n.StartsWith("3OS_BoxDismiss", System.StringComparison.Ordinal) ||
+                n.IndexOf("SnapDot", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                n.StartsWith("3OS_Arrow", System.StringComparison.Ordinal);
+            if (!isGlyphRoot && !isClusterPivot && !isVoodooChrome)
+                continue;
+            // Voodoo chrome may nest — only root or matching named transforms.
+            if (isVoodooChrome && t.parent != null &&
+                t.parent.name.StartsWith("3OS_", System.StringComparison.Ordinal))
+            {
+                // Still include nested line/head children via GetComponentsInChildren from parent
+                // when we hit the root; skip nested name matches to avoid duplicate work.
+                if (!IsVoodooChromeRoot(t))
+                    continue;
+            }
+
+            t.GetComponentsInChildren(true, _tmpRends);
+            for (var r = 0; r < _tmpRends.Count; r++)
+            {
+                if (_tmpRends[r] != null && !_palaceGlyphRends.Contains(_tmpRends[r]))
+                    _palaceGlyphRends.Add(_tmpRends[r]);
+            }
+        }
+
+        ApplyKeepQueueToRenderers(_palaceGlyphRends);
+        _tmpRends.Clear();
+        _palaceGlyphRends.Clear();
+        _keepPromoted = true;
+    }
+
+    static bool IsVoodooChromeRoot(Transform t)
+    {
+        if (t.parent == null)
+            return true;
+        var p = t.parent.name;
+        return !(p.StartsWith("3OS_Voodoo", System.StringComparison.Ordinal) ||
+                 p.StartsWith("3OS_InsertArrow", System.StringComparison.Ordinal) ||
+                 p.StartsWith("3OS_VoodooDragArrow", System.StringComparison.Ordinal) ||
+                 p.StartsWith("3OS_GhostDragArrow", System.StringComparison.Ordinal) ||
+                 p.StartsWith("3OS_PortalDismiss", System.StringComparison.Ordinal) ||
+                 p.StartsWith("3OS_PortalScissors", System.StringComparison.Ordinal) ||
+                 p.StartsWith("3OS_BoxDismiss", System.StringComparison.Ordinal) ||
+                 p.StartsWith("3OS_Arrow", System.StringComparison.Ordinal));
+    }
+
+    void ApplyKeepQueueToRenderers(List<Renderer> renderers)
+    {
+        for (var i = 0; i < renderers.Count; i++)
+        {
+            var r = renderers[i];
             if (r == null)
                 continue;
-            var mats = r.materials; // instances
-            for (var m = 0; m < mats.Length; m++)
+            // Mutate shared materials in place — avoid r.materials instancing, which can
+            // bleach runtime-owned arrow/wire colors while leaving the original at 3000.
+            // Only bump UP to keep-list; never demote chrome already above (e.g. X/scissors
+            // at 5120 so they draw over translucent dismiss shells at 5100).
+            var shared = r.sharedMaterials;
+            for (var m = 0; m < shared.Length; m++)
             {
-                var mat = mats[m];
-                if (mat == null)
+                var mat = shared[m];
+                if (mat == null || mat.renderQueue >= KeepRenderQueue)
                     continue;
                 if (!_savedQueues.ContainsKey(mat))
                     _savedQueues[mat] = mat.renderQueue;
                 mat.renderQueue = KeepRenderQueue;
             }
         }
-
-        _keepPromoted = true;
     }
 
     public void RestoreKeepListQueues()
@@ -168,6 +252,7 @@ public sealed class ThreeOSFinalDemoPalaceLayering : MonoBehaviour
     }
 
     readonly List<Renderer> _tmpRends = new List<Renderer>(32);
+    readonly List<Renderer> _palaceGlyphRends = new List<Renderer>(128);
 
     void OnDisable()
     {

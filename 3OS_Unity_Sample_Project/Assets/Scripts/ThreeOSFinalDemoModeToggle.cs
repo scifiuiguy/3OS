@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -38,8 +39,14 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
     bool _wipeShowVrLabel;
     bool _wasArmed;
     bool _pulseSeenThisArm;
+    float _nextPalaceChromePromote = -1f;
 
     public bool InPalace => stage != null && stage.InPalace;
+
+    /// <summary>Fired when a wipe begins. Arg = destination is Palace (true) or MR (false).</summary>
+    public event Action<bool> WipeStarted;
+    /// <summary>Fired when a wipe settles. Arg = now in Palace (true) or MR (false).</summary>
+    public event Action<bool> WipeSettled;
 
     public void Configure(ThreeOSFinalDemoStage demoStage, ThreeOSBridge demoBridge,
         ThreeOSFinalDemoOpenBookGesture openBookGesture = null)
@@ -49,6 +56,19 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
         if (openBookGesture != null)
             openBook = openBookGesture;
         EnsureOpenBook();
+        EnsurePalaceContents();
+    }
+
+    void EnsurePalaceContents()
+    {
+        var contents = FindFirstObjectByType<ThreeOSFinalDemoPalaceContents>();
+        if (contents == null)
+        {
+            var go = new GameObject("FinalDemoPalaceContents");
+            contents = go.AddComponent<ThreeOSFinalDemoPalaceContents>();
+        }
+
+        contents.Configure(stage, this);
     }
 
     void Awake()
@@ -102,6 +122,14 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
         if (bridge == null)
             bridge = FindFirstObjectByType<ThreeOSBridge>();
         EnsureOpenBook();
+
+        // Voodoo / portal dismiss chrome spawn after wipe settle — re-bump keep queue.
+        if (stage.InPalace && !_wiping && Time.unscaledTime >= _nextPalaceChromePromote)
+        {
+            _nextPalaceChromePromote = Time.unscaledTime + 0.25f;
+            EnsureLayering();
+            layering.PromotePalaceWorldChrome();
+        }
 
         // Host sticky arm is authoritative (core thumb heuristics must not disarm).
         var armed = openBook != null && openBook.StickyArmed;
@@ -173,6 +201,9 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
         // Glyph may have been created just now — refresh keep-list so it stays above sky.
         layering.PromoteKeepList();
 
+        // 7.8 — contents / collider hooks (VR→MR dismiss runs in parallel with wipe).
+        WipeStarted?.Invoke(toPalace);
+
         var dur = Mathf.Max(0.05f, wipeDurationSec);
         var t = 0f;
         while (t < dur)
@@ -191,6 +222,8 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
         // Allow another thumbsClosed pulse without dropping open-book arm.
         _pulseSeenThisArm = false;
 
+        WipeSettled?.Invoke(toPalace);
+
         if (_wasArmed)
             UpdateGlyphPose(showVrLabel: stage.InPalace);
         else
@@ -205,11 +238,12 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
             return;
         if (inPalace)
         {
-            // Void office; sky over world; keep-list (hands/cursors) above sky.
+            // Void office; sky over world; keep-list (hands/cursors) + Palace FS glyphs above sky.
             layering.SetMrWorldVisible(false);
             _wipeGo.SetActive(true);
             layering.ApplySkyMaterialQueue(_wipeMat);
             layering.PromoteKeepList();
+            layering.PromotePalaceWorldChrome();
             _wipeMat.SetFloat("_Progress", 1f);
             _wipeMat.SetFloat("_Direction", -1f);
             _wipeMat.SetFloat("_CoverBoost", 1f);
@@ -394,7 +428,7 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
             // (ZTest Always / Overlay queue). No office MeshRenderer queue changes required.
             _wipeGo = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             _wipeGo.name = "PalaceSkyOverlay";
-            Object.Destroy(_wipeGo.GetComponent<Collider>());
+            UnityEngine.Object.Destroy(_wipeGo.GetComponent<Collider>());
             _wipeGo.transform.SetParent(cam.transform, false);
             _wipeGo.transform.localPosition = Vector3.zero;
             _wipeGo.transform.localRotation = Quaternion.identity;

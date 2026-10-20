@@ -632,7 +632,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
   * Index-to-thumb pinch for hands
   * Trigger button for controllers
   * Equivalent to 2D mouse left-click
-* ### Secondary 
+* ### Secondary
   * Middle-to-thumb pinch for hands
   * Grab button for controllers
   * Equivalent to 2D mouse right-click
@@ -657,7 +657,7 @@ The 3OS interface layer reserves all primary event triggers and secondary-palm-d
 
 ### Hover and Selection
 
-Buttons in 3OS are 3D and volumetric by default, meaning point cursors hover INTO them rather than raycast cursors hovering ONTO them. When a point cursor enters or exits the volume of a 3D button, its hover state toggles. While hovered, primary pinch activates the button. Similarly, hover and pinch in an object flags that object as currently selected. Multi-choice nodes work in the same way, except hover is defined by an angular relationship between the cursor and a center point between a group of buttons.
+Buttons in 3OS are 3D and volumetric by default, meaning point cursors hover INTO them rather than raycast cursors hovering ONTO them. When a point cursor enters or exits the volume of a 3D button, its hover state toggles. While hovered, primary pinch activates the button. Similarly, hover and pinch on an object flags that object as currently selected. Multi-choice nodes work in the same way, except hover is defined by an angular relationship between the cursor and a center point between a group of buttons.
 
 ### Multi-Selection
 
@@ -665,11 +665,15 @@ Drag-selection is also volumetric. The objects encapsulated by the cubic volume 
 
 ### Voodoo Volume Activation
 
-Palm-down + Primary-pinch-hold begins voodoo volume selection. Drag position of the pinched fingertips are a voodoo doll of the far-field voodoo volume during drag, meaning the hand can move in 3D to place the volume in 3D with a multiplier of 50-to-1. This means a fully outstretched arm can place the far-field voodoo ~50 feet away in any direction with default sensitivity, and sensitivity is adjustable. Once the volume is dropped in the far field, its near-field companion volume (often referenced as the near BB ~ short for bounding box) appears in the ergonomically safe intimate space directly in front of the user.
+Palm-down + primary-pinch-hold begins voodoo volume selection. The drag position of the pinched fingertips is a voodoo doll of the far-field voodoo volume during drag, meaning the hand can move in 3D to place the volume in 3D with a multiplier of 50-to-1. This means a fully outstretched arm can place the far-field voodoo ~50 feet away in any direction with default sensitivity, and sensitivity is adjustable. Once the volume is dropped in the far field, its near-field companion volume (often referenced as the near BB — short for bounding box) appears in the ergonomically safe intimate space directly in front of the user.
 
 ### Toggling the Mind Palace
 
 To toggle the Mind Palace (MR-office-to-VR-hard-drive or vice versa), the user turns both flat palms toward their face like an open book, thumbs out in opposite directions. This calls up the current toggle status. It will read either "MR" or "VR". Closing the thumbs simultaneously will toggle MR to VR or vice versa.
+
+### Launching Applications
+
+If the user double-pinches a file from an app that has implemented the 3OS SDK, 3OS will launch the app in MR by default. If the app is legacy 2D (i.e. has not implemented the 3OS SDK), it will launch either in a virtual desktop window, or on a paired VM if it is designated as that user's active 2D workstation. An MR instance needs a gesture from the user to designate where it should be anchored in the room, as indicated by the loading glyph that appears above the hand that double-pinched the file. The app drop gesture is palm toward the floor with fingers splayed, a.k.a. the superhero "use the force" gesture. The app will target the floor where the palm aims.
 
 </details>
 
@@ -678,6 +682,8 @@ To toggle the Mind Palace (MR-office-to-VR-hard-drive or vice versa), the user t
 <a id="getting-started"></a>
 <details>
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🚀 Getting Started</summary>
+
+For Programmers:
 
 ```bash
 git clone https://github.com/scifiuiguy/3OS.git
@@ -688,14 +694,24 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-### Pre-Alpha Demo
+For Artists:
+
+```text
+1) Go to https://github.com/scifiuiguy/3OS in a web browser.
+2) Click the green Code dropdown and choose Download ZIP.
+3) Extract the 3OS codebase anywhere locally.
+4) Find the Quest build at 3OS/builds/threeos-pre-alpha-demo.apk.
+5) Follow the instructions below to sideload the APK.
+```
+
+### Pre-Alpha Demo Sideloading Instructions:
 
 * To use the Pre-Alpha Demo with built-in sample files and folders, load it as is onto Quest 2 or 3:
   * Plug your Quest into a PC via USB.
   * In Quest, activate the main menu and choose the Notifications tab.
   * A fresh USB Detected notification should appear. Select it.
   * On PC, a File Explorer should launch, displaying This PC/Quest 2. Double-click it.
-  * Open the Documents folder and drag in the `quest_pre_alpha_demo_v070.apk`.
+  * Open the Documents folder and drag in the `threeos-pre-alpha-demo.apk`.
   * On Quest, open the Library tab and choose Files.
   * In the Quest Files Explorer, choose the "This headset" tab in the left panel.
   * Pinch on the Documents folder.
@@ -708,11 +724,10 @@ ctest --test-dir build -C Release --output-on-failure
   1. On your Quest hard drive, create these folders:
      * `Documents/3OS_Demo`
      * `Documents/3OS_Demo2`
-  2. Drag/drop any files of your choice into either folder and they'll appear in-scene.
+     * `Documents/3OS_Demo3`
+  2. Drag/drop any files of your choice into any of these folders and they'll appear in-scene.
      * **NOTE:** Don't test with important unarchived files. The demo WILL read/write/delete in those directories.
 
 The shared library target is `3os_kernel` (`3os_kernel.dll` / `lib3os_kernel.so`). The console harness prints `threeos_version` (currently `0.6.0`) and checks the frozen ABI (`InteropInputFrame` = 192 bytes). Host ABI headers: `include/interop/threeos_abi.h`. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md); Unity Quest verification lives in [3OS_Unity](https://github.com/scifiuiguy/3OS_Unity).
-
-*This project is dedicated to breaking the flatland illusion. Welcome to true volumetric computing.*
 
 </details>

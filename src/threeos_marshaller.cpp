@@ -372,14 +372,16 @@ float tick_voodoo_frame(const ThreeOS_InteropInputFrame* frame) {
   const bool left = (frame->tracking_flags & THREEOS_TRACK_LEFT_AIM) != 0;
   const bool head_valid = (frame->tracking_flags & THREEOS_TRACK_HEAD) != 0;
   const threeos::Pose head_pose = from_c(frame->head);
-  const bool selection_blocks_voodoo = g_workspace.selection() != 0;
+  // Selection alone must NOT block voodoo: palm-down drop wins so a forgotten
+  // far-field select does not prevent launching another yellow volume.
+  // Only an active ghost-drag / possess on this hand consumes the pinch.
   const bool kin_possessed = g_kinematics.state().phase == threeos::KineticPhase::Possessed;
 
   for (uint32_t vh = 0; vh < 2u; ++vh) {
     bool hand_ok = false;
     const threeos::Pose vhand = resolve_voodoo_hand_pose(frame, vh, left, right, &hand_ok);
     threeos::InteractionIntents vintents = g_hands.pending_intents(vh);
-    const bool hand_busy = selection_blocks_voodoo || g_voodoo.ghost_drag_active(vh) ||
+    const bool hand_busy = g_voodoo.ghost_drag_active(vh) ||
                            (kin_possessed && g_kin_hand_latch == static_cast<int>(vh));
     if (hand_busy) {
       using threeos::InteractionIntentFlags;
