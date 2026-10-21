@@ -12,10 +12,14 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
     [SerializeField] Transform xrOrigin;
     [SerializeField] Transform npcFloorParent;
     [SerializeField] Transform npcRoot;
+    [Tooltip("XR Origin yaw = spawn yaw + this. Demo was ~180° off spawn forward.")]
+    [SerializeField] float playerSpawnYawOffsetDeg = 180f;
 
     [Header("Mind Palace (Act II)")]
     [Tooltip("WispySky Mat2 (6-face) — applied over office geo when Palace wipe runs; not at cold open.")]
     [SerializeField] Material palaceSkybox;
+    [Tooltip("WispyCubemap2 — seamless sample source for the Palace overlay (same sky set as Mat2).")]
+    [SerializeField] Cubemap palaceSkyCubemap;
 
     [Header("Act I — GitHub plane")]
     [SerializeField] ThreeOSFinalDemoGitHubPlane githubPlane;
@@ -28,6 +32,7 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
     public Transform NpcFloorParent => npcFloorParent;
     public Transform NpcRoot => npcRoot;
     public Material PalaceSkybox => palaceSkybox;
+    public Cubemap PalaceSkyCubemap => palaceSkyCubemap;
     public ThreeOSFinalDemoGitHubPlane GithubPlane => githubPlane;
     public bool InPalace => _inPalace;
 
@@ -59,13 +64,30 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
     {
         // Cold open is MR; Task 7.7 toggle owns later transitions.
         SetPalaceSkyboxActive(_inPalace);
+        AlignPlayerToSpawn();
         EnsureModeToggle();
+        EnsureBlenderSpawn();
     }
 
     void Start()
     {
         // Bridge may spawn after Stage Awake (harness boot order).
+        AlignPlayerToSpawn();
         EnsureModeToggle();
+        EnsureBlenderSpawn();
+    }
+
+    /// <summary>
+    /// Face spawn forward (+ optional yaw offset) without moving scene props / NPC / palace anchors.
+    /// </summary>
+    void AlignPlayerToSpawn()
+    {
+        if (xrOrigin == null || playerSpawn == null)
+            return;
+        var yaw = Quaternion.Euler(0f, playerSpawn.eulerAngles.y + playerSpawnYawOffsetDeg, 0f);
+        xrOrigin.SetPositionAndRotation(
+            new Vector3(playerSpawn.position.x, xrOrigin.position.y, playerSpawn.position.z),
+            yaw);
     }
 
     void EnsureModeToggle()
@@ -88,5 +110,21 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
         }
 
         contents.Configure(this, toggle);
+    }
+
+    void EnsureBlenderSpawn()
+    {
+        var spawn = FindFirstObjectByType<ThreeOSFinalDemoBlenderSpawn>();
+        if (spawn == null)
+        {
+            var go = new GameObject("FinalDemoBlenderSpawn");
+            spawn = go.AddComponent<ThreeOSFinalDemoBlenderSpawn>();
+        }
+
+        var storage = FindFirstObjectByType<ThreeOSStorageController>();
+        var bridge = FindFirstObjectByType<ThreeOSBridge>();
+        var input = FindFirstObjectByType<ThreeOSInputRouter>();
+        var prefab = Resources.Load<GameObject>("3OS/BlenderGroup");
+        spawn.Configure(this, storage, bridge, input, prefab);
     }
 }

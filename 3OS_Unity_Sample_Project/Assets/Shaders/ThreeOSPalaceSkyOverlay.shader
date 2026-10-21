@@ -11,6 +11,8 @@ Shader "ThreeOS/PalaceSkyOverlay"
         _RightTex ("Right", 2D) = "white" {}
         _UpTex ("Up", 2D) = "white" {}
         _DownTex ("Down", 2D) = "white" {}
+        _Tex ("Cubemap", Cube) = "" {}
+        _UseCubemap ("Use Cubemap", Float) = 0
         _Tint ("Tint", Color) = (1, 1, 1, 1)
         _Progress ("Progress", Range(0, 1)) = 1
         _Direction ("Direction", Float) = -1
@@ -48,6 +50,8 @@ Shader "ThreeOS/PalaceSkyOverlay"
             sampler2D _RightTex;
             sampler2D _UpTex;
             sampler2D _DownTex;
+            samplerCUBE _Tex;
+            float _UseCubemap;
             float4 _Tint;
             float _Progress;
             float _Direction;
@@ -76,26 +80,37 @@ Shader "ThreeOS/PalaceSkyOverlay"
                 return o;
             }
 
-            float3 SampleSky(float3 d)
+            // Match Unity Skybox/6 Sided face UV orientation (V flipped vs naive dir projection).
+            float3 SampleSky6Faced(float3 d)
             {
                 d = normalize(d);
                 float3 a = abs(d);
                 float2 uv;
                 if (a.z >= a.x && a.z >= a.y)
                 {
-                    uv = float2(d.z > 0 ? d.x : -d.x, d.y) / max(a.z, 1e-5);
+                    // ±Z — Front is +Z (camera forward), Back is -Z.
+                    uv = float2(d.z > 0 ? d.x : -d.x, -d.y) / max(a.z, 1e-5);
                     uv = uv * 0.5 + 0.5;
                     return d.z > 0 ? tex2D(_FrontTex, uv).rgb : tex2D(_BackTex, uv).rgb;
                 }
                 if (a.x >= a.y)
                 {
-                    uv = float2(d.x > 0 ? -d.z : d.z, d.y) / max(a.x, 1e-5);
+                    uv = float2(d.x > 0 ? -d.z : d.z, -d.y) / max(a.x, 1e-5);
                     uv = uv * 0.5 + 0.5;
                     return d.x > 0 ? tex2D(_RightTex, uv).rgb : tex2D(_LeftTex, uv).rgb;
                 }
-                uv = float2(d.x, d.y > 0 ? -d.z : d.z) / max(a.y, 1e-5);
+                // ±Y — Up / Down
+                uv = float2(d.x, d.y > 0 ? d.z : -d.z) / max(a.y, 1e-5);
                 uv = uv * 0.5 + 0.5;
                 return d.y > 0 ? tex2D(_UpTex, uv).rgb : tex2D(_DownTex, uv).rgb;
+            }
+
+            float3 SampleSky(float3 d)
+            {
+                d = normalize(d);
+                if (_UseCubemap > 0.5)
+                    return texCUBE(_Tex, d).rgb;
+                return SampleSky6Faced(d);
             }
 
             fixed4 frag(v2f i) : SV_Target

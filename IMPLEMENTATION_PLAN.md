@@ -631,6 +631,7 @@ Capture design notes and UX instincts that are not ready for checklist tasks. No
 **Notes**
 
 - *(Selection-gated telekinesis promoted into Phase 0.4 Task 4.6.)*
+- [ ] **Glyph front-face convention:** authored `.3glyph` meshes with a clear front should orient that face along **local +Z** (layout forward / toward the user after host pose apply). Hosts should not need per-pack roll/yaw corrections (e.g. `blender_mark` currently needs roll 90° then yaw 90°). Document in `THREEOS_glyph` schema + authoring notes (`inject_3glyph` / Blender export).
 - [ ] **Glyph pack GUI (artist tool):** Simple desktop/Editor UI to generate `.3glyph` files (pick GLB, edit `THREEOS_glyph` fields, inject metadata) for artists who do not want to run `tools/inject_3glyph.py` from the CLI. Wraps the existing injector; does not embed host shaders in the pack.
 - [ ] **Global field spacing + glyph scale:** Runtime `threeos_storage_get/set_field_spacing(float meters)` (clamped); Unity inspector/settings drive both kernel spacing and host `GlyphSizeM` (keep ~2.2× ratio or one master “field cell size”); optionally re-layout in-field matrices and rescale glyph roots so the whole field can be resized without hunting magic numbers. Kernel already shares `Workspace::kDefaultFieldSpacingM` / `field_spacing_m_` for demo + box-expand layout.
 - [ ] **Matrix padding / margins:** Tunable cell padding and snap-margin (independent of spacing) so dense stacks are comfortable without relying only on sticky-snap; expose alongside field-spacing controls in a later milestone.

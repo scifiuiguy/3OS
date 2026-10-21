@@ -14,7 +14,8 @@ public sealed class ThreeOSFinalDemoPalaceContents : MonoBehaviour
     [SerializeField] ThreeOSVoodooController voodoo;
     [SerializeField] ThreeOSFinalDemoPalaceLayering layering;
 
-    Coroutine _co;
+    Coroutine _prepareCo;
+    Coroutine _scaleCo;
     bool _hooks;
 
     public void Configure(ThreeOSFinalDemoStage demoStage, ThreeOSFinalDemoModeToggle toggle)
@@ -82,10 +83,26 @@ public sealed class ThreeOSFinalDemoPalaceContents : MonoBehaviour
         {
             ThreeOSStorageController.BillboardAllFarFieldLabels = false;
             // 7.8.c — dismiss in parallel with VR→MR wipe.
-            if (_co != null)
-                StopCoroutine(_co);
-            _co = StartCoroutine(DismissRoutine());
+            if (_prepareCo != null)
+            {
+                StopCoroutine(_prepareCo);
+                _prepareCo = null;
+            }
+
+            if (_scaleCo != null)
+            {
+                StopCoroutine(_scaleCo);
+                _scaleCo = null;
+            }
+
+            _scaleCo = StartCoroutine(DismissRoutine());
+            return;
         }
+
+        // MR→VR: load/hide glyphs during the wipe so settle can scale in immediately.
+        if (_prepareCo != null)
+            StopCoroutine(_prepareCo);
+        _prepareCo = StartCoroutine(PrepareDuringWipeRoutine());
     }
 
     void OnWipeSettled(bool toPalace)
@@ -98,26 +115,21 @@ public sealed class ThreeOSFinalDemoPalaceContents : MonoBehaviour
         }
 
         ThreeOSStorageController.BillboardAllFarFieldLabels = true;
-        // 7.8.b — introduce after wipe settles.
-        if (_co != null)
-            StopCoroutine(_co);
-        _co = StartCoroutine(RevealRoutine());
+        if (_scaleCo != null)
+            StopCoroutine(_scaleCo);
+        _scaleCo = StartCoroutine(ScaleInOnSettleRoutine());
     }
 
-    IEnumerator RevealRoutine()
+    IEnumerator PrepareDuringWipeRoutine()
     {
         if (storage == null || stage == null)
             yield break;
         var spawn = stage.PlayerSpawn;
         if (spawn == null)
         {
-            Debug.LogError("[3OS] Palace reveal: Player_Spawn_Point missing on Stage");
+            Debug.LogError("[3OS] Palace prepare: Player_Spawn_Point missing on Stage");
             yield break;
         }
-
-        // Critical: yield before any FS/glyph work so WipeSettled does not hitch the settle frame
-        // (Quest killed the app on a ~9s sync LoadDual+RebuildViews).
-        yield return null;
 
         var deadline = Time.realtimeSinceStartup + 5f;
         while (storage != null && string.IsNullOrEmpty(storage.DemoRoot) &&
@@ -126,21 +138,45 @@ public sealed class ThreeOSFinalDemoPalaceContents : MonoBehaviour
 
         yield return storage.RevealPalaceAtSpawnRoutine(spawn);
         if (!storage.PalaceFixtureLoaded)
+            Debug.LogError($"[3OS] Palace prepare failed: {storage.Status}");
+        else
         {
-            Debug.LogError($"[3OS] Palace reveal failed: {storage.Status}");
+            EnsureRefs();
+            layering?.PromotePalaceWorldChrome();
+            storage.HidePalaceGlyphsPendingScaleIn(storage.MrPersistedSelectionId);
+        }
+
+        _prepareCo = null;
+    }
+
+    IEnumerator ScaleInOnSettleRoutine()
+    {
+        if (storage == null || stage == null)
+            yield break;
+
+        // Finish any in-flight prepare (usually done before settle if wipe ≥0.5s).
+        var deadline = Time.realtimeSinceStartup + 8f;
+        while (_prepareCo != null && Time.realtimeSinceStartup < deadline)
+            yield return null;
+        while (storage != null && !storage.PalaceFixtureLoaded &&
+               Time.realtimeSinceStartup < deadline)
+            yield return null;
+
+        if (storage == null || !storage.PalaceFixtureLoaded)
+        {
+            Debug.LogError("[3OS] Palace scale-in aborted — fixture not ready");
+            _scaleCo = null;
             yield break;
         }
 
-        // Sky Overlay (queue 5000) would bury Geometry glyphs (~3000) — bump to keep-list.
         EnsureRefs();
         layering?.PromotePalaceWorldChrome();
-
         var exclude = storage.MrPersistedSelectionId;
         storage.HidePalaceGlyphsPendingScaleIn(exclude);
         yield return storage.AnimatePalaceClustersScale(0.001f, 1f,
             ThreeOSStorageController.PalaceClusterScaleSeconds, exclude);
         layering?.PromotePalaceWorldChrome();
-        _co = null;
+        _scaleCo = null;
     }
 
     IEnumerator DismissRoutine()
@@ -150,6 +186,6 @@ public sealed class ThreeOSFinalDemoPalaceContents : MonoBehaviour
         if (!storage.PalaceFixtureLoaded || storage.PalaceSoftDismissed)
             yield break;
         yield return storage.DismissPalaceToMr(stage.PlayerSpawn);
-        _co = null;
+        _scaleCo = null;
     }
 }

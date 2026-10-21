@@ -476,15 +476,35 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
 
     void BindPalaceSkyTextures(Material mat)
     {
-        if (mat == null || stage == null || stage.PalaceSkybox == null)
+        if (mat == null || stage == null)
             return;
+
+        // Prefer WispyCubemap2 — authored seamless; Mat2 6-faces stay as fallback / ambient.
+        var cube = stage.PalaceSkyCubemap;
+        if (cube == null)
+            cube = Resources.Load<Cubemap>("3OS/WispyCubemap2");
+        if (cube != null && mat.HasProperty("_Tex"))
+        {
+            mat.SetTexture("_Tex", cube);
+            if (mat.HasProperty("_UseCubemap"))
+                mat.SetFloat("_UseCubemap", 1f);
+            Debug.Log($"[3OS] Palace overlay bound cubemap={cube.name}");
+        }
+        else if (mat.HasProperty("_UseCubemap"))
+        {
+            mat.SetFloat("_UseCubemap", 0f);
+        }
+
         var src = stage.PalaceSkybox;
+        if (src == null)
+            return;
         CopySkyTex(src, mat, "_FrontTex");
         CopySkyTex(src, mat, "_BackTex");
         CopySkyTex(src, mat, "_LeftTex");
         CopySkyTex(src, mat, "_RightTex");
         CopySkyTex(src, mat, "_UpTex");
         CopySkyTex(src, mat, "_DownTex");
+        Debug.Log($"[3OS] Palace overlay bound 6-face mat={src.name} (Mat2 expected)");
     }
 
     static void CopySkyTex(Material src, Material dst, string prop)
