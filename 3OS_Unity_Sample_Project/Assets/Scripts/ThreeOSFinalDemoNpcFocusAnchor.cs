@@ -47,7 +47,20 @@ public sealed class ThreeOSFinalDemoNpcFocusAnchor : MonoBehaviour
         }
 
         var pose = InteropStructs.ToOpenXrPose(new Pose(head.position, head.rotation));
-        bridge.SetFocusAnchorPose(_anchorId, pose);
+        // Act I reset remounts via StorageClear, which wipes core focus anchors. A stale
+        // _anchorId would silently fail SetFocusAnchorPose forever — force re-register.
+        if (!bridge.SetFocusAnchorPose(_anchorId, pose))
+        {
+            _anchorId = 0;
+            TryRegister();
+        }
+    }
+
+    /// <summary>Drop and re-create after Act I reset / StorageClear.</summary>
+    public void ForceReregister()
+    {
+        Clear();
+        TryRegister();
     }
 
     void TryRegister()

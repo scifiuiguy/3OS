@@ -615,12 +615,46 @@ bool VoodooVolumeEngine::dismiss_portal(uint64_t portal_id) {
       ghost_drags_[h] = {};
     }
   }
-  if (cut_.portal_id() == portal_id) { cut_.cancel(); }
+  cut_.disarm_portal(portal_id);
   portals_.erase(it, portals_.end());
   return true;
 }
 
+uint64_t VoodooVolumeEngine::dismiss_latest_for_hand(uint32_t hand) {
+  if (hand > 1u || portals_.empty()) {
+    return 0;
+  }
+  // Prefer highest id among portals created by this hand (most recent park).
+  uint64_t best_id = 0;
+  for (const auto& p : portals_) {
+    if (p.creating_hand == hand && p.id >= best_id) {
+      best_id = p.id;
+    }
+  }
+  if (best_id == 0) {
+    return 0;
+  }
+  return dismiss_portal(best_id) ? best_id : 0;
+}
+
+uint32_t VoodooVolumeEngine::dismiss_all_portals() {
+  if (portals_.empty()) {
+    return 0;
+  }
+  const uint32_t n = static_cast<uint32_t>(portals_.size());
+  for (uint32_t h = 0; h < 2u; ++h) {
+    if (ghost_drags_[h].active) {
+      ghost_drags_[h] = {};
+    }
+  }
+  cut_.cancel();
+  portals_.clear();
+  return n;
+}
+
+
 uint64_t VoodooVolumeEngine::cut_portal_id() const { return cut_.portal_id(); }
+bool VoodooVolumeEngine::cut_is_armed(uint64_t portal_id) const { return cut_.is_armed(portal_id); }
 bool VoodooVolumeEngine::cut_arm(uint64_t portal_id) { return cut_.arm(portal_id); }
 void VoodooVolumeEngine::cut_cancel() { cut_.cancel(); }
 bool VoodooVolumeEngine::cut_active() const { return cut_.active(); }
@@ -1465,6 +1499,107 @@ bool VoodooVolumeEngine::ensure_ghost_in_portal(VoodooPortal& portal, EntityId e
   portal.ghosts.push_back(g);
   remove_ghost_from_other_portals(portal.id, entity_id);
   return true;
+}
+
+void VoodooVolumeEngine::refit_after_box_expand(EntityId box_id, Workspace& workspace) {
+  const WorkspaceEntry* box = workspace.find(box_id);
+  if (box == nullptr) {
+    return;
+  }
+
+  VoodooPortal* portal = nullptr;
+  const uint64_t pid = portal_for_ghost_entity(box_id);
+  if (pid != 0) {
+    portal = portal_mut(pid);
+  }
+  if (portal == nullptr) {
+    for (auto& p : portals_) {
+      if (!p.far_bb.open) {
+        continue;
+      }
+      if (point_in_obb(box->pose.position, p.far_bb.pose, p.far_bb.extents)) {
+        portal = &p;
+        break;
+      }
+    }
+  }
+  if (portal == nullptr || !portal->far_bb.open) {
+    return;
+  }
+
+  bool any = false;
+  Vec3 mn{};
+  Vec3 mx{};
+  auto include_pt = [&](const Vec3& p) {
+    const float pad = kGlyphHalfM;
+    if (!any) {
+      mn = Vec3{p.x - pad, p.y - pad, p.z - pad};
+      mx = Vec3{p.x + pad, p.y + pad, p.z + pad};
+      any = true;
+    } else {
+      mn.x = std::min(mn.x, p.x - pad);
+      mn.y = std::min(mn.y, p.y - pad);
+      mn.z = std::min(mn.z, p.z - pad);
+      mx.x = std::max(mx.x, p.x + pad);
+      mx.y = std::max(mx.y, p.y + pad);
+      mx.z = std::max(mx.z, p.z + pad);
+    }
+  };
+
+  include_pt(box->pose.position);
+  for (const auto& g : portal->ghosts) {
+    if (!g.is_parent_box && g.entity_id != 0) {
+      include_pt(g.far_pose.position);
+    }
+  }
+  for (const auto& e : workspace.entries()) {
+    if (e.parent_box == box_id && e.in_field) {
+      include_pt(e.pose.position);
+    }
+  }
+  if (!any) {
+    return;
+  }
+
+  const float lock = portal->lock_scale > 1e-4f ? portal->lock_scale : 0.5f;
+  const Vec3 fitted = fit_extents_for_aabb(mn, mx);
+  portal->far_bb.pose.position =
+      Vec3{0.5f * (mn.x + mx.x), 0.5f * (mn.y + mx.y), 0.5f * (mn.z + mx.z)};
+  portal->far_bb.extents = Vec3{std::max(fitted.x, portal->far_bb.extents.x),
+                                std::max(fitted.y, portal->far_bb.extents.y),
+                                std::max(fitted.z, portal->far_bb.extents.z)};
+  portal->far_bb.aspect_x = params_.near_bb_voxels_x;
+  portal->far_bb.aspect_y = params_.near_bb_voxels_y;
+  portal->far_bb.aspect_z = params_.near_bb_voxels_z;
+  portal->near_bb.extents = Vec3{portal->far_bb.extents.x * lock, portal->far_bb.extents.y * lock,
+                                 portal->far_bb.extents.z * lock};
+  portal->near_bb.aspect_x = params_.near_bb_voxels_x;
+  portal->near_bb.aspect_y = params_.near_bb_voxels_y;
+  portal->near_bb.aspect_z = params_.near_bb_voxels_z;
+
+  for (const auto& e : workspace.entries()) {
+    if (e.parent_box == box_id && e.in_field) {
+      (void)ensure_ghost_in_portal(*portal, e.id, workspace);
+    }
+  }
+  for (auto& g : portal->ghosts) {
+    if (!g.is_parent_box) {
+      g.scale = lock;
+    }
+  }
+  refresh_ghost_near_poses(*portal);
+
+  size_t pinned = portals_.size();
+  for (size_t i = 0; i < portals_.size(); ++i) {
+    if (portals_[i].id == portal->id) {
+      pinned = i;
+      break;
+    }
+  }
+  if (pinned < portals_.size()) {
+    bump_siblings_min_clear(pinned);
+    refresh_ghost_near_poses(portals_[pinned]);
+  }
 }
 
 void VoodooVolumeEngine::refit_far_bb_to_content_ghosts(VoodooPortal& portal,

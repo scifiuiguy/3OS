@@ -40,10 +40,23 @@ public sealed class ThreeOSFinalDemoGitHubPlane : MonoBehaviour
     {
         if (!_posed)
             PoseOnce();
+        // Always honor startVisible at cold open (gesture may have raced while inactive).
         SetVisible(startVisible);
     }
 
-    public void SetVisible(bool visible) => gameObject.SetActive(visible);
+    void OnEnable()
+    {
+        // If re-enabled after a false toggle, keep pose valid.
+        if (!_posed)
+            PoseOnce();
+    }
+
+    public void SetVisible(bool visible)
+    {
+        if (gameObject.activeSelf == visible)
+            return;
+        gameObject.SetActive(visible);
+    }
 
     public void ToggleVisible() => SetVisible(!gameObject.activeSelf);
 

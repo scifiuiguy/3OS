@@ -597,12 +597,6 @@ bool Workspace::commit_insert(std::string* err) {
     }
     return false;
   }
-  if (event_.awaiting_ack) {
-    if (err) {
-      *err = "prior FS event awaiting ack";
-    }
-    return false;
-  }
 
   WorkspaceEntry* obj = find_mut(snap_.object_id);
   WorkspaceEntry* box = find_mut(snap_.box_id);
@@ -625,22 +619,20 @@ bool Workspace::commit_insert(std::string* err) {
     return false;
   }
 
-  last_insert_object_pose_ = obj->pose;
-  have_rollback_ = true;
-  rollback_object_ = obj->id;
-  rollback_box_ = box->id;
-  rollback_prev_parent_ = obj->parent_box;
-
-  event_.type = StorageEventType::ObjectMovedIntoBox;
-  event_.object_id = obj->id;
-  event_.box_id = box->id;
-  event_.source_rel = obj->relative_path;
-  event_.dest_rel = box->relative_path;
-  if (!event_.dest_rel.empty() && event_.dest_rel.back() != '/' && event_.dest_rel.back() != '\\') {
-    event_.dest_rel.push_back('/');
+  StorageEvent ev{};
+  ev.type = StorageEventType::ObjectMovedIntoBox;
+  ev.object_id = obj->id;
+  ev.box_id = box->id;
+  ev.prev_parent = obj->parent_box;
+  ev.source_rel = obj->relative_path;
+  ev.dest_rel = box->relative_path;
+  if (!ev.dest_rel.empty() && ev.dest_rel.back() != '/' && ev.dest_rel.back() != '\\') {
+    ev.dest_rel.push_back('/');
   }
-  event_.dest_rel += obj->name;
-  event_.awaiting_ack = true;
+  ev.dest_rel += obj->name;
+  ev.awaiting_ack = true;
+
+  const Pose pose_before = obj->pose;
 
   // Detach from prior parent bookkeeping before attaching to the snap target.
   if (obj->parent_box != 0 && obj->parent_box != box->id) {
@@ -657,6 +649,20 @@ bool Workspace::commit_insert(std::string* err) {
   if (selected_id_ == obj->id) {
     selected_id_ = 0;
   }
+
+  // Multi cut-paste: queue FS write-through while a prior event awaits host ack.
+  // Workspace parentage updates immediately; disk moves drain one-at-a-time on the host.
+  if (event_.awaiting_ack) {
+    event_queue_.push_back(std::move(ev));
+  } else {
+    last_insert_object_pose_ = pose_before;
+    have_rollback_ = true;
+    rollback_object_ = ev.object_id;
+    rollback_box_ = ev.box_id;
+    rollback_prev_parent_ = ev.prev_parent;
+    event_ = std::move(ev);
+  }
+
   clear_snap();
   return true;
 }
@@ -687,6 +693,27 @@ bool Workspace::rollback_insert(EntityId object_id, EntityId box_id) {
   return true;
 }
 
+void Workspace::promote_next_event() {
+  event_ = {};
+  have_rollback_ = false;
+  rollback_object_ = 0;
+  rollback_box_ = 0;
+  rollback_prev_parent_ = 0;
+  if (event_queue_.empty()) {
+    return;
+  }
+  event_ = std::move(event_queue_.front());
+  event_queue_.pop_front();
+  event_.awaiting_ack = true;
+  have_rollback_ = true;
+  rollback_object_ = event_.object_id;
+  rollback_box_ = event_.box_id;
+  rollback_prev_parent_ = event_.prev_parent;
+  if (auto* obj = find_mut(event_.object_id)) {
+    last_insert_object_pose_ = obj->pose;
+  }
+}
+
 void Workspace::ack_event(bool success) {
   if (!event_.awaiting_ack) {
     return;
@@ -700,7 +727,7 @@ void Workspace::ack_event(bool success) {
     }
     have_rollback_ = false;
   }
-  event_ = {};
+  promote_next_event();
 }
 
 void Workspace::set_box_visual_open(EntityId box_id, bool open) {

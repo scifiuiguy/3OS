@@ -43,6 +43,11 @@ bool g_hands_pushed_this_frame = false;
 uint64_t g_tick_count = 0;
 std::optional<threeos::Pose> g_pending_portal_pose;
 uint64_t g_pending_portal_entity = 0;
+/// 0 = none; 1 = single-hand dismiss applied; 2 = dismiss-all applied (or dual gesture).
+uint32_t g_voodoo_dismiss_gesture_result = 0;
+/// Pairing window so staggered dual pinches still count as Dismiss All.
+constexpr double kVoodooDismissPairWindowS = 0.45;
+double g_voodoo_dismiss_pulse_time[2] = {-1e9, -1e9};
 
 // Unsnap catch-up: visual lerps from hold → free kinematic pose (no pop).
 constexpr float kUnsnapCatchupSeconds = 0.12f;
@@ -366,6 +371,79 @@ threeos::Pose resolve_voodoo_hand_pose(const ThreeOS_InteropInputFrame* frame, u
   return vhand;
 }
 
+void clear_all_portal_temp_centroids() {
+  for (const auto& p : g_voodoo.portals()) {
+    if (p.temporary_centroid_id != 0) {
+      g_centroids.clear_temporary(p.temporary_centroid_id);
+    }
+  }
+}
+
+void apply_dismiss_all_portals() {
+  clear_all_portal_temp_centroids();
+  (void)g_voodoo.dismiss_all_portals();
+  // Dual gesture always consumes (even with zero portals) so Multi-Choice stays closed.
+  g_voodoo_dismiss_gesture_result = 2;
+}
+
+/// Palm-up + secondary rising edge: dismiss that hand's latest portal; both hands → all.
+/// Dual pinches rarely land on the same tick — pair edges within a short window.
+void tick_voodoo_dismiss_gestures(double time_seconds) {
+  g_voodoo_dismiss_gesture_result = 0;
+  using threeos::InteractionIntentFlags;
+  using threeos::has_flag;
+  const auto& agg = g_hands.intents();
+
+  const bool left_pulse =
+      has_flag(g_hands.pending_intents(0).flags, InteractionIntentFlags::VoodooDismissPulse);
+  const bool right_pulse =
+      has_flag(g_hands.pending_intents(1).flags, InteractionIntentFlags::VoodooDismissPulse);
+  if (left_pulse) {
+    g_voodoo_dismiss_pulse_time[0] = time_seconds;
+  }
+  if (right_pulse) {
+    g_voodoo_dismiss_pulse_time[1] = time_seconds;
+  }
+
+  const bool left_recent =
+      (time_seconds - g_voodoo_dismiss_pulse_time[0]) <= kVoodooDismissPairWindowS;
+  const bool right_recent =
+      (time_seconds - g_voodoo_dismiss_pulse_time[1]) <= kVoodooDismissPairWindowS;
+  const bool dual_now = has_flag(agg.flags, InteractionIntentFlags::VoodooDismissAllPulse) ||
+                        (left_pulse && right_pulse) ||
+                        ((left_pulse || right_pulse) && left_recent && right_recent);
+
+  if (dual_now && (left_pulse || right_pulse ||
+                   has_flag(agg.flags, InteractionIntentFlags::VoodooDismissAllPulse))) {
+    apply_dismiss_all_portals();
+    // Reset pairing so a later single dismiss is not upgraded by stale edges.
+    g_voodoo_dismiss_pulse_time[0] = -1e9;
+    g_voodoo_dismiss_pulse_time[1] = -1e9;
+    return;
+  }
+
+  const int hand = left_pulse ? 0 : (right_pulse ? 1 : -1);
+  if (hand < 0) {
+    return;
+  }
+  // Snapshot temp before erase.
+  uint64_t temp = 0;
+  uint64_t best_id = 0;
+  for (const auto& p : g_voodoo.portals()) {
+    if (p.creating_hand == static_cast<uint32_t>(hand) && p.id >= best_id) {
+      best_id = p.id;
+      temp = p.temporary_centroid_id;
+    }
+  }
+  const uint64_t dismissed = g_voodoo.dismiss_latest_for_hand(static_cast<uint32_t>(hand));
+  if (dismissed != 0) {
+    if (temp != 0) {
+      g_centroids.clear_temporary(temp);
+    }
+    g_voodoo_dismiss_gesture_result = 1;
+  }
+}
+
 float tick_voodoo_frame(const ThreeOS_InteropInputFrame* frame) {
   const float dt = voodoo_frame_dt(frame->time_seconds);
   const bool right = (frame->tracking_flags & THREEOS_TRACK_RIGHT_AIM) != 0;
@@ -376,6 +454,9 @@ float tick_voodoo_frame(const ThreeOS_InteropInputFrame* frame) {
   // far-field select does not prevent launching another yellow volume.
   // Only an active ghost-drag / possess on this hand consumes the pinch.
   const bool kin_possessed = g_kinematics.state().phase == threeos::KineticPhase::Possessed;
+
+  // README dismiss gesture before new drag opens this frame.
+  tick_voodoo_dismiss_gestures(frame->time_seconds);
 
   for (uint32_t vh = 0; vh < 2u; ++vh) {
     bool hand_ok = false;
@@ -544,6 +625,9 @@ extern "C" THREEOS_API int32_t threeos_init(void) {
   g_centroids.clear();
   g_multichoice.reset();
   g_hands_pushed_this_frame = false;
+  g_voodoo_dismiss_gesture_result = 0;
+  g_voodoo_dismiss_pulse_time[0] = -1e9;
+  g_voodoo_dismiss_pulse_time[1] = -1e9;
   set_error("");
   return 0;
 }
@@ -1372,6 +1456,9 @@ extern "C" THREEOS_API int32_t threeos_storage_expand_box(uint64_t box_id) {
     return -2;
   }
   g_workspace.resolve_glyphs();
+  // Grow far BB (and lock-scaled near BB) so expanded children are reachable.
+  g_voodoo.refit_after_box_expand(box_id, g_workspace);
+  g_voodoo.sync_ghosts_from_workspace(g_workspace);
   set_error("");
   return 0;
 }
@@ -2000,7 +2087,7 @@ extern "C" THREEOS_API int32_t threeos_voodoo_get_portal_ghost(uint64_t portal_i
   out_ghost->far_pose = to_c(g.far_pose);
   out_ghost->near_pose = to_c(g.near_pose);
   // Cut ducks opacity on the host (unused0 flag); keep geometric scale intact.
-  const bool cut = !g.is_parent_box && g_voodoo.cut_portal_id() == portal_id;
+  const bool cut = !g.is_parent_box && g_voodoo.cut_is_armed(portal_id);
   out_ghost->scale = g.scale;
   out_ghost->unused0 = cut ? 1.f : 0.f;
   set_error("");
@@ -2029,6 +2116,14 @@ extern "C" THREEOS_API int32_t threeos_voodoo_dismiss_portal(uint64_t portal_id)
   }
   set_error("");
   return 0;
+}
+
+extern "C" THREEOS_API uint32_t threeos_voodoo_dismiss_gesture_result(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return g_voodoo_dismiss_gesture_result;
 }
 
 extern "C" THREEOS_API uint32_t threeos_voodoo_creation_allowed(void) {
@@ -2225,6 +2320,14 @@ extern "C" THREEOS_API uint64_t threeos_voodoo_cut_portal(void) {
     return 0;
   }
   return g_voodoo.cut_portal_id();
+}
+
+extern "C" THREEOS_API uint32_t threeos_voodoo_cut_is_armed(uint64_t portal_id) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return g_voodoo.cut_is_armed(portal_id) ? 1u : 0u;
 }
 
 extern "C" THREEOS_API int32_t threeos_voodoo_cut_paste_at(float x, float y, float z) {

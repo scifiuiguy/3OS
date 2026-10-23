@@ -13,26 +13,70 @@ public sealed class ThreeOSFinalDemoGitHubGesture : MonoBehaviour
     [SerializeField] float pinchExitMeters = 0.055f;
     [SerializeField] float palmUpDot = 0.25f;
     [SerializeField] float edgeCooldownSec = 0.45f;
+    [SerializeField] float startupMuteSec = 1.75f;
+    [SerializeField] float trackingEngagePadSec = 0.4f;
 
     readonly List<XRHandSubsystem> _subsystems = new List<XRHandSubsystem>();
     XRHandSubsystem _subsystem;
     float _cooldownUntil;
+    float _startupMuteUntil;
+    float _rightEngageUntil = -1f;
     bool _prevActive;
     bool _rightPinching;
+    bool _rightWasTracked;
+    bool _forcedStartVisible;
 
     public void Configure(ThreeOSFinalDemoGitHubPlane githubPlane)
     {
         plane = githubPlane;
     }
 
+    void OnEnable()
+    {
+        _startupMuteUntil = Time.unscaledTime + startupMuteSec;
+        _prevActive = false;
+        _rightPinching = false;
+        _forcedStartVisible = false;
+    }
+
     void Update()
     {
         if (plane == null)
             return;
+
+        // Boot: keep the plane ON until the mute window ends (gesture often false-fires).
+        if (!_forcedStartVisible && Time.unscaledTime < _startupMuteUntil)
+        {
+            if (!plane.gameObject.activeSelf)
+                plane.SetVisible(true);
+        }
+        else if (!_forcedStartVisible)
+        {
+            _forcedStartVisible = true;
+            if (!plane.gameObject.activeSelf)
+                plane.SetVisible(true);
+        }
+
         if (!EnsureSubsystem())
             return;
 
         _subsystem.TryUpdateHands(XRHandSubsystem.UpdateType.Dynamic);
+        var hand = _subsystem.rightHand;
+        var tracked = hand.isTracked;
+        if (tracked && !_rightWasTracked)
+            _rightEngageUntil = Time.unscaledTime + trackingEngagePadSec;
+        if (!tracked)
+            _rightEngageUntil = -1f;
+        _rightWasTracked = tracked;
+
+        if (Time.unscaledTime < _startupMuteUntil ||
+            (_rightEngageUntil > 0f && Time.unscaledTime < _rightEngageUntil))
+        {
+            _prevActive = false;
+            _rightPinching = false;
+            return;
+        }
+
         var active = IsRightPalmUpSecondaryPinch();
         if (Time.unscaledTime < _cooldownUntil)
         {

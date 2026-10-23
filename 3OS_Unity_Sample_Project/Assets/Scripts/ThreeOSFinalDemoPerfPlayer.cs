@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -43,6 +44,7 @@ public sealed class ThreeOSFinalDemoPerfPlayer : MonoBehaviour
     bool _exitShrinkStarted;
     float _exitShrinkStartUnscaled = -1f;
     Vector3 _floorRestScale = Vector3.one;
+    Coroutine _interruptCo;
 
     public bool IsPlaying => _playingSlot >= 0;
     public int PlayingSlotIndex => _playingSlot;
@@ -85,7 +87,7 @@ public sealed class ThreeOSFinalDemoPerfPlayer : MonoBehaviour
             _floorRestScale = npcFloorParent.localScale.sqrMagnitude > 1e-6f
                 ? npcFloorParent.localScale
                 : Vector3.one;
-        PrefetchSlots();
+        // Prefetch deferred by ActIDirector (cold-open hitch).
     }
 
     public void PrefetchSlots()
@@ -183,6 +185,12 @@ public sealed class ThreeOSFinalDemoPerfPlayer : MonoBehaviour
 
     public void StopPlayback(bool resetMouth)
     {
+        if (_interruptCo != null)
+        {
+            StopCoroutine(_interruptCo);
+            _interruptCo = null;
+        }
+
         if (audioSource != null && audioSource.isPlaying)
             audioSource.Stop();
         if (resetMouth)
@@ -194,11 +202,67 @@ public sealed class ThreeOSFinalDemoPerfPlayer : MonoBehaviour
         _exitShrinkStartUnscaled = -1f;
     }
 
+    /// <summary>
+    /// Cut clip audio immediately and ease the NPC from the live pose to that clip's last
+    /// JSON frame (Speak-during-clip-01 reply path).
+    /// </summary>
+    public void InterruptToLastFrame(float blendSec = 0.4f)
+    {
+        if (_playingSlot < 0)
+            return;
+        if (_interruptCo != null)
+            StopCoroutine(_interruptCo);
+        _interruptCo = StartCoroutine(InterruptToLastFrameRoutine(blendSec));
+    }
+
+    IEnumerator InterruptToLastFrameRoutine(float blendSec)
+    {
+        var slot = _playingSlot;
+        if (!TryGetClip(slot, out var clip) || clip.frames == null || clip.frames.Count == 0)
+        {
+            StopPlayback(resetMouth: true);
+            _interruptCo = null;
+            yield break;
+        }
+
+        var from = CaptureCurrentFrame();
+        var to = clip.frames[clip.frames.Count - 1];
+
+        if (audioSource != null && audioSource.isPlaying)
+            audioSource.Stop();
+        mouthAmp?.SetDriving(false);
+        // Clear playing so LateUpdate cannot fight the blend.
+        _playingSlot = -1;
+        _exitShrinkArmed = false;
+        _exitShrinkStartUnscaled = -1f;
+
+        var dur = Mathf.Max(0.05f, blendSec);
+        var t0 = Time.unscaledTime;
+        while (true)
+        {
+            var u = Mathf.Clamp01((Time.unscaledTime - t0) / dur);
+            var e = u * u * (3f - 2f * u);
+            ApplyFrameBlend(from, to, e);
+            if (u >= 1f)
+                break;
+            yield return null;
+        }
+
+        ApplyFrame(to);
+        mouthAmp?.ResetToRest();
+        _interruptCo = null;
+        Debug.Log($"[3OS][7.4] Interrupted slot {slot} → last frame ({dur:F2}s)");
+    }
+
+    /// <summary>True after clip-02 shrink until Act I reset restores the NPC.</summary>
+    public bool FloorDismissed { get; private set; }
+
     /// <summary>Restore floor parent scale after Act I reset.</summary>
     public void ResetFloorScale()
     {
         if (npcFloorParent == null)
             return;
+        FloorDismissed = false;
         if (!npcFloorParent.gameObject.activeSelf)
             npcFloorParent.gameObject.SetActive(true);
         npcFloorParent.localScale = _floorRestScale.sqrMagnitude > 1e-6f
@@ -275,6 +339,20 @@ public sealed class ThreeOSFinalDemoPerfPlayer : MonoBehaviour
     public void ForceFloorHidden()
     {
         if (npcFloorParent == null)
+            return;
+        FloorDismissed = true;
+        npcFloorParent.localScale = Vector3.zero;
+        if (npcFloorParent.gameObject.activeSelf)
+            npcFloorParent.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Re-assert zero scale after MR↔VR wipes (parent hierarchy / world toggles must not
+    /// resurrect a full-size NPC that clips Palace glyphs through the sky).
+    /// </summary>
+    public void EnsureFloorStaysHiddenIfDismissed()
+    {
+        if (!FloorDismissed || npcFloorParent == null)
             return;
         npcFloorParent.localScale = Vector3.zero;
         if (npcFloorParent.gameObject.activeSelf)

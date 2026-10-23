@@ -1,81 +1,123 @@
 #include "core/voodoo_cut_paste.hpp"
 
 #include "core/voodoo_volume.hpp"
+#include "storage/workspace.hpp"
 
+#include <algorithm>
 #include <string>
 
 namespace threeos {
+
+bool VoodooCutPaste::is_armed(uint64_t portal_id) const {
+  if (portal_id == 0) {
+    return false;
+  }
+  return std::find(cut_portal_ids_.begin(), cut_portal_ids_.end(), portal_id) !=
+         cut_portal_ids_.end();
+}
 
 bool VoodooCutPaste::arm(uint64_t portal_id) {
   const VoodooPortal* p = engine_.portal_const(portal_id);
   if (p == nullptr || !p->near_bb.open) {
     return false;
   }
-  cut_portal_id_ = portal_id;
+  if (is_armed(portal_id)) {
+    return true;
+  }
+  cut_portal_ids_.push_back(portal_id);
   return true;
 }
 
-void VoodooCutPaste::cancel() { cut_portal_id_ = 0; }
+void VoodooCutPaste::cancel() { cut_portal_ids_.clear(); }
+
+void VoodooCutPaste::disarm_portal(uint64_t portal_id) {
+  cut_portal_ids_.erase(
+      std::remove(cut_portal_ids_.begin(), cut_portal_ids_.end(), portal_id),
+      cut_portal_ids_.end());
+}
 
 std::vector<EntityId> VoodooCutPaste::entity_ids() const {
   std::vector<EntityId> ids;
-  const VoodooPortal* p = engine_.portal_const(cut_portal_id_);
-  if (p == nullptr) {
-    return ids;
-  }
-  for (const auto& g : p->ghosts) {
-    if (!g.is_parent_box && g.entity_id != 0) {
-      ids.push_back(g.entity_id);
+  for (uint64_t pid : cut_portal_ids_) {
+    const VoodooPortal* p = engine_.portal_const(pid);
+    if (p == nullptr) {
+      continue;
+    }
+    for (const auto& g : p->ghosts) {
+      if (!g.is_parent_box && g.entity_id != 0) {
+        ids.push_back(g.entity_id);
+      }
     }
   }
   return ids;
 }
 
 bool VoodooCutPaste::paste_at(const Vec3& pinch_world, Workspace& workspace) {
-  VoodooPortal* home = engine_.portal_mut(cut_portal_id_);
-  if (home == nullptr) {
-    cut_portal_id_ = 0;
+  if (cut_portal_ids_.empty()) {
     return false;
   }
 
+  // Use the first still-valid portal as the "home" for placement math; gather
+  // items from every armed portal.
+  VoodooPortal* home = nullptr;
   std::vector<PlaceItem> items;
-  items.reserve(home->ghosts.size());
-  for (const auto& g : home->ghosts) {
-    if (!g.is_parent_box && g.entity_id != 0) {
-      items.push_back(PlaceItem{g.entity_id, g.far_pose, g.near_pose});
+  for (uint64_t pid : cut_portal_ids_) {
+    VoodooPortal* p = engine_.portal_mut(pid);
+    if (p == nullptr) {
+      continue;
+    }
+    if (home == nullptr) {
+      home = p;
+    }
+    for (const auto& g : p->ghosts) {
+      if (!g.is_parent_box && g.entity_id != 0) {
+        items.push_back(PlaceItem{g.entity_id, g.far_pose, g.near_pose});
+      }
     }
   }
-  if (items.empty()) {
-    cut_portal_id_ = 0;
+  if (home == nullptr || items.empty()) {
+    cut_portal_ids_.clear();
     return false;
   }
 
-  cut_portal_id_ = 0;
-  return place_items_at_pinch(home, items, pinch_world, workspace, /*cluster_open_air=*/true);
+  const bool ok =
+      place_items_at_pinch(home, items, pinch_world, workspace, /*cluster_open_air=*/true);
+  // Clear ghosts from all armed portals after a successful cluster paste.
+  if (ok) {
+    for (uint64_t pid : cut_portal_ids_) {
+      if (VoodooPortal* p = engine_.portal_mut(pid)) {
+        engine_.erase_all_content_ghosts(*p);
+      }
+    }
+  }
+  cut_portal_ids_.clear();
+  return ok;
 }
 
 bool VoodooCutPaste::paste_into(EntityId box_id, Workspace& workspace) {
-  if (box_id == 0) {
+  if (box_id == 0 || cut_portal_ids_.empty()) {
     return false;
   }
-  VoodooPortal* home = engine_.portal_mut(cut_portal_id_);
-  if (home == nullptr) {
-    cut_portal_id_ = 0;
-    return false;
-  }
-  for (const auto& g : home->ghosts) {
-    if (g.entity_id == box_id) {
-      return false;
+
+  // Refuse pasting into a box that is itself a cut content ghost.
+  for (uint64_t pid : cut_portal_ids_) {
+    const VoodooPortal* p = engine_.portal_const(pid);
+    if (p == nullptr) {
+      continue;
+    }
+    for (const auto& g : p->ghosts) {
+      if (g.entity_id == box_id) {
+        return false;
+      }
     }
   }
 
   const auto ids = entity_ids();
   if (ids.empty()) {
-    cut_portal_id_ = 0;
+    cut_portal_ids_.clear();
     return false;
   }
 
-  cut_portal_id_ = 0;
   bool any = false;
   for (EntityId id : ids) {
     if (id == box_id) {
@@ -91,14 +133,19 @@ bool VoodooCutPaste::paste_into(EntityId box_id, Workspace& workspace) {
                   lerps.end());
     }
   }
-  engine_.erase_all_content_ghosts(*home);
+
+  for (uint64_t pid : cut_portal_ids_) {
+    if (VoodooPortal* p = engine_.portal_mut(pid)) {
+      engine_.erase_all_content_ghosts(*p);
+    }
+  }
+  cut_portal_ids_.clear();
   return any;
 }
 
 bool VoodooCutPaste::place_items_at_pinch(VoodooPortal* home, const std::vector<PlaceItem>& items,
                                           const Vec3& pinch_world, Workspace& workspace,
                                           bool cluster_open_air) {
-  // Reuse engine placement (shared with summon) until summon moves here too.
   std::vector<VoodooVolumeEngine::PlaceItem> eng_items;
   eng_items.reserve(items.size());
   for (const auto& it : items) {

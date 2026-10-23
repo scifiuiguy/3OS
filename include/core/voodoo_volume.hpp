@@ -201,16 +201,23 @@ class VoodooVolumeEngine {
   /// Hard portal cap only. Collide-with-full-group is refused at park (pose-dependent).
   bool creation_allowed() const { return portals_.size() < kMaxNearPortals; }
   bool dismiss_portal(uint64_t portal_id);
+  /// Dismiss the most recently created portal for `hand` (0 left / 1 right).
+  /// Returns the dismissed portal id, or 0 if none.
+  uint64_t dismiss_latest_for_hand(uint32_t hand);
+  /// Dismiss every open portal. Returns how many were removed.
+  uint32_t dismiss_all_portals();
 
   /// Task 6.6: voodoo-level cut (content ghosts only; parent Box excluded).
+  /// Multiple portals may be armed (dual-hand cut); disk I/O is paste-only.
   uint64_t cut_portal_id() const;
+  bool cut_is_armed(uint64_t portal_id) const;
   bool cut_arm(uint64_t portal_id);
   void cut_cancel();
   bool cut_active() const;
   /// Move all cut content ghosts to pinch as a billboarded centroid cluster
   /// (open-air or other near BB). Leaves source portal open, no refit.
   bool cut_paste_at(const Vec3& pinch_world, Workspace& workspace);
-  /// Move/insert all cut content into `box_id` (must not belong to the cut portal).
+  /// Move/insert all cut content into `box_id` (must not belong to the cut set).
   bool cut_paste_into(EntityId box_id, Workspace& workspace);
   /// Content entity ids currently armed for cut (excludes parent Box ghost).
   std::vector<EntityId> cut_entity_ids() const;
@@ -221,6 +228,9 @@ class VoodooVolumeEngine {
   uint64_t portal_at_near_point(const Vec3& p) const;
   /// Portal that currently owns a non-parent ghost for `entity_id`, or 0.
   uint64_t portal_for_ghost_entity(EntityId entity_id) const;
+  /// After `Workspace::layout_box_expand`: grow the portal that owns `box_id` so
+  /// newly in-field children fit in the far BB, then refresh near BB via lock_scale.
+  void refit_after_box_expand(EntityId box_id, Workspace& workspace);
 
   /// Task 6.5 ghost-scale / audition drag (palm ignored; host begins on selected hold).
   bool ghost_drag_begin(uint32_t hand, EntityId entity_id, const Pose& hand_pose, Workspace& workspace);

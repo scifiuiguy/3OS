@@ -370,9 +370,11 @@ enum ThreeOS_InteractionIntentFlags : uint32_t {
   THREEOS_INTENT_SECONDARY_HELD = 1u << 4,
   THREEOS_INTENT_TERNARY_HELD = 1u << 5,
   THREEOS_INTENT_VOODOO_FREE = 1u << 6, /* secondary hold + palm down */
-  THREEOS_INTENT_MIND_PALACE_MENU = 1u << 7,    /* secondary hold + palm up (Multi-Choice) */
+  THREEOS_INTENT_MIND_PALACE_MENU = 1u << 7,    /* secondary hold + palm up (Multi-Choice when no dismiss) */
   THREEOS_INTENT_MODE_TOGGLE_ARMED = 1u << 8,   /* open-book pose held (MR↔VR) */
   THREEOS_INTENT_MODE_TOGGLE_PULSE = 1u << 9, /* latched dual-thumb-close confirm edge */
+  THREEOS_INTENT_VOODOO_DISMISS_PULSE = 1u << 10,     /* secondary edge + palm up (one hand) */
+  THREEOS_INTENT_VOODOO_DISMISS_ALL_PULSE = 1u << 11, /* both hands dismiss pulse same frame */
 };
 
 enum ThreeOS_VoodooMode : uint32_t {
@@ -609,6 +611,8 @@ THREEOS_API uint32_t threeos_voodoo_portal_ghost_count(uint64_t portal_id);
 THREEOS_API int32_t threeos_voodoo_get_portal_ghost(uint64_t portal_id, uint32_t index,
                                                     ThreeOS_VoodooGhost* out_ghost);
 THREEOS_API int32_t threeos_voodoo_dismiss_portal(uint64_t portal_id);
+/** 0 = none this frame; 1 = single-hand dismiss; 2 = dismiss-all (dual gesture). */
+THREEOS_API uint32_t threeos_voodoo_dismiss_gesture_result(void);
 THREEOS_API uint32_t threeos_voodoo_creation_allowed(void);
 THREEOS_API uint32_t threeos_voodoo_point_in_near_bb(float x, float y, float z);
 
@@ -629,14 +633,16 @@ THREEOS_API int32_t threeos_voodoo_summon(uint64_t entity_id, float x, float y, 
 
 /* --- Voodoo scissors cut/paste (Phase 0.6 Task 6.6; additive) --- */
 
-/** Arm cut on portal content ghosts (excludes parent Box). Replaces any prior cut. */
+/** Arm cut on portal content ghosts (excludes parent Box). Adds to the cut set (multi-portal OK). */
 THREEOS_API int32_t threeos_voodoo_cut_arm(uint64_t portal_id);
 THREEOS_API void threeos_voodoo_cut_cancel(void);
-/** Armed cut portal id, or 0. */
+/** First armed cut portal id, or 0 (compat). Prefer cut_is_armed for multi-cut. */
 THREEOS_API uint64_t threeos_voodoo_cut_portal(void);
-/** Move all cut content to pinch (open-air / other near BB). Leaves source portal open. */
+/** 1 if portal_id is in the armed cut set. */
+THREEOS_API uint32_t threeos_voodoo_cut_is_armed(uint64_t portal_id);
+/** Move all cut content to pinch (open-air / other near BB). Leaves source portals open. */
 THREEOS_API int32_t threeos_voodoo_cut_paste_at(float x, float y, float z);
-/** Move/insert all cut content into box_id (refuses boxes belonging to the cut portal). */
+/** Move/insert all cut content into box_id (refuses boxes belonging to the cut set). */
 THREEOS_API int32_t threeos_voodoo_cut_paste_into(uint64_t box_id);
 
 /* --- Multi-Choice / mind palace menu (Phase 0.6 Task 6.7; additive) --- */

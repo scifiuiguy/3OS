@@ -4,6 +4,7 @@
 #include "storage/glyph_registry.hpp"
 
 #include <cstdint>
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -46,6 +47,8 @@ struct StorageEvent {
   StorageEventType type = StorageEventType::None;
   EntityId object_id = 0;
   EntityId box_id = 0;
+  /// Parent before this insert (for queued multi-paste rollback).
+  EntityId prev_parent = 0;
   std::string source_rel;
   std::string dest_rel;
   bool awaiting_ack = false;
@@ -142,6 +145,8 @@ class Workspace {
   bool set_selection(EntityId id);
 
  private:
+  void promote_next_event();
+
   EntityId next_id_ = 2000;
   EntityId selected_id_ = 0;
   float field_spacing_m_ = kDefaultFieldSpacingM;
@@ -149,7 +154,9 @@ class Workspace {
   GlyphRegistry* registry_ = nullptr;
   SnapState snap_{};
   StorageEvent event_{};
-  // For rollback
+  /// Extra FS write-through ops queued while `event_` awaits host ack (multi cut-paste).
+  std::deque<StorageEvent> event_queue_{};
+  // For rollback of the *current* awaiting event only.
   Pose last_insert_object_pose_{};
   bool have_rollback_ = false;
   EntityId rollback_object_ = 0;

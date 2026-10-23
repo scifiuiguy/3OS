@@ -1484,6 +1484,41 @@ int main() {
     ok = expect_eq("voodoo.free_parked_far", sessR.far_bb.open, 1u) && ok;
     ok = expect_eq("voodoo.free_parked_near", sessR.near_bb.open, 1u) && ok;
 
+    // Palm-up + secondary rising edge dismisses that hand's latest portal.
+    {
+      const uint32_t before = threeos_voodoo_portal_count();
+      ok = expect_eq("voodoo.dismiss_before", before > 0u ? 1u : 0u, 1u) && ok;
+      R.palm_mode = THREEOS_PALM_UP;
+      R.primary_pressed = 0;
+      R.primary_value = 0.f;
+      R.secondary_pressed = 0;
+      R.secondary_value = 0.f;
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 0.016;
+      threeos_tick(&vf, &vd);
+      R.secondary_pressed = 1;
+      R.secondary_value = 1.f;
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 0.016;
+      threeos_tick(&vf, &vd);
+      const uint32_t after = threeos_voodoo_portal_count();
+      const uint32_t dismiss_rc = threeos_voodoo_dismiss_gesture_result();
+      ok = expect_eq("voodoo.dismiss_result", dismiss_rc, 1u) && ok;
+      ok = expect_eq("voodoo.dismiss_after", after, before > 0u ? before - 1u : 0u) && ok;
+      if (ok) {
+        std::printf("OK   palm-up secondary dismisses creating-hand portal\n");
+      }
+      R.secondary_pressed = 0;
+      R.secondary_value = 0.f;
+      R.palm_mode = THREEOS_PALM_DOWN;
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 0.016;
+      threeos_tick(&vf, &vd);
+    }
+
     // Deadzone arming on selection stick: unarmed until leave then re-enter.
     threeos_kinematics_set_params(10.f, 0.015f, 3.5f, 0.f);
     const uint64_t ent = 4242;

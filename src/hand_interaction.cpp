@@ -461,6 +461,10 @@ void HandInteractionEngine::tick_hand(uint32_t hand, const Pose& head, bool head
       local.flags |= InteractionIntentFlags::VoodooFree;
     } else if (intent_palm == PalmMode::Up) {
       local.flags |= InteractionIntentFlags::MindPalaceMenu;
+      // README: palm-up + secondary pinch dismisses that hand's voodoo volume.
+      if (secondary_edge) {
+        local.flags |= InteractionIntentFlags::VoodooDismissPulse;
+      }
     }
   }
   if (s.ternary_pressed) {
@@ -525,6 +529,27 @@ void HandInteractionEngine::tick(const Pose& head, bool head_valid, double time_
   }
   if (pick >= 0) {
     intents_ = hands_[static_cast<size_t>(pick)].pending_intents;
+  }
+
+  // Dual-hand dismiss-all: both palms-up secondary edges in the same frame.
+  // OR single-hand dismiss pulse onto the aggregated intents so hosts can see it
+  // even when the preferred hand is the other side.
+  const bool left_dismiss = hands_[0].sample.tracked && has_flag(hands_[0].pending_intents.flags,
+                                                                 InteractionIntentFlags::VoodooDismissPulse);
+  const bool right_dismiss = hands_[1].sample.tracked && has_flag(hands_[1].pending_intents.flags,
+                                                                  InteractionIntentFlags::VoodooDismissPulse);
+  if (left_dismiss && right_dismiss) {
+    intents_.flags |= InteractionIntentFlags::VoodooDismissAllPulse;
+    intents_.flags |= InteractionIntentFlags::VoodooDismissPulse;
+  } else if (left_dismiss || right_dismiss) {
+    intents_.flags |= InteractionIntentFlags::VoodooDismissPulse;
+    if (pick < 0) {
+      intents_.handedness = left_dismiss ? 0u : 1u;
+      intents_.active_palm = PalmMode::Up;
+      intents_.active_channel = PinchChannel::Secondary;
+      intents_.flags |= InteractionIntentFlags::MindPalaceMenu;
+      intents_.flags |= InteractionIntentFlags::SecondaryHeld;
+    }
   }
 
   // Dual-hand MR↔VR open-book is OR'd after preferred-hand aggregation.

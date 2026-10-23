@@ -82,6 +82,8 @@ public sealed class ThreeOSFinalDemoPalaceContents : MonoBehaviour
         if (!toPalace)
         {
             ThreeOSStorageController.BillboardAllFarFieldLabels = false;
+            // Abort any in-flight paste UI / palace prepare so MR does not inherit Palace chrome.
+            storage?.CancelPasteProgressUi();
             // 7.8.c — dismiss in parallel with VR→MR wipe.
             if (_prepareCo != null)
             {
@@ -99,6 +101,8 @@ public sealed class ThreeOSFinalDemoPalaceContents : MonoBehaviour
             return;
         }
 
+        // MR→VR: NPC must stay at 0% if Act I already dismissed him.
+        FindFirstObjectByType<ThreeOSFinalDemoPerfPlayer>()?.EnsureFloorStaysHiddenIfDismissed();
         // MR→VR: load/hide glyphs during the wipe so settle can scale in immediately.
         if (_prepareCo != null)
             StopCoroutine(_prepareCo);
@@ -111,8 +115,12 @@ public sealed class ThreeOSFinalDemoPalaceContents : MonoBehaviour
         if (!toPalace)
         {
             ThreeOSStorageController.BillboardAllFarFieldLabels = false;
+            // Soft-dismiss can finish after wipe settle — reassert MR hide next frames.
+            storage?.EnsurePalaceSoftDismissedVisuals();
             return;
         }
+
+        FindFirstObjectByType<ThreeOSFinalDemoPerfPlayer>()?.EnsureFloorStaysHiddenIfDismissed();
 
         ThreeOSStorageController.BillboardAllFarFieldLabels = true;
         if (_scaleCo != null)

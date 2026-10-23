@@ -10,14 +10,16 @@ using UnityEngine.Android;
 /// </summary>
 public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
 {
-    [SerializeField] float speechRmsThreshold = 0.008f;
-    [SerializeField] float silenceRmsFloor = 0.004f;
-    [SerializeField] float silenceRelative = 0.42f;
-    [SerializeField] float silenceHoldSec = 0.30f;
-    [SerializeField] float minSpeechSec = 0.05f;
-    [SerializeField] float peakDecayPerSec = 3.5f;
+    // Quest GetData levels are often ~0.003–0.02 while EQ (×80) still looks lively —
+    // 0.008 was too high so Begin-speak never latched and silence EOU never ran.
+    [SerializeField] float speechRmsThreshold = 0.0035f;
+    [SerializeField] float silenceRmsFloor = 0.0015f;
+    [SerializeField] float silenceRelative = 0.32f;
+    [SerializeField] float silenceHoldSec = 0.45f;
+    [SerializeField] float minSpeechSec = 0.08f;
     [SerializeField] int bandCount = 10;
     [SerializeField] float fallbackCueSecAfterSignal = 14f;
+    [SerializeField] float fallbackCueSecAfterSpeech = 7f;
     [SerializeField] int clipLengthSec = 1;
     [SerializeField] int readSamples = 1024;
 
@@ -28,13 +30,21 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
     readonly float[] _bands = new float[16];
     int _lastPos = -1;
 
+    [SerializeField] float postArmGraceSec = 0.35f;
+    // After Begin-speak, ignore silence so a one-frame dip can't auto-EOU.
+    [SerializeField] float minHeardBeforeSilenceSec = 0.35f;
+    // Hard floor: no auto silence cue until the mic has been live this long.
+    [SerializeField] float minArmedBeforeSilenceSec = 0.55f;
+
     bool _armed;
     bool _waitingPermission;
     bool _heardSpeech;
     bool _sawMicEnergy;
+    bool _suppressUtterance;
     float _speechAccum;
     float _silenceAccum;
     float _armedElapsed;
+    float _heardElapsed;
     float _speechPeakRms;
     float _nextRmsLog;
     Coroutine _armRoutine;
@@ -43,10 +53,30 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
     public bool IsWaitingPermission => _waitingPermission;
     public bool IsArming => _armRoutine != null;
     public bool HasMicSignal => _sawMicEnergy;
+    public bool HeardSpeech => _heardSpeech;
+    public float ArmedElapsed => _armedElapsed;
     public float[] Bands => _bands;
     public float LastRms { get; private set; }
 
+    /// <summary>
+    /// When true (e.g. NPC clip audio playing), EQ still updates but speak/silence EOU is frozen.
+    /// Clearing suppress resets the speech latch so speaker bleed cannot carry into the reply.
+    /// </summary>
+    public bool SuppressUtteranceDetection
+    {
+        get => _suppressUtterance;
+        set
+        {
+            if (value == _suppressUtterance)
+                return;
+            _suppressUtterance = value;
+            // Both edges: drop speaker-bleed latch so the reply turn needs fresh speech.
+            ClearSpeechLatch();
+        }
+    }
+
     public System.Action OnEndOfUtterance;
+    public System.Action OnArmFailed;
 
     public void Arm()
     {
@@ -84,8 +114,9 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
             if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
             {
                 Debug.LogWarning("[3OS][7.4] Mic permission denied — Speak again to cue.");
-                _armed = true;
+                _armed = false;
                 _armRoutine = null;
+                OnArmFailed?.Invoke();
                 yield break;
             }
 
@@ -110,8 +141,9 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
         if (_clip == null)
         {
             Debug.LogError("[3OS][7.4] Microphone.Start returned null — Speak again to cue NPC.");
-            _armed = true;
+            _armed = false;
             _armRoutine = null;
+            OnArmFailed?.Invoke();
             yield break;
         }
 
@@ -138,7 +170,8 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
 
         _monitor.clip = _clip;
         _monitor.loop = true;
-        _monitor.volume = 0f;
+        // Tiny non-zero volume keeps the mic monitor graph alive on Quest; mute via spatialize.
+        _monitor.volume = 0.001f;
         _monitor.spatialBlend = 0f;
         _monitor.Play();
 
@@ -147,12 +180,9 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
 #endif
 
         _armed = true;
-        _heardSpeech = false;
+        ClearSpeechLatch();
         _sawMicEnergy = false;
-        _speechAccum = 0f;
-        _silenceAccum = 0f;
         _armedElapsed = 0f;
-        _speechPeakRms = 0f;
         _lastPos = -1;
         _nextRmsLog = 0f;
         _armRoutine = null;
@@ -173,12 +203,9 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
 
         _waitingPermission = false;
         _armed = false;
-        _heardSpeech = false;
         _sawMicEnergy = false;
-        _speechAccum = 0f;
-        _silenceAccum = 0f;
         _armedElapsed = 0f;
-        _speechPeakRms = 0f;
+        ClearSpeechLatch();
         TearDownCapture();
         for (var i = 0; i < _bands.Length; i++)
             _bands[i] = 0f;
@@ -234,12 +261,19 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
 
         _armedElapsed += Time.unscaledDeltaTime;
         var gotSamples = SampleUnityMic();
+        // Stale mic cursor → decay level (don't hard-zero; that fought peak/silence logic).
+        if (!gotSamples)
+            LastRms *= Mathf.Exp(-10f * Time.unscaledDeltaTime);
+
         var rms = LastRms;
         var dt = Time.unscaledDeltaTime;
+        var bandPeak = 0f;
+        for (var i = 0; i < bandCount && i < _bands.Length; i++)
+            bandPeak = Mathf.Max(bandPeak, _bands[i]);
 
         if (gotSamples && rms > 1e-6f)
             _sawMicEnergy = true;
-        else if (rms >= speechRmsThreshold * 0.25f)
+        else if (rms >= speechRmsThreshold * 0.25f || bandPeak >= 0.2f)
             _sawMicEnergy = true;
 
         if (Time.unscaledTime >= _nextRmsLog)
@@ -249,26 +283,38 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
             Debug.Log(
                 $"[3OS][7.4] Mic rms={rms:F5} got={gotSamples} energy={_sawMicEnergy} " +
                 $"heard={_heardSpeech} peak={_speechPeakRms:F5} sil={_silenceAccum:F2} " +
-                $"band0={_bands[0]:F2} pos={pos}");
+                $"band0={_bands[0]:F2} bandPeak={bandPeak:F2} pos={pos}");
         }
+
+        // Grace / suppress: still latch Begin-speak (quick replies right after mic),
+        // but do not fire silence EOU yet.
+        var blockSilenceEou = _armedElapsed < postArmGraceSec || _suppressUtterance;
 
         if (!_sawMicEnergy)
         {
+            if (!gotSamples && bandPeak < 0.05f)
+                IdleBands();
+            if (blockSilenceEou)
+                return;
             IdleBands();
             return;
         }
 
         if (!_heardSpeech)
         {
-            if (rms >= speechRmsThreshold)
+            // Latch speak from RMS or EQ band peak (same signal the user sees).
+            var speaking = rms >= speechRmsThreshold || bandPeak >= 0.28f;
+            if (speaking)
             {
                 _speechAccum += dt;
-                _speechPeakRms = Mathf.Max(_speechPeakRms, rms);
+                // Hold peak for silence gate — decaying peak made short replies never cue.
+                _speechPeakRms = Mathf.Max(_speechPeakRms, Mathf.Max(rms, bandPeak / 80f));
                 if (_speechAccum >= minSpeechSec)
                 {
                     _heardSpeech = true;
+                    _heardElapsed = 0f;
                     _silenceAccum = 0f;
-                    Debug.Log($"[3OS][7.4] Begin-speak (rms={rms:F4})");
+                    Debug.Log($"[3OS][7.4] Begin-speak (rms={rms:F4} bandPeak={bandPeak:F2})");
                 }
             }
             else
@@ -276,7 +322,7 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
                 _speechAccum = 0f;
             }
 
-            if (_armedElapsed >= fallbackCueSecAfterSignal)
+            if (!blockSilenceEou && _armedElapsed >= fallbackCueSecAfterSignal)
             {
                 Debug.LogWarning("[3OS][7.4] Fallback EOU after signal timeout");
                 FireEndOfUtterance();
@@ -285,18 +331,59 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
             return;
         }
 
-        _speechPeakRms = Mathf.Max(rms, _speechPeakRms * Mathf.Exp(-peakDecayPerSec * dt));
+        _heardElapsed += dt;
+        // Silence gate uses held peak (max since begin) — decaying peak broke short replies.
+        _speechPeakRms = Mathf.Max(_speechPeakRms, rms);
+        if (blockSilenceEou ||
+            _heardElapsed < minHeardBeforeSilenceSec ||
+            _armedElapsed < minArmedBeforeSilenceSec)
+        {
+            _silenceAccum = 0f;
+            return;
+        }
+
+        // Weak latch (noise blip) must not unlock silence EOU.
+        if (_speechPeakRms < speechRmsThreshold * 1.25f)
+        {
+            _silenceAccum = 0f;
+            return;
+        }
+
         var silenceGate = Mathf.Max(silenceRmsFloor, _speechPeakRms * silenceRelative);
-        if (rms <= silenceGate)
+        // Quest often skips GetData frames (pos unchanged). Decayed LastRms still counts as
+        // quiet — requiring gotSamples cleared silenceAccum every other frame (281 regression).
+        var quiet = rms <= silenceGate;
+        if (quiet)
         {
             _silenceAccum += dt;
             if (_silenceAccum >= silenceHoldSec)
+            {
+                Debug.Log(
+                    $"[3OS][7.4] Silence EOU (rms={rms:F5} gate={silenceGate:F5} " +
+                    $"hold={_silenceAccum:F2} got={gotSamples})");
                 FireEndOfUtterance();
+            }
+            else if (_armedElapsed >= fallbackCueSecAfterSpeech &&
+                     _silenceAccum >= silenceHoldSec * 0.75f)
+            {
+                Debug.LogWarning("[3OS][7.4] Fallback EOU after speech (stuck silence)");
+                FireEndOfUtterance();
+            }
         }
-        else
+        else if (gotSamples)
         {
+            // Only reset on a real loud sample — don't wipe the timer on skipped frames.
             _silenceAccum = 0f;
         }
+    }
+
+    void ClearSpeechLatch()
+    {
+        _heardSpeech = false;
+        _speechAccum = 0f;
+        _silenceAccum = 0f;
+        _heardElapsed = 0f;
+        _speechPeakRms = 0f;
     }
 
     public void ForceEndOfUtterance()
@@ -329,10 +416,7 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
         }
 
         if (pos == _lastPos || pos == 0)
-        {
-            LastRms = 0f;
             return false;
-        }
 
         _lastPos = pos;
         var n = Mathf.Min(readSamples, _clip.samples);
@@ -390,7 +474,7 @@ public sealed class ThreeOSFinalDemoMicListen : MonoBehaviour
         _monitor = gameObject.AddComponent<AudioSource>();
         _monitor.playOnAwake = false;
         _monitor.loop = true;
-        _monitor.volume = 0f;
+        _monitor.volume = 0.001f;
         _monitor.spatialBlend = 0f;
     }
 

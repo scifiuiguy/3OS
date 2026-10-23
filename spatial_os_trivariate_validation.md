@@ -13,7 +13,7 @@ The original trivariate formula calculates the Index of Difficulty ($ID$) in bit
 $$ID = \log_2 \left( \frac{A}{\min(W, H, D)} + 1 \right)$$
 
 ### The Symmetrical Voxel Override
-Because proxy clusters can arrive in the near field at any arbitrary rotation, targets cannot be oblong or optimized for a single directional approach even though the Trivariate paper shows the depth vector is more error-prone. The system must design for the absolute lowest common denominator: the $Z$-axis. Therefore, the dimensions of a given empty chunk of interactable space should be a perfectly uniform cube where $W = H = D = S_{cube}$. 
+Because proxy clusters can arrive in the near field at any arbitrary rotation (i.e. user could access them from multiple vantage points throughout a session), targets cannot be oblong or optimized for a single directional approach even though the Trivariate paper shows the depth vector is more error-prone. The system must design for the absolute lowest common denominator: the $Z$-axis. Therefore, the dimensions of a given empty chunk of interactable space should be a perfectly uniform cube where $W = H = D = S_{cube}$. 
 
 The equation collapses into a single-variable constraint:
 
@@ -52,22 +52,22 @@ $$S_{cube} = \frac{24.74\text{ in}}{2^{3.2} - 1} = \frac{24.74\text{ in}}{9.19 -
 *   **Imperial Specification:** **3.0 inches**
 *   **Metric Equivalent:** **7.6 cm**
 
-A **3-inch symmetrical voxel** is the ideal lowest common denominator size that can accomodate rapid hand motion with minimal overshoot. Obviously, interactive elements can be smaller if the developer does not intend the user to dart between them rapidly, but 3" voxel targets is the min volume when designing for fastest hand motion. It ensures that a user can execute a blind, maximum-velocity swipe across the entire canvas, and their internal motor control loop will naturally halt their finger inside the target volume error-free.
+A **3-inch symmetrical voxel** is the ideal lowest common denominator size that can accomodate rapid hand motion with minimal overshoot. Obviously, interactive elements can be smaller if the developer does not intend the user to dart between them rapidly, but 3" voxel targets are the minimum volume when designing for fastest hand motion. This ensures a user can execute a blind, maximum-velocity swipe across the entire canvas, and their internal motor control loop will naturally halt their finger inside the target volume with minimal error margin.
 
 
 ### Resulting Matrix Resolution for the Voodoo Volume
 Dividing the 12" $\times$ 12" $\times$ 18" bounding box by the 3-inch ideal voxel size yields a discrete, non-overlapping interaction matrix:
 
-$$\text{Width Resolution} = \frac{12\text{"}}{3\text{"}} = 3\text{ voxels}$$
-$$\text{Depth Resolution} = \frac{12\text{"}}{3\text{"}} = 3\text{ voxels}$$
+$$\text{Width Resolution} = \frac{12\text{"}}{3\text{"}} = 4\text{ voxels}$$
+$$\text{Depth Resolution} = \frac{12\text{"}}{3\text{"}} = 4\text{ voxels}$$
 $$\text{Height Resolution} = \frac{18\text{"}}{3\text{"}} = 6\text{ voxels}$$
 
-> *Correction from baseline continuous volume approximations:* A strict grid alignment yields a **3 $\times$ 3 $\times$ 6 Matrix**, providing a total grid capacity of **54 independent, full-sized interaction voxels** cleanly packed into the voodoo volume.
+> *Correction from baseline continuous volume approximations:* A strict grid alignment yields a **4 $\times$ 4 $\times$ 6 Matrix**, providing a total grid capacity of **96 independent, full-sized interaction voxels** cleanly packed into the voodoo volume.
 
 ---
 
 ## 4. Design Takeaways for High-Throughput Spatial Interaction
 
-1.  **Zero-Overshoot Guarantee:** By capping the interactive resolution at a 3 $\times$ 3 $\times$ 6 grid within this physical volume, every single voxel functions as a "high-throughput" zone requiring zero training wheels.
+1.  **Zero-Overshoot Guarantee:** By capping the interactive resolution at a 4 $\times$ 4 $\times$ 6 grid within this physical volume, every single voxel functions as a "high-throughput" zone requiring zero training wheels.
 2.  **Rotation Invariance:** Because every voxel is a 3-inch cube, the proxy volume remains completely stable and accurate regardless of whether the user is viewing the target cluster from the front, side, or back face.
 3.  **Bypassing the Keyhole Effect:** While a single 3-inch target has lower micro-throughput than a 2-pixel desktop button, the macro-throughput of the spatial OS is drastically optimized by eliminating window management, ray-casting lag, and perspective flattening.

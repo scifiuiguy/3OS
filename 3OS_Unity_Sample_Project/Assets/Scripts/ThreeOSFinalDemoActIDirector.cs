@@ -6,7 +6,7 @@ using UnityEngine.XR.Hands;
 
 /// <summary>
 /// Phase 0.7 Task 7.4/7.5 — Speak → mic/EQ → clip 01 → Speak → clip 02 + floor/widget shrink;
-/// palms-down dual-ternary resets Act I without deallocating the agent widget.
+/// palms-down dual-secondary resets Act I without deallocating the agent widget.
 /// </summary>
 public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
 {
@@ -15,6 +15,7 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
     [SerializeField] ThreeOSFinalDemoMicListen mic;
     [SerializeField] ThreeOSFinalDemoEqVisualizer eq;
     [SerializeField] ThreeOSFinalDemoAgentResetGesture resetGesture;
+    [SerializeField] ThreeOSFinalDemoModeToggle modeToggle;
     [SerializeField] ThreeOSAndroidMouthAmpDriver mouthAmp;
     [SerializeField] AudioSource audioSource;
 
@@ -39,6 +40,10 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
     bool _listening;
     bool _clip2ShrinkUiStarted;
     Coroutine _cueDelayRoutine;
+    // Ignore second-Speak while arming / settling; only end after real speech (or stuck).
+    const float SecondSpeakGraceSec = 1.25f;
+    const float SecondSpeakStuckSec = 4.0f;
+    float _listenStartedAt;
 
     // Manual finish: right middle-finger pinch while listening (doesn't need re-confirming Speak).
     readonly List<XRHandSubsystem> _handSubsystems = new List<XRHandSubsystem>();
@@ -52,9 +57,20 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
         ResolveRefs();
         EnsureComponents();
         WirePlayerSlots();
-        player.PrefetchSlots();
-        player.TryApplyColdPoseSlot0();
+        // Defer JSON/audio prefetch off the first frames — cold-open hitch on Quest.
+        StartCoroutine(DeferredPrefetchRoutine());
         eq?.Hide();
+    }
+
+    IEnumerator DeferredPrefetchRoutine()
+    {
+        yield return null;
+        yield return null;
+        player?.PrefetchSlots();
+        yield return null;
+        player?.TryApplyColdPoseSlot0();
+        // Offline Demo1/2 layout for Act I reset — load once, never scan disk mid-demo.
+        yield return ThreeOSFinalDemoFsSnapshot.EnsureLoaded();
     }
 
     void OnEnable()
@@ -67,16 +83,30 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
         }
 
         if (mic != null)
+        {
             mic.OnEndOfUtterance += HandleEndOfUtterance;
+            mic.OnArmFailed += HandleArmFailed;
+        }
+
         if (resetGesture != null)
             resetGesture.OnReset += ResetActI;
+        EnsureModeToggle();
+        if (modeToggle != null)
+        {
+            modeToggle.WipeStarted += HandleModeWipeStarted;
+            modeToggle.WipeSettled += HandleModeWipeSettled;
+        }
     }
 
     void OnDisable()
     {
         ThreeOSAgentSession.SpeakSelected -= HandleSpeak;
         if (mic != null)
+        {
             mic.OnEndOfUtterance -= HandleEndOfUtterance;
+            mic.OnArmFailed -= HandleArmFailed;
+        }
+
         if (player != null)
         {
             player.OnSlotFinished -= HandleSlotFinished;
@@ -85,12 +115,45 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
 
         if (resetGesture != null)
             resetGesture.OnReset -= ResetActI;
+        if (modeToggle != null)
+        {
+            modeToggle.WipeStarted -= HandleModeWipeStarted;
+            modeToggle.WipeSettled -= HandleModeWipeSettled;
+        }
+    }
+
+    void HandleModeWipeStarted(bool toPalace)
+    {
+        // Palace sky does not occlude NPC depth — keep dismissed floor at 0 until Act I reset.
+        player?.EnsureFloorStaysHiddenIfDismissed();
+        if (toPalace && _nextSlot >= 2)
+            player?.ForceFloorHidden();
+    }
+
+    void HandleModeWipeSettled(bool toPalace)
+    {
+        player?.EnsureFloorStaysHiddenIfDismissed();
+        if (toPalace && _nextSlot >= 2)
+            player?.ForceFloorHidden();
+    }
+
+    void EnsureModeToggle()
+    {
+        if (modeToggle == null)
+            modeToggle = FindFirstObjectByType<ThreeOSFinalDemoModeToggle>();
     }
 
     void Update()
     {
+        // Belt-and-suspenders: never let a dismissed NPC resurrect mid-frame.
+        player?.EnsureFloorStaysHiddenIfDismissed();
+
         if (!_listening)
             return;
+
+        // Only freeze latch while NPC audio/anim is actually playing (no post-clip delay).
+        if (mic != null)
+            mic.SuppressUtteranceDetection = player != null && player.IsPlaying;
 
         if (eq != null)
         {
@@ -107,6 +170,20 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
 
     void PollFinishPinch()
     {
+        // Manual middle-pinch EOU only after real speech — a Speak (index) pinch often
+        // brings middle near thumb and was false-firing CommitListening on re-arm.
+        if (mic == null || !mic.HeardSpeech)
+        {
+            _finishPinchPrev = true;
+            return;
+        }
+
+        if (Time.unscaledTime - _listenStartedAt < SecondSpeakGraceSec)
+        {
+            _finishPinchPrev = true;
+            return;
+        }
+
         if (!EnsureHands())
             return;
         _hands.TryUpdateHands(XRHandSubsystem.UpdateType.Dynamic);
@@ -184,20 +261,62 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
         Debug.Log($"[3OS][7.4] SpeakSelected received (nextSlot={_nextSlot} listening={_listening})");
         if (_nextSlot >= 2)
         {
-            Debug.Log("[3OS][7.4] Speak ignored — Act I clips done; use palms-down dual-ternary reset.");
+            Debug.Log("[3OS][7.4] Speak ignored — Act I clips done; use palms-down dual-secondary reset.");
             return;
         }
 
-        // Alternate cue: second Speak while already listening immediately ends the utterance.
+        // Second Speak = manual EOU only after speech was heard (or stuck recovery).
+        // Grace-only end caused: start listen → bounce pinch → immediate clip cue.
         if (_listening)
         {
-            Debug.Log("[3OS][7.4] Second Speak → manual end-of-utterance cue");
+            if (mic != null && (mic.IsArming || mic.IsWaitingPermission))
+            {
+                Debug.Log("[3OS][7.4] Second Speak ignored — mic still arming");
+                return;
+            }
+
+            var elapsed = Time.unscaledTime - _listenStartedAt;
+            if (elapsed < SecondSpeakGraceSec)
+            {
+                Debug.Log($"[3OS][7.4] Second Speak ignored — grace ({elapsed:F2}s)");
+                return;
+            }
+
+            if (mic != null && mic.SuppressUtteranceDetection)
+            {
+                Debug.Log("[3OS][7.4] Second Speak ignored — utterance suppressed (NPC audio)");
+                return;
+            }
+
+            var heard = mic != null && mic.HeardSpeech;
+            var armedReady = mic == null || mic.IsArmed;
+            var stuck = elapsed >= SecondSpeakStuckSec;
+            if (!armedReady || (!heard && !stuck))
+            {
+                Debug.Log(
+                    $"[3OS][7.4] Second Speak ignored — need speech or stuck " +
+                    $"(armed={armedReady} heard={heard} t={elapsed:F2})");
+                return;
+            }
+
+            Debug.Log(
+                $"[3OS][7.4] Second Speak → manual end-of-utterance cue " +
+                $"(heard={heard} stuck={stuck})");
             CommitListening();
             return;
         }
 
-        // Re-arm listen even if clip 01 is still playing (do not stop clip 01).
+        // Re-arm listen; if clip 01 is still playing, cut it and ease to last frame.
         StartListening();
+    }
+
+    void HandleArmFailed()
+    {
+        if (!_listening)
+            return;
+        Debug.LogWarning("[3OS][7.4] Mic arm failed — stopping listen (Speak again)");
+        _listening = false;
+        eq?.Hide();
     }
 
     void StartListening()
@@ -209,11 +328,26 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
             _cueDelayRoutine = null;
         }
 
+        // Speak during clip 01: stop audio, lerp live pose → last JSON frame, then listen.
+        if (player != null && player.IsPlaying && player.PlayingSlotIndex == 0)
+        {
+            Debug.Log("[3OS][7.4] Speak during clip 01 → interrupt to last frame + listen");
+            player.InterruptToLastFrame(0.4f);
+        }
+
         _listening = true;
+        _listenStartedAt = Time.unscaledTime;
+        // Absorb current hand pose so Speak's index pinch can't edge middle-pinch EOU.
+        _finishPinchPrev = true;
+        _finishPinchLatched = false;
+        _finishCooldownUntil = Time.unscaledTime + SecondSpeakGraceSec;
 
         // Always restart capture so a prior failed arm cannot stick.
+        // Do not suppress after interrupt — reply silence must latch as soon as speech begins.
         mic?.Disarm();
         mic?.Arm();
+        if (mic != null)
+            mic.SuppressUtteranceDetection = player != null && player.IsPlaying;
 
         var widget = ThreeOSAgentSession.WidgetRoot;
         if (eq != null)
@@ -252,6 +386,8 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
     void HandleEndOfUtterance()
     {
         _listening = false;
+        if (mic != null)
+            mic.SuppressUtteranceDetection = false;
         eq?.Hide();
 
         var slot = _nextSlot;
@@ -336,7 +472,86 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
         _nextSlot = 0;
         _clip2ShrinkUiStarted = false;
         ThreeOSAgentSession.RequestPopIn();
-        Debug.Log("[3OS][7.4] Act I reset complete");
+
+        // Full demo take reset: destroy Blender spawn + MR DemonA glyph, restore Demo1/2 from
+        // the offline FS snapshot, remount palace. Safe to fire while soft-dismissed in MR.
+        StartCoroutine(ResetDemoTakeRoutine());
+    }
+
+    IEnumerator ResetDemoTakeRoutine()
+    {
+        // 1) BlenderGroup floor spawn (if any)
+        var blender = FindFirstObjectByType<ThreeOSFinalDemoBlenderSpawn>();
+        if (blender != null)
+            blender.ForceCancelArmed();
+        else
+            ThreeOSFinalDemoBlenderSpawn.DestroySpawnedBlenderGroups();
+
+        var storage = FindFirstObjectByType<ThreeOSStorageController>();
+        if (storage != null)
+        {
+            // 2) MR-persisted DemonA.blend glyph (grab into MR does not rewrite disk paths)
+            storage.ClearMrPersistedSelectionVisual();
+            storage.CancelPasteProgressUi();
+            storage.ClearLastPasteBatch();
+        }
+
+        // 3) Disk: restore Demo1/2 from serialized snapshot (ThreadPool)
+        yield return ThreeOSFinalDemoFsSnapshot.EnsureLoaded();
+        var snap = ThreeOSFinalDemoFsSnapshot.Cached;
+        if (snap != null)
+        {
+            var docs1 = ThreeOSStorageController.DocumentsDemoPath(
+                string.IsNullOrEmpty(snap.demo1_folder) ? "3OS_Demo" : snap.demo1_folder);
+            var docs2 = ThreeOSStorageController.DocumentsDemoPath(
+                string.IsNullOrEmpty(snap.demo2_folder) ? "3OS_Demo2" : snap.demo2_folder);
+            var docs3 = ThreeOSStorageController.DocumentsDemoPath(
+                string.IsNullOrEmpty(snap.demo3_folder) ? "3OS_Demo3" : snap.demo3_folder);
+
+            var bgDone = false;
+            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    ThreeOSFinalDemoFsSnapshot.RestoreDemoRootsFromSnapshot(
+                        snap, docs1, docs2, docs3);
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError("[3OS][7.4] snapshot restore failed: " + ex.Message);
+                }
+                finally
+                {
+                    System.Threading.Thread.MemoryBarrier();
+                    bgDone = true;
+                }
+            });
+
+            var waited = 0f;
+            while (!bgDone && waited < 60f)
+            {
+                waited += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[3OS][7.4] no FS snapshot — disk not restored");
+        }
+
+        // 4) Remount palace from restored Documents. If still in MR office, keep glyphs hidden —
+        // reset restores disk/kernel only; Mind Palace must not appear until the wipe to VR.
+        if (storage != null)
+        {
+            var stayHiddenInMr = stage == null || !stage.InPalace;
+            yield return storage.RemountPalaceAfterDemoResetRoutine(remainHiddenInMr: stayHiddenInMr);
+        }
+
+        // StorageClear during remount wiped core focus anchors; Unity still held a stale id.
+        var npcFocus = FindFirstObjectByType<ThreeOSFinalDemoNpcFocusAnchor>();
+        npcFocus?.ForceReregister();
+
+        Debug.Log("[3OS][7.4] Act I reset + demo FS restore complete");
     }
 
     void ResolveRefs()

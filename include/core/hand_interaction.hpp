@@ -28,9 +28,11 @@ enum class InteractionIntentFlags : uint32_t {
   SecondaryHeld = 1u << 4,
   TernaryHeld = 1u << 5,
   VoodooFree = 1u << 6,  // secondary + palm down
-  MindPalaceMenu = 1u << 7,     // secondary + palm up (Multi-Choice)
+  MindPalaceMenu = 1u << 7,     // secondary + palm up (Multi-Choice when no dismiss)
   ModeToggleArmed = 1u << 8,    // open-book pose held (MR↔VR glyph)
   ModeTogglePulse = 1u << 9,    // latched dual-thumb-close edge → confirm toggle
+  VoodooDismissPulse = 1u << 10,     // secondary press edge + palm up (one hand)
+  VoodooDismissAllPulse = 1u << 11,  // both hands VoodooDismissPulse same frame
 };
 
 inline InteractionIntentFlags operator|(InteractionIntentFlags a, InteractionIntentFlags b) {
