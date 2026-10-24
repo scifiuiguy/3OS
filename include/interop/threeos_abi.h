@@ -157,7 +157,7 @@ typedef struct ThreeOS_StickDebug {
   uint32_t reserved2; /* pad to 64 bytes */
 } ThreeOS_StickDebug;
 
-/** World Proxy Half-Dome snapshot (48 bytes). */
+/** Invisible voodoo-drop field-proxy snapshot (48 bytes; legacy DomeState name — not rendered). */
 typedef struct ThreeOS_DomeState {
   uint32_t active;
   float scale_ratio;

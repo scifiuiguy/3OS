@@ -50,16 +50,16 @@ Unity 0.0 → … → 0.6 (voodoo) → 0.7 (final demo) → 0.8 (multi-select) �
 ---
 
 ### 🕸 Phase 0.2: Topology, Proxies & Portals (v0.2.0)
-**Goal:** World Proxy Half-Dome, Double-Proxy Voxel Lattice, and Voodoo portal teleportation. Prove with **headless tests** here; prove on Quest via the paired **Unity 0.2** gate. *(Product voodoo volumes — far/near bounding boxes, ghosts, snap centroids — are Phase 0.6; Half-Dome stays imaginary / unrendered.)*
+**Goal:** Invisible voodoo-drop field proxy, Double-Proxy Voxel Lattice, and Voodoo portal teleportation. Prove with **headless tests** here; prove on Quest via the paired **Unity 0.2** gate. *(Product voodoo volumes — far/near bounding boxes, ghosts, snap centroids — are Phase 0.6; the drop proxy stays imaginary / unrendered — never a visible dome.)*
 
 - [x] **Task 2.1: Multiscale coordinate workspace (`src/topology.cpp`)**
   - [x] Voxel indexing for discrete ~3-inch spatial blocks (`std::array<int, 3>` or equivalent).
-  - [x] Scale-down remapping into a near-field **World Proxy Half-Dome**. Keep scale **configurable** (do not hardcode `1:100` as the only ratio).
+  - [x] Scale-down remapping into a near-field **invisible voodoo-drop proxy**. Keep scale **configurable** (do not hardcode `1:100` as the only ratio).
   - [x] Matrix remapping that projects a far-field cluster into a near-field **Double-Proxy Voxel Lattice**.
 - [x] **Task 2.2: Voodoo portal teleportation**
   - [x] Near ↔ far drag through an open double-proxy (Poros-style non-Euclidean remapping).
   - [x] Cross-proxy drag when multiple double-proxies are open (A → B teleport).
-  - [x] World Proxy Half-Dome as global drop target for far-field placement.
+  - [x] Voodoo-drop proxy as global drop target for far-field placement.
 - [x] **Task 2.3: Headless topology verification**
   - [x] Unit tests for voxel index math, proxy remaps, and portal teleport transforms (fake poses in, expected poses out).
 
@@ -231,7 +231,7 @@ Orientation is a **modifier** on pinch channels: the facade may bind distinct ac
 ### 🧿 Phase 0.6: Voodoo Volumes (v0.6.0)
 **Goal:** Ship **snap** and **free-range** voodoo volumes as the product interaction for far↔near editing — floor-aligned far-field bounding boxes, yellow drag arrows, sibling **centroids**, near-field ghost portals, and bump-lerp field hygiene. Core owns centroids, snap gravity, scale/aspect math, and state; Unity draws boxes/arrows/ghosts (paired Unity 0.6).
 
-**Scope note:** Phase 0.2 topology/portal remaps remain available as math. The **Half-Dome is imaginary** — do **not** render it. Users see the far-field bounding box, yellow drag affordance, snap nodes (snap mode), and near-field ghost boxes. Final demo VR↔MR → **0.7**; multi-select across volumes → **0.8**; layouts/anchors → **0.9**; enclosure/shaders/AI → **1.0**; native OpenXR → **1.1**.
+**Scope note:** Phase 0.2 topology/portal remaps remain available as math. The **voodoo-drop proxy is imaginary** — do **not** render a dome or mini-map. Users see the far-field bounding box, yellow drag affordance, snap nodes (snap mode), and near-field ghost boxes. Final demo VR↔MR → **0.7**; multi-select across volumes → **0.8**; layouts/anchors → **0.9**; enclosure/shaders/AI → **1.0**; native OpenXR → **1.1**.
 
 **Input remaps (supersede 0.5 voodoo stub)**
 

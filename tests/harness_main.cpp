@@ -112,7 +112,7 @@ int main() {
   ok = (threeos_topology_set_scale(50.f) == 0) && ok;
   ok = (threeos_topology_set_scale(100.f) == 0) && ok;
 
-  // --- Dome open / drop ---
+  // --- Invisible voodoo-drop proxy open / drop (ABI: DomeState) ---
   const ThreeOS_Pose head = identity_pose_at(0.f, 1.6f, 0.f);
   if (threeos_topology_open_dome(&head) != 0) {
     std::fprintf(stderr, "FAIL open_dome: %s\n", threeos_last_error());
@@ -123,7 +123,8 @@ int main() {
     std::fprintf(stderr, "FAIL get_dome active\n");
     ok = false;
   } else {
-    std::printf("OK   dome active scale=%.1f radius=%.2f\n", dome.scale_ratio, dome.radius_m);
+    std::printf("OK   voodoo-drop proxy active scale=%.1f radius=%.2f\n", dome.scale_ratio,
+                dome.radius_m);
     ok = expect_near("dome.scale", dome.scale_ratio, 100.f, 1e-3f) && ok;
   }
 
@@ -133,7 +134,7 @@ int main() {
     std::fprintf(stderr, "FAIL dome_drop: %s\n", threeos_last_error());
     ok = false;
   } else {
-    // Dome is ahead of head (-Z); local -0.1 * 100 = -10 along dome forward
+    // Proxy is ahead of head (-Z); local -0.1 * 100 = -10 along proxy forward
     ok = expect_near("dome_drop.z", far_drop.position.z, dome.pose.position.z - 10.f, 0.05f) &&
          ok;
   }

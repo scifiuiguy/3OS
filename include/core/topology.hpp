@@ -20,10 +20,11 @@ struct Aabb {
   Vec3 max{};
 };
 
+/// Invisible voodoo-drop field proxy (API name DomeState is historical; never rendered).
 struct DomeState {
   bool active = false;
   float scale_ratio = kDefaultWorldToProxyScale;
-  Pose pose{};       // dome origin (center of flat base) in world meters
+  Pose pose{};       // proxy origin in world meters (comfortable reach ahead of head)
   float radius_m = 0.35f;
 };
 
@@ -35,7 +36,7 @@ struct DoubleProxyState {
   Aabb near_aabb{};
 };
 
-/// Multiscale workspace: voxels, World Proxy Half-Dome, Double-Proxy lattices, portals.
+/// Multiscale workspace: voxels, invisible voodoo-drop proxy, Double-Proxy lattices, portals.
 class TopologyWorkspace {
  public:
   explicit TopologyWorkspace(float voxel_size_m = kDefaultVoxelSizeMeters,
@@ -48,16 +49,16 @@ class TopologyWorkspace {
   VoxelCoord world_to_voxel(const Vec3& world) const;
   Vec3 voxel_center_to_world(const VoxelCoord& vc) const;
 
-  /// Place a half-dome in comfortable reach ahead of the head pose.
+  /// Open the invisible voodoo-drop proxy in comfortable reach ahead of the head pose.
   void open_dome(const Pose& head_pose);
   void close_dome();
   const DomeState& dome() const { return dome_; }
 
-  /// Far world ↔ dome-local (relative to dome pose, proxy meters).
+  /// Far world ↔ drop-proxy local (relative to proxy pose, proxy meters).
   Vec3 world_to_dome_local(const Vec3& world) const;
   Vec3 dome_local_to_world(const Vec3& local) const;
 
-  /// Drop onto the dome: dome-local hit → far-field world position (Y preserved from local).
+  /// Voodoo drop: proxy-local hit → far-field world position (Y preserved from local).
   Pose dome_drop(const Pose& dome_local_pose) const;
 
   /// Open a double-proxy lattice for a far AABB; near volume sits in front of the head.
@@ -66,7 +67,7 @@ class TopologyWorkspace {
   const DoubleProxyState* find_double_proxy(EntityId id) const;
   const std::vector<DoubleProxyState>& double_proxies() const { return proxies_; }
 
-  /// Select a voxel region inside the dome and open a double-proxy for that far slab.
+  /// Select a far voxel slab via the drop proxy and open a double-proxy lattice for it.
   bool select_dome_region(EntityId proxy_id, const VoxelCoord& far_min, const VoxelCoord& far_max,
                           const Pose& head_pose);
 

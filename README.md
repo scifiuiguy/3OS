@@ -680,7 +680,7 @@ To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR s
 
 ```
 [State 1: Macro-Targeting] ──> [State 2: Micro-Resolution] ──> [State 3: Possession / Transform]
-(World Proxy Half-Dome)         (Double Proxy Voxel Grid)       (Velocity-Mapped CRUD Action)
+(Voodoo Drop gesture)           (Double Proxy Voxel Grid)       (Velocity-Mapped CRUD Action)
 ```
 
 <details>
@@ -1128,7 +1128,7 @@ Boxes in 3OS are the 3D equivalent of folders in legacy platforms. They can expa
 </summary>
 
 <blockquote>
-These are the workhorse of 3OS, merging the near and far field via non-Euclidean portal behaviors. To engage one, the user can manifest a World Proxy Half Dome which represents a miniature model of the entire field. While holding the gesture, the user drags a point cursor through the interior of the Half Dome, and a far-field voodoo volume instantiates and moves in concert around the actual field. By releasing this same gesture that opened the Half Dome, the user chooses where to drop the far field voodoo volume. Upon placing it, a near-field voodoo volume immediately replaces the half dome, opening the other end of the portal. Now any contents or empty space in that part of the far field are suddenly in hand's reach in the near field. Any objects or boxes encapsulated by the voodoo volume now show a ghostly copy of themselves easily within the user's reach. Likewise, the user can place a point cursor or hand into the voodoo volume and a ghostly copy of their cursor or hand will appear out on the other end of the portal in the far field. The user is welcome to gaze at either the near-field voodoo volume or the far-field voodoo volume. The voodoo volume's bounding box can be pinched/stretched to scale the far-field bounding box while the near field bounding box remains the same ergonomically-perfect size. If an object in the volume is dragged in real far-field space, the far field bounding box will scale up to keep it in scope. Meanwhile, the bounding box of the near field volume will remain the same size, causing its inner contents to appear to scale down. The bounding box can also be single-hand dragged for velocity-based translation of the far-field bounding box. And finally, the voodoo volume will have a button at its top back right corner to collapse the portal.
+These are the workhorse of 3OS, merging the near and far field via non-Euclidean portal behaviors. To engage one, the user performs a <b>voodoo drop</b> (see Field Unification State Machine): an invisible isometric field proxy maps near-hand motion to far-field placement—snap mode for focus-anchor clusters, free-range for unbiased drops. While the gesture is held, a far-field voodoo volume instantiates and moves in concert around the actual field. Releasing the gesture parks that far volume and opens the matching near-field voodoo volume in hand's reach, completing the portal. Now any contents or empty space in that part of the far field are suddenly reachable in the near field. Objects or boxes encapsulated by the volume show ghostly copies within reach; placing a point cursor or hand into the near volume projects a ghost of that cursor/hand out into the far field. The user may gaze at either end of the portal. The volume's bounding box can be pinched/stretched to scale the far-field box while the near box stays ergonomically fixed. If an object is dragged in real far-field space, the far box grows to keep it in scope while near contents appear to scale down. The box can also be single-hand dragged for velocity-based far translation. A control at the top back right corner collapses the portal.
 </blockquote>
 </details>
 <br clear="all">
@@ -1372,21 +1372,41 @@ In most cases, rendering complex gizmos on the object will be unnecessary, where
 <summary><b>🧠 The Mind Palace</b></summary>
 <hr style="border: 1px solid gray;">
 
-### History
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">History</span></span>
+</summary>
 
 Roman statesmen, philosophers, and lawyers used a technique called <b>"the Mind Palace"</b> to deliver long, unscripted speeches in the Roman Senate or courts. It was an imaginary place where they could stash chunks of information in specific spatial locations, which, when they imagined retrieval, would assist in rapid recall.
 
-### Keeping the MR Office Clean
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Keeping the MR Office Clean</span></span>
+</summary>
 
 The Mind Palace in 3OS is a transitional multi-field construct that bridges MR and VR. The default field in 3OS is an MR office room where professionals are doing collaborative creative 3D work (CAD, VFX, game engine dev, etc.) with each other and with 3D agents. If each user can drop a folder on the floor or a desk or pin to the wall in that singular MR space, the space may become cluttered quickly.
 
-### The Mind Palace is Your 3D Hard Drive
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">The Mind Palace is Your 3D Hard Drive</span></span>
+</summary>
 
 Alternatively, in 3OS, each user can gesture to toggle their Mind Palace, which begins as an empty VR void that retains any selections and/or voodoo volume(s) already open from the MR scene, allowing users to quickly bring data from the real world into their Mind Palace and back out again. The Mind Palace begins as an empty void, but the user can associate any directory of any hard drive in the system as the root node of a new field, and navigate between any number of those fields similarly to shortcuts on a desktop.
 
-### Organizing Furniture and/or Straight-up Raw Data
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Organizing Furniture and/or Straight-up Raw Data</span></span>
+</summary>
 
 Any given field can be decorated with static 3D objects (walls, furniture, etc.) if those structures help the user mentally organize the data, but most users will simply place floating files (objects) and folders (boxes) in a certain azimuth, depth, and height relative to their body. Like a desktop PC, hundreds of files can easily cause clutter in one field, but each field allows an order of magnitude more breathing room than a desktop before needing reorganization.
+
+</details>
 
 </details>
 </blockquote>
@@ -1437,43 +1457,62 @@ Therefore, if teams are ever able to transition to an agentic XR interface that 
 <hr style="border: 1px solid gray;">
 
 ```
-3os-core/
+# Repo root — CMake project 3os_kernel (shared lib + harness)
 ├── include/
-│   ├── openxr/                     # OpenXR header dependencies
+│   ├── openxr/                        # OpenXR header placeholder
 │   ├── core/
-│   │   ├── interaction_facade.hpp  # Input Action Facade (Hover, Select, Group)
-│   │   ├── topology.hpp            # World Proxy Half-Dome & Double-Proxy grids
-│   │   ├── kinematics.hpp          # Telekinetic Velocity Engine (Zero-fatigue curves)
-│   │   └── enclosure.hpp           # Semantic Mesh Occlusion & Floor Constraints
+│   │   ├── types.hpp                  # Vec3/Pose/EntityId, voxel & field primitives
+│   │   ├── interaction_facade.hpp     # Hover / Select / multi-select callback facade
+│   │   ├── topology.hpp               # Voodoo-drop proxy remap & double-proxy grids
+│   │   ├── kinematics.hpp             # Grab-anchored stick velocity (telekinetic control law)
+│   │   ├── hand_interaction.hpp       # Palm modes, pinch channels, interaction intents
+│   │   ├── multi_choice.hpp           # Drive / folder / agent radial menus
+│   │   ├── centroid_registry.hpp      # Mind-palace, box, temp, and focus-anchor centroids
+│   │   ├── mind_palace_layout.hpp     # Orbit / ring / stack placement for mind-palace roots
+│   │   ├── voodoo_volume.hpp          # Snap & free-range voodoo session orchestrator
+│   │   ├── voodoo_geom.hpp            # Near/far BB helpers (header-only)
+│   │   ├── voodoo_portal_space.hpp    # Far↔near portal transforms & ghost near-pose
+│   │   ├── voodoo_pose_lerp.hpp       # Summon / insert / cross-portal travel lerps
+│   │   ├── voodoo_orbit_packer.hpp    # Near-BB ellipse packing & clutter push
+│   │   ├── voodoo_stick_viz.hpp       # Deadzone arming + stick-ray fill (session / ghost)
+│   │   ├── voodoo_ghost_drag.hpp      # Blue-channel ghost-scale / audition drag
+│   │   └── voodoo_cut_paste.hpp       # Scissors cut/paste (armed portals → paste I/O)
 │   ├── storage/
-│   │   ├── file_bridge.hpp         # Legacy FS Sync (Directories -> Volumetric Elements)
-│   │   └── volumetric_glyph.hpp    # Translates extensions into low-poly prismatic meshes
-│   ├── text/
-│   │   ├── text_io_router.hpp      # Multi-modal input hub (External, Virtual, Volumetric)
-│   │   └── text_label.hpp          # Lightweight 3D text primitives for Box/Object annotations
-│   ├── ai/
-│   │   └── agent_service_layer.hpp # Verbal Trigger Registry for host OEM AI integration
+│   │   ├── workspace.hpp              # Objects/boxes, field membership, storage events
+│   │   └── glyph_registry.hpp         # THREEOS_glyph / GLB packs → extension map
+│   ├── text/                          # Reserved (text I/O / labels)
+│   ├── ai/                            # Reserved (OEM agent service layer)
 │   └── interop/
-│       └── threeos_marshaller.hpp  # Flattened extern "C" bindings for P/Invoke & Dynamic Loading
+│       ├── threeos_abi.h              # Frozen host ABI (InteropInputFrame, tick API)
+│       └── threeos_marshaller.hpp     # Includes threeos_abi.h for C++ hosts
 ├── src/
 │   ├── interaction_facade.cpp
 │   ├── topology.cpp
 │   ├── kinematics.cpp
-│   ├── enclosure.cpp
-│   ├── storage/
-│   │   ├── file_bridge.cpp         # Target directory crawler & delta-tracking engine
-│   │   └── volumetric_glyph.cpp    # Procedural mesh compiler for text/data/box primitives
-│   ├── text/
-│   │   ├── text_io_router.cpp      # Prioritization router for physical vs. fallback input
-│   │   └── text_label.cpp          # Transient floating text box CRUD lifecycle logic
-│   ├── ai/
-│   │   └── agent_service_layer.cpp # Binds semantic string hashes directly to 3OS system states
-│   └── threeos_marshaller.cpp       # Core DLL/SO export implementations
+│   ├── hand_interaction.cpp
+│   ├── multi_choice.cpp
+│   ├── centroid_registry.cpp
+│   ├── mind_palace_layout.cpp
+│   ├── workspace.cpp
+│   ├── glyph_registry.cpp
+│   ├── voodoo_volume.cpp
+│   ├── voodoo_portal_space.cpp
+│   ├── voodoo_pose_lerp.cpp
+│   ├── voodoo_orbit_packer.cpp
+│   ├── voodoo_stick_viz.cpp
+│   ├── voodoo_ghost_drag.cpp
+│   ├── voodoo_cut_paste.cpp
+│   ├── threeos_marshaller.cpp         # DLL/SO exports (threeos_tick, …)
+│   ├── storage/                       # Reserved
+│   ├── text/                          # Reserved
+│   └── ai/                            # Reserved
 ├── shaders/
-│   └── SemanticWallMask.hlsl       # Vertex/Pixel shader logic for wall clipping
+│   └── SemanticWallMask.hlsl          # Vertex/pixel wall-clip mask
+├── tests/
+│   └── harness_main.cpp               # ctest harness for ABI / voodoo behaviors
 ├── .github/
 │   └── workflows/
-│       └── build-binaries.yml      # CI/CD cross-compilation pipeline (.dll and .so)
+│       └── build-binaries.yml         # Windows + Linux cmake build & ctest
 ├── CMakeLists.txt
 └── README.md
 
@@ -1517,7 +1556,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <blockquote>
 <p><b>Citation:</b> Stoakley, R., Conway, M. J., & Pausch, R. (1995). "Virtual reality on a WIM: interactive worlds in miniature." <i>Proceedings of the 22nd annual conference on Computer graphics and interactive techniques (SIGGRAPH '95)</i>, 265–272.</p>
-<p><b>Significance to 3OS:</b> This paper pioneered the paradigm of scaling down a massive, immersive 3D environment into a hand-held, near-field miniature copy to bypass the physical limitations of far-field targeting. It is the original world-to-user proxy, a voodoo doll of the entire virtual space. 3OS modernizes this concept into the <b>World Proxy Half-Dome</b>, updating it to track empty volumetric coordinate spaces and/or objects within those spaces.</p>
+<p><b>Significance to 3OS:</b> This paper pioneered the paradigm of scaling down a massive, immersive 3D environment into a hand-held, near-field miniature copy to bypass the physical limitations of far-field targeting. It is the original world-to-user proxy, a voodoo doll of the entire virtual space. 3OS modernizes this into the <b>voodoo drop</b>: an invisible isometric field proxy (no mini-map widget) that places far-field <b>voodoo volumes</b>, tracking empty volumetric coordinate spaces and/or objects within those spaces.</p>
 </blockquote>
 
 </details>

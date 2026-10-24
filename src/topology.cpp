@@ -109,7 +109,7 @@ void TopologyWorkspace::close_dome() { dome_ = DomeState{}; }
 Vec3 TopologyWorkspace::world_to_dome_local(const Vec3& world) const {
   const Vec3 delta{world.x - dome_.pose.position.x, world.y - dome_.pose.position.y,
                    world.z - dome_.pose.position.z};
-  // Inverse yaw: rotate world delta into dome space, then scale down.
+  // Inverse yaw: rotate world delta into voodoo-drop proxy space, then scale down.
   const Quat inv{ -dome_.pose.orientation.x, -dome_.pose.orientation.y, -dome_.pose.orientation.z,
                   dome_.pose.orientation.w };
   const Vec3 local = rotate_by_quat(inv, delta);
