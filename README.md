@@ -12,9 +12,7 @@ This movie was shy of the mark of dreaming up an actual usable interface, but it
 
 Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop PCs? Or did we stop investing in the VR industry for a decade after the dot-com bust, allowing mountains of incredible 90s university research to collect dust in SIGCHI archives, never to be drawn upon again by modern industry titans? Until...
 
----
-
-
+<hr style="border: 1px solid gray;">
 
 <a id="meta-start-reviewers"></a>
 <details>
@@ -24,37 +22,71 @@ Welcome to **3OS**! It's an enterprise-grade volumetric XR operating system inte
 
 ### 🌟 Core Architectural Highlights for Meta Start
 
-* **Hands-First Interaction Model Obsessed with Speed and Best-in-Class Ergonomics**
-  Using low-fatigue, volumetric, isometric, proprioceptive hand tracking, 3OS eliminates "gorilla arm" potential by relying on small, localized gestures and a proprioceptive merging of the near field and far field via a careful amalgam of techniques derived from a treasure trove of classic HCI studies going all the way back to 1991. This interaction technique formula was inspired by a dozen overlooked SIGCHI gems. (see Prior Art)
-  
-* **Author Background** 
+<details style="margin-left:25px">
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Hands-First Interaction Model Obsessed with Speed and Best-in-Class Ergonomics</span></span>
+</summary>
+
+Using low-fatigue, volumetric, isometric, proprioceptive hand tracking, 3OS eliminates "gorilla arm" potential by relying on small, localized gestures and a proprioceptive merging of the near field and far field via a careful amalgam of techniques derived from a treasure trove of classic HCI studies going all the way back to 1991. This interaction technique formula was inspired by a dozen overlooked SIGCHI gems. (see Prior Art)
+
+</details>
+
+<details style="margin-left:25px">
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Author Background (former Technicolor XR Tech Lead & Magic Leap Prototyping Engineer)</span></span>
+</summary>
+
   I was deeply frustrated with state-of-the-art XR UI/UX design while working as a Lead Product Prototyping Engineer at Magic Leap in 2019 when I decided there must be <i>SOMEONE</i> in Academia who solved the myriad of problems slowing down our XR UI/UX. That's when I discovered SIGCHI. I had no idea of the rich history of UI research in Academia before that, and I became obsessed with mining for the gold that would unlock speed in 3D UI. It took a while to synthesize an end-to-end solution.
+
+</details>
   
-* **The End-to-End Solution In A Nutshell**
-  3OS makes a compelling case for a volumetric isometric OS model (as opposed to a raycast model) as <i>THE</i> solution to the many speed bottlenecks preventing 3D UI adoption in enterprise spatial computing. While mining SIGCHI archives, I gravitated toward perf-op studies involving Fitts' Law variations. I also found ergonomic studies battling "gorilla arm" fascinating because I was deeply familiar with the problematic muscle groups in the shoulders and upper arms; I targeted those same muscle groups with relaxation techniques in college while teaching one-on-one drum lessons to hundreds of students.
+<details style="margin-left:25px">
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">The Solution In A Nutshell</span></span>
+</summary>
 
-* **Unchaining the Desk to Access the Whole Room**
-  Built explicitly for the modern near-future work environment, 3OS integrates fiducially-tracked rolling standing desk consoles that allow seamless transitions between seated and standing configurations in any position in a dedicated XR room where MR content may encompass part of a desk, part of the room, shared space with multiple MR apps, the whole room, or even a whole VR field. 3OS gives a task the exact amount of space it needs for ASAP completion with rapid context switching e.g. carrying files across MR/VR transitions, enabling high throughput for tasks that only achieve speed boosts when utilizing the whole field while never requiring users to reach.
+Raycast models and floating 2D windows waste most of XR’s adjacency/multitasking space and encourage slow, single-handed interaction. 3OS makes a compelling case for a volumetric isometric OS model (instead of a raycast model) as <i>THE</i> solution to the many speed bottlenecks preventing 3D UI adoption in enterprise spatial computing by encouraging snap-twitch voxel-based actions that <i>can</i> work with one hand but get faster for enterprise power users with two hands in concert. While mining SIGCHI archives, I gravitated toward perf-op studies involving Fitts' Law variations. Ergonomic studies battling "gorilla arm" also fascinated me because I was deeply familiar with the problematic muscle groups in the shoulders (especially the coracobrachialis) since I targeted those same muscle groups with relaxation techniques in college while teaching one-on-one drum lessons to hundreds of students.
 
-* **High-Performance Native Architecture**
-  The heart of the 3OS Pre-Alpha Demo is a native C++ kernel with C ABI marshalled into Unity for rapid prototyping today, but it is prepped to eventually run on vWS VMs to OpenXR to CloudXR in an enterprise context. On an enterprise server, each team member will get a streamed headset plus a rolling standing desk that clicks into a dual-monitor wall console or detaches to reposition anywhere in the room for collab work, sporting optional virtual monitors and anchorable virtual 2D and 3D widgets. All legacy 2D software will be supported. 3OS will target SDK partnerships with 3D editing software titans for early adoption. Apps like Solidworks, Maya, Unreal, etc. will render into workspace containers (volume managers) rather than talking to HMDs directly. Colocated teams will run multiple MR apps x multiple workspaces via thin HMD streaming clients, flying solo and/or multiplayer as needed while the VDI edge stack offloads processing.
+</details>
+
+<details style="margin-left:25px">
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Unchaining the Desk to Access the Whole Room</span></span>
+</summary>
+
+Built explicitly for the modern near-future work environment, 3OS integrates fiducially-tracked rolling standing desk consoles that detach from dual wall monitors to allow seamless transitions between seated and standing configurations in any position in a dedicated XR room where MR content may encompass part of a desk, part of the room, shared space with multiple MR apps, the whole room, or even a whole VR field. 3OS gives each task the exact amount of space it needs for ASAP completion with rapid context switching e.g. carrying files across MR/VR transitions, enabling high throughput for tasks that only achieve speed boosts when utilizing the whole field, yet never requiring users to reach or cross the room.
+
+</details>
+
+<details style="margin-left:25px">
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">High-Performance Native Architecture</span></span>
+</summary>
+
+  The heart of the 3OS Pre-Alpha Demo is a native C++ kernel with C ABI marshalled into Unity for rapid prototyping today, but it is prepped to eventually run on vWS VMs to OpenXR to CloudXR in an enterprise context. On an enterprise server (e.g. AMD EPYC 9004 + Pro 6000 Blackwell), each team member will get a streamed headset plus a rolling standing desk that clicks into a dual-monitor wall console or detaches to reposition anywhere in the room for collab work, sporting optional virtual monitors and anchorable virtual 2D and 3D widgets. All legacy 2D software will be supported. 3OS will target SDK partnerships with 3D editing software titans for early adoption. Apps like Solidworks, Maya, Unreal, etc. will render into workspace containers (volume managers) rather than talking to HMDs directly. Colocated teams will run multiple MR apps x multiple workspaces via thin HMD streaming clients, flying solo and/or multiplayer as needed while the VDI edge stack offloads processing.
+
+</details>
 
 ### 🗺️ Anatomy of the Demo
 * **Demo Video First:** I encourage you to watch the 3-minute tutorial before launching the Pre-Alpha Demo, which contains a near-future mockup of an enterprise dev room running 3OS Server that supports 2-12 team members.
-* **Most Demo Features Are Mockups:** Agentic avatar integration and app multitasking are narrative mockups because 3OS is less than two months old.
-* **Operational Features:** UI and controls described in the Basic Controls section below are mostly operational and in sync with the Quest Documents directory for the demo. The features are still very much in pre-alpha condition with lots of refinement coming.
+* **Most Demo Features Are Mockups:** Agentic avatar integration and app multitasking are narrative scaffolding so far, because 3OS is less than two months old.
+* **Operational Features:** UI and controls described in the Basic Controls section below are mostly operational and in sync with the Quest Documents directory for the demo. These features are still very much in pre-alpha condition with lots of refinement coming. They will be much more snappy when processing is offloaded to an EPYC 9004 to free up the Snapdragon XR2 to focus solely on rendering and input.
 
 I hope you enjoy the demo!
 
 </details>
 
----
-
-
+<hr style="border: 1px solid gray;">
 
 <a id="what-is-3os"></a>
 <details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧊 What is 3OS?</summary>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧊 Introduction</summary>
+
+<hr style="border: 1px solid gray;">
+
+<a id="what-is-3os"></a>
+<details style="margin-left:20px">
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🌐 What is 3OS?</summary>
 
 3OS (pronounced **"three-oh-ess"**) is inspired by cult classic sci-fi flicks like Johnny Mnemonic, The Matrix, Minority Report, Iron Man, and The Expanse, but it also grounds its efficacy in our rich history of HCI research.
 
@@ -70,36 +102,8 @@ I hope you enjoy the demo!
 
 ---
 
-<a id="3os-endgame"></a>
-<details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🎯 The 3OS Endgame</summary>
-
-A single hand gesture interface orchestrates all of the following:
-
-* A hybrid 2D/3D toolchain for all multimedia & software dev teams
-* A better interface for CAD, Game Dev, VFX, and software engineering/QA/debugging
-* Seamless legacy 2D app support with physical and virtual monitors
-* 3D remote control of all 2D monitors with hand gestures
-* Rolling standing desks with keyboard, mouse, and fiducial trackers
-* Fast-connect consoles to attach/detach standing desks to physical wall monitor pairs
-* Rapid 3D file management with hand gestures
-* On-Prem Agentic Avatars that can snapshot visual context of any XR workspace
-* Agent-driven 3D visual node-based programming & debugging
-* Agent-driven version control and project management
-* XR App multitasking with ability to minimize/maximize app volumes
-* Run on an on-prem 2D+3D hybrid VDI stack via wireless streaming
-* Up to 12 simultaneous user workstations (XR HMD + console) per room
-* Rapid-access workspaces for multiplayer collab, comms, presentation, and solo work
-
-The 3OS Enterprise Server can be productized as a roomscale supercomputer that increases productivity for professionals already working with 3D content. It is very specifically <b>NOT</b> a conference room. It's not for meetings. It's for simultaneous colocated collab and solo development. It can be used to present work progress, but a majority of the time it is best dedicated to the 12 workers working in small teams together to complete a large range of tasks involving 3D assets. One user can work in a solo workspace using the same space as 11 other users who are in a separate collab workspace. Early adopters are teams of developers and artists in product dev, engineering, VFX, game dev, architecture, auto, aerospace, etc.
-
-
-</details>
-
----
-
 <a id="what-exists-today"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧪 What exists today?</summary>
 
 <details>
@@ -124,7 +128,7 @@ The author of 3OS led the team that built the Spotify App on Magic Leap. Placing
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">A mockup scene representing a near-future office</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">A mockup scene representing a near-future office running 3OS Server</span></span>
 </summary>
 
 The mockup office demonstrates the ability for any team working with 3D content to transition into a hybrid 2D+3D interface via the 3OS Server. The 3OS Server has a technical specification in-progress but its first prototype has not been built yet. The pre-alpha mockup is designed to show the value of the 3OS Server to investors and partners so that prototype development can begin.
@@ -137,17 +141,8 @@ The mockup office demonstrates the ability for any team working with 3D content 
 ---
 
 <a id="market-size"></a>
-<details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧪 Market Opportunity</summary>
-
-<details>
-<summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">How to take 3OS to the next level</span></span>
-</summary>
-
-The server code will be written with or without enterprise-grade hardware. A Pro 6000 Blackwell is not in the author's current budget. He is actively seeking industry partners who share his vision of the near future, especially if they have office space in which to allocate 18 months of R&D and dogfooding before beginning a private beta with SDK partners.
-
-</details>
+<details style="margin-left:20px">
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">📈 Market Opportunity</summary>
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
@@ -160,7 +155,7 @@ There are 100 million potential early adopters in all fields of professional 3D 
 * ~1 million game developers
 * ~1 million VFX artists
 * ~50 million software engineers
-* $500/month 3OS Server seat license 
+* $500/month per 3OS Server seat license 
 
 #### TAM: $50 billion ARR
 
@@ -168,12 +163,108 @@ There are 100 million potential early adopters in all fields of professional 3D 
 
 </details>
 
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">How to take 3OS to the next level</span></span>
+</summary>
+
+The server code will be written with or without enterprise-grade hardware. A Pro 6000 Blackwell is not in the author's current budget. He is actively seeking industry partners who share his vision of the near future, especially if they have office space in which to allocate 18 months of R&D and dogfooding before beginning a private beta with SDK partners.
+
+</details>
+
 </details>
 
 ---
 
-<a id="wimp-is-wimpy"></a>
+<a id="why-software-engineers-3d"></a>
+<details style="margin-left:20px">
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">💻 Why Would All Software Engineers Work in 3D?</summary>
+
+Most people could imagine CAD engineers enjoying an Iron-Man-style interface if it legitimiately made work faster, but software engineers? What would it even mean for THEM to "work in 3D"?
+
+
 <details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Confusion About Agents</span></span>
+</summary>
+
+Today, everyone understands that the nature of software development is rapidly changing. Most developers believe <i>AGENTS</i> are the newest interface layer on the top of the abstraction stack (binary, assembly, two layers of low-level languages, and high-level languages... and now agents?), but that's only <i>HALF</i> the story.
+
+Most of us recognize that agents place human programmers yet another layer away from raw binary, but this is easy to confuse. Agents are only <b>PART</b> of a new stack layer that isn't baked yet.
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">The New Stack Layer Must Be Visual</span></span>
+</summary>
+
+Every layer of the abstraction stack has been <b><i>visual</i></b> for a reason. Our eyes are the highest-throughput way to put data into to our brains by a long-shot. Agents do not currently give us a new <b><i>visual</i></b> representation of the stack. They reply in a chat thread, but that chat thread is not the program. They can show us the code they changed, but that layer of the stack was already here long before they arrived. That's not the new layer either. There is no <i>NEW</i> layer of the stack to look at. <i>YET</i>.
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;"><i>What does the new layer <b>LOOK</b> like?</i></span></span>
+</summary>
+
+<b>Agentic Visual Programming Languages (VPLs)</b> <i>ARE</i> the new top layer of the abstraction stack. See the history of 2D VPLs below to understand why they MUST go 3D to effectively visualize agentic work output.
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">History of 2D VPLs</span></span>
+</summary>
+
+Node-based languages are incredibly popular and growing more robust each day in VFX toolchains e.g. Nuke, Houdini, Unreal, Substance, Blender, ComfyUI, etc. These never became Turing-complete because they never needed to be. The tech artists using them always had human programmers on the team who preferred text-based code because image-based nodes were bulky, making instruction sets more verbose, which meant fewer instructions could fit in one viewport. It felt annoying and unnecessary to "actual" programmers.
+
+But we "actual" programmers wouldn't want to admit that there was job security in preventing VPLs from becoming Turing-complete, and that job security is disappearing with agents. A tech artist can now task an agent to make a new Blueprint node in seconds that would have taken days to move through a human teammate's workflow. If it were possible to streamline a VPL's info density and flesh it out to the same level of capability as a high-level language (it IS possible), then VPLs might one day unlock a thing text can't offer:
+
+<b><i>ICONOGRAPHY</i></b>
+
+We use icons for many things, but not programming. YET. Why write a class name when an agent can do that in the background and then also present you a symbol (or an origami-style glyph in 3D)? The symbol takes up less space on screen, and then it takes up even less space in a cloud of other symbols in 3D space. You can still identify it at a glance, and you can fit 10X as many data structures in the same viewport.
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Why VPLs must go 3D</span></span>
+</summary>
+
+Anyone familiar with Unreal Blueprints will know there's something magical about the way it visualzes execution flow. The connectors glow as data flows through them. However, it's really not useful yet, because you must zoom all the way in to read the text on the nodes, and zooming that far in will make you miss potential issues elsewhere in the application when the execution flow breaks at the wrong time. 
+
+The nodes are all rectangles in all current VPLs. This is their downfall. You can't tell any node apart at a distance. None use iconography yet. If they did, then we could see the entire app lighting up like a Christmas tree all at once, or like clusters of synapses, and we'd realize we WANT to zoom out all the time, making it obvious that 3D clusters will give yet another order of magnitude of zoom-out capability. This would be a better debugger than anything we've ever had in an IDE. THIS is the new layer of the stack, a real-time VISUALIZER of agentic changes to the code.
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Floating Clusters of Synapses Are the New Code</span></span>
+</summary>
+
+The new layer of the stack is 3D node-based collections of synapses where each synapse represents a class, method, or property, and each unit glows on activation like a realtime MRI machine for your application. That's what Unreal Blueprints are, except the text and rectangles make us look at it only through a magnifying glass, which breaks the purpose. Turing-complete 3D VPLs will start popping up like flies in the next few years, and one of them will become the new Javascript, taking the spatial computing industry by storm and finding its way into the back-end of most software systems. 
+
+These new languages will be nothing more than visual wrappers on top of high-level and low-level languages (Javascript, C#, Swift, C++, Rust, etc.), but one could argue that C was nothing more than an assembly wrapper in similar fashion. 3D VPLs will be the primary way new generations of programmers engage with code. Just as the elder Millenial author of 3OS has never touched Fortran, it's possible some of the youngest Gen-Alpha software kids will rarely need to touch Javascript.
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Agents Are Too Fast For Us Without 3D VPLs</span></span>
+</summary>
+
+Fixing this is the only way to keep up with agents as they make sweeping changes to our code in real time. It takes hours to review the code they write line-by-line. 3D VPLs are simply real-time visualizers of the CPU as it runs your program. They are the only way to ensure code stays clean mid-development without falling behind your competitors. Line-by-line code review is the new low-level perf op. It must be done for safety prior to release, but we can't do it for every changelist anymore. There's no time. Full code review will be a low-level task for advanced human programmers. It will occur approaching a release candidate. 3D node-based debugging will replace full code review in the early-to-mid dev cycle.
+
+</details>
+
+</details>
+
+---
+
+
+<a id="wimp-is-wimpy"></a>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🪟 WIMP is wimpy</summary>
 
 3OS rejects the default bias of legacy WIMP (Windows, Icons, Menus, and Pointers) and multi-touch paradigms that have been a crutch in modern XR for far too long.
@@ -214,7 +305,7 @@ We cannot expect enterprise software suite companies to consider porting their r
 
 
 <a id="the-problem"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">⚠️ The Problem</summary>
 
 Software companies (Adobe, Autodesk, Epic, NVIDIA, etc.) assess whether they should port their legacy platforms into a new OS frequently. Their software is typically web-browser first for cross-platform efficiency, but even with cross-platform apps, the most robust productivity tools typically run on the desktop version only.
@@ -264,7 +355,7 @@ The author of 3OS suspects it's primarily because companies like Meta and HTC hi
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">HCI Needs More Musicians</span></span>
 </summary>
 
-The case needs to be reopened. HCI PhDs were right about the data, but wrong about the conclusion. Raycast discourages bimanual (two-hand) interaction, so its 2X throughput is cancelled by nearly always being used one-hand-at-a-time, whereas volumetric isometric models feel effortless with two hands. This was obvious to the author of 3OS years before he started nerding out on ancient SIGCHI papers because, once upon a time, he taught over 300 students how to play the drums. Nearly every student started with no bimanual coordination whatsoever, a lot like most HCI research study participants. Yet suddenly, after a few good words of advice, bimanual talent started coming out of the woodwork for every human being who learned a sliver of technique.
+The case needs to be reopened. HCI PhDs were right about the data, but wrong about the conclusion. Raycast discourages bimanual (two-hand) interaction, so its 2X throughput is cancelled by nearly always being used one-hand-at-a-time in practice, whereas volumetric isometric models feel effortless with two hands. This was obvious to the author of 3OS years before he started nerding out on ancient SIGCHI papers because, once upon a time, he taught over 300 students how to play the drums. Nearly every student started with no bimanual coordination whatsoever, a lot like most HCI research study participants. Yet suddenly, after a few good words of advice, bimanual talent started coming out of the woodwork for every human being who learned a sliver of technique. Consumers may be less willing to adopt a stick-shift car, but what about CAD engineers, computer programmers, game devs, and VFX artists? They'll want paddle-shifters on their Ferraris if we can figure out how to build them.
 
 </details>
 
@@ -309,7 +400,7 @@ XR has always had greater enterprise potential than desktop computers. Those VR 
 ---
 
 <a id="the-solution"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">💡 The Solution</summary>
 
 The "right" XR interface must solve these three glaring challenges:
@@ -353,8 +444,49 @@ An XR OS interface that works at rapid speed for enterprise MUST use <b>a volume
 
 ---
 
-<a id="3os-basics"></a>
+<a id="3os-endgame"></a>
+<details style="margin-left:20px">
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🎯 The 3OS Endgame</summary>
+
+A single hand gesture interface orchestrates all of the following:
+
+* Everyone does work faster while feeling like the star of their own sci fi flick
+* A 3OS Bay in every University Comp. Sci. Immersive Lab & Engineering School
+* A 3OS Bay running every dev room creating 3D assets and software in enterprise
+* A hybrid 2D/3D toolchain for all multimedia & software dev teams
+* A better interface for CAD, Game Dev, VFX, and software engineering/QA/debugging
+* Seamless legacy 2D app support with physical and virtual monitors
+* 3D remote control of all 2D monitors with hand gestures
+* Rolling standing desks with keyboard, mouse, and fiducial trackers
+* Fast-connect consoles to attach/detach standing desks to physical wall monitor pairs
+* Rapid 3D file management with hand gestures
+* On-Prem Agentic Avatars that can snapshot visual context of any XR workspace
+* Agent-driven 3D visual node-based programming & debugging
+* Agent-driven version control and project management
+* XR App multitasking with ability to minimize/maximize app volumes
+* Run on an on-prem 2D+3D hybrid VDI stack via wireless streaming
+* Up to 12 simultaneous user workstations (XR HMD + console) per room
+* Rapid-access workspaces for multiplayer collab, comms, presentation, and solo work
+
+
+The 3OS Bay can be productized as a roomscale supercomputer that increases productivity for professionals already working with 3D content. It is very specifically <b>NOT</b> a conference room. It's not for meetings. It's for simultaneous colocated collab and solo development. It can be used to present work progress, but a majority of the time it is best dedicated to the 12 workers working in small teams together to complete a large range of tasks involving 3D assets. One user can work in a solo workspace using the same space as 11 other users who are in a separate collab workspace. Early adopters are teams of developers and artists in product dev, engineering, VFX, game dev, architecture, auto, aerospace, etc.
+
+
+</details>
+
+</details>
+
+<hr style="border: 1px solid gray;">
+
+<a id="what-is-3os"></a>
 <details>
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏗️ Architecture</summary>
+
+<hr style="border: 1px solid gray;">
+
+
+<a id="3os-basics"></a>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">📐 3OS Basics</summary>
 
 
@@ -381,7 +513,7 @@ At 3 inch voxel resolution and a default 50-foot radius from head pose to the gr
 ---
 
 <a id="3os-core-implementation-philosophy"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏛️ 3OS Core Implementation Philosophy</summary>
 
 <details>
@@ -420,7 +552,7 @@ Voodoo volumes (large gaps instantly) and Telekinesis (small translations) follo
 ---
 
 <a id="ergonomics-determine-interactivity-resolution"></a>
-<details>
+<details  style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">✋ Ergonomics Determine Interactivity Resolution</summary>
 
 <details>
@@ -498,8 +630,8 @@ See [spatial_os_trivariate_validation.md](spatial_os_trivariate_validation.md) f
 
 ---
 
-<a id="the-3os-unified-interaction-state-machine"></a>
-<details>
+<a id="field-interaction-state-machine"></a>
+<details  style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🔄 Field Unification State Machine</summary>
 
 To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR selection systems, 3OS routes all user intent through a deterministic, cascading three-stage state machine, the first two stages of which can be traversed in under 0.5 seconds for any voxel volume in any field.
@@ -567,7 +699,7 @@ To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR s
 ---
 
 <a id="voodoo-volumes"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🌀 Voodoo Volumes</summary>
 
 3OS bypasses the slow, physics-based fishing-line-reeling or lassoing of legacy XR raycasting techniques by utilizing **Non-Euclidean Voodoo Volumes**, A.K.A. rectangular chunks of volume that act as wormholes between the near field and far field. The technique is heavily inspired by the Poros Framework (see Prior Art #8).
@@ -614,8 +746,8 @@ An optional feature. If the user selects an object within a voodoo volume and th
 ---
 
 <a id="world-mesh"></a>
-<details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🗂️ World Mesh</summary>
+<details style="margin-left:20px">
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🌍 World Mesh</summary>
 
 
 ### Sitting/Standing vs. Walking Mode
@@ -632,7 +764,7 @@ An optional feature. If the user selects an object within a voodoo volume and th
 ---
 
 <a id="field-rings"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">⭕ Field Rings</summary>
 
 For decades, HCI research has subdivided the interactable spatial field into two main categories:
@@ -721,9 +853,7 @@ These ring subdivisions are not necessary in every context, but they exist to su
 
 </details>
 
-### Object Layout, Padding, Margins, and Capacity Across the Field
-
-The near field is defined as the capsule surrounding the user whose radius is approximately matched to the user's fingertip reach in any direction while standing on the same spot.
+### Object Layout, Padding, Margins, and Capacity Across the Field:
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
@@ -757,10 +887,10 @@ It is less than ideal to fill an entire field and leave no breathing room to uti
 ---
 
 <a id="mr-versus-vr"></a>
-<details>
-<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧱 MR versus VR</summary>
+<details style="margin-left:20px">
+<summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🥽 MR versus VR</summary>
 
-3OS strictly decouples Newtonian physics from spatial containment boundaries to preserve efficacy of fast-twitch volumetric controls in a variety of field shapes and sizes. These rules apply to all data structures, analogous to files and folders having properties and attributes in other operating systems, but they use different metaphors in 3D. For example, folders are boxes in 3OS. Files are objects whose low-poly prismatic geometry is defined by the application that generates the data, much like applications define file types and icons in other operating systems.
+3OS provides the enterprise user the space they need for the task. Sometimes, that's a small widget anchored to their desk as they mostly work on their physical 2D monitor. Sometimes, that's a remoted control widget driving MR content filling half the room. Yet other times, that's a sea of objects or data visualization nodes from all across the user's databases and hard drives. Rapid access to data is key, unlike in consumer XR. This is why 3OS places heavy emphasis on the ability to carry files or folders from MR to VR and back again. Folders are boxes in 3OS. Files are objects shaped in the glyph of their application logo, just as applications define file types and icons in other operating systems.
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
@@ -808,7 +938,7 @@ Active by default with a `Strict` policy. Leveraging semantic AI mesh pipelines,
 ---
 
 <a id="Apps-vs-Objects-vs-Assets-vs-Icons"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🎲 Apps vs. Objects vs. Assets vs. Icons</summary>
 
 <details>
@@ -837,12 +967,12 @@ Technically, in 3OS, an app is still an executable list of instructions. In fact
 
 
 <a id="common-3d-element-types"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">📦 Common 3D Element Types</summary>
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">1) Objects (Files... but 3D)</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">1) Objects</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">Files... but 3D</span></span>
 </summary>
 
 <div style="margin-left:20px">
@@ -852,7 +982,7 @@ Technically, in 3OS, an app is still an executable list of instructions. In fact
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">2) Glyphs (`.3glyph`) (Icons... but 3D)</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">2) Glyphs</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">Icons... but 3D</span></span>
 </summary>
 
 <div style="margin-left:20px">
@@ -887,7 +1017,7 @@ Content files (e.g. a user’s `report.pdf` or demo `simple.glb`) are **not** gl
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">3) Boxes (Folders... but 3D)</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">3) Boxes</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">Folders... but 3D</span></span>
 </summary>
 
 <div style="margin-left:20px">
@@ -906,7 +1036,7 @@ Boxes in 3OS are the 3D equivalent of folders in legacy platforms. They can expa
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">4) Voodoo Volumes (Command Line Directory Navigation... but 3D)</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">4) Voodoo Volumes</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">Command Line Directory Navigation... but 3D</span></span>
 </summary>
 
 <div style="margin-left:20px">
@@ -915,7 +1045,7 @@ These are the workhorse of 3OS, merging the near and far field via non-Euclidean
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">5) Voodoo Widgets (sort of like sidebars in apps... but 3D)</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">5) Voodoo Widgets</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">Sort of like sidebars in apps... but 3D</span></span>
 </summary>
 
 <div style="margin-left:20px">
@@ -925,7 +1055,7 @@ These are peripheral remote control devices. They appear temporarily just forwar
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">6) Focus Anchors (sort of like LOD-based GPS pins in map search... but 3D)</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">6) Focus Anchors</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">Sort of like LOD-based GPS pins in map search... but 3D</span></span>
 </summary>
 
 <div style="margin-left:20px">
@@ -935,7 +1065,7 @@ These are the invisible backbone enabling voodoo snapping to work so rapidly. At
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">7) Application Volumes (Application Windows... but 3D)</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">7) Application Volumes</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">Application Windows... but 3D</span></span>
 </summary>
 
 <div style="margin-left:20px">
@@ -945,7 +1075,7 @@ In 3OS, applications exist within 3D volumes rather than within 2D windows. Unma
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">8) Point Cursors (Mouse Cursors... but 3D)</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">8) Point Cursors</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">Mouse Cursors... but 3D</span></span>
 </summary>
 
 <div style="margin-left:20px">
@@ -955,7 +1085,7 @@ In 3OS, applications exist within 3D volumes rather than within 2D windows. Unma
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">9) 3D Buttons (Buttons... but 3D)</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">9) 3D Buttons</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">Buttons... but 3D</span></span>
 </summary>
 
 <div style="margin-left:20px">
@@ -963,62 +1093,134 @@ In 3OS, buttons are typically depicted as translucent cubes or other simple volu
 
 </details>
 
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">10) Matrices</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">Table layouts... but 3D</span></span>
+</summary>
 
+<div style="margin-left:20px">
+Elements in legacy UI lay out on X and Y dimensions in table form. In a voxel-based OS, utilizing even one more interactive plane ahead of or behind the first plane unlocks more grid positions with less travel distance. For instance, a 4x4 or 2x8 table of elements in a 2D UI is much better laid out as a 2x2x2 matrix in 3OS. A minimum adjacency analysis on any collection of items will show matrices are ergonomically better and faster than tables.</div>
 
-### 10) Matrices (Table layouts... but 3D)
-  Elements in legacy UI lay out on X and Y dimensions in table form. In a voxel-based OS, utilizing even one more interactive plane ahead of or behind the first plane unlocks more grid positions with less travel distance. For instance, a 4x4 or 2x8 table of elements in a 2D UI is much better laid out as a 2x2x2 matrix in 3OS. A minimum adjacency analysis on any collection of items will show matrices are ergonomically better and faster than tables.
+</details>
 
-### 11) Clusters (2D clusters... but 3D)
-  Similar to matrices, but spatial positioning is more loose in that the objects need not align on any kind of local Euclidean grid. Instead, they operate on a set of min-max adjacency parameters from their nearest neighbors, usually grouped in close proximity due to some shared attribute.
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">11) Clusters</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">2D clusters... but 3D</span></span>
+</summary>
 
-### 12) Spherical Multi-Choice Nodes (Radio buttons... but 3D)
-  A 3D-ified radio button element. 3OS supports easy creation of these spherical interfaces which are similar to desktop radio button lists in that alternate choices (A or B or C etc.) are arranged near each other, but in 3OS they can occupy uniform angular space around a center point. They may render as segments of a sphere, or each as 3D buttons floating in a formation. The cursor's vector relative to the center point changes hover state enabling highlight of one of the elements in that collection. This interface style is the highest-performance voxel-based multiple-choice option because it eliminates any possibility of overshoot errors. The multi-choice node may have an extra core node at its center which could be an extra multi-choice option or a neutral "none" option, and it may also have an out-of-bounds limit radius encapsulating the group.
+<div style="margin-left:20px">
+Similar to matrices, but spatial positioning is more loose in that the objects need not align on any kind of local Euclidean grid. Instead, they operate on a set of min-max adjacency parameters from their nearest neighbors, usually grouped in close proximity due to some shared attribute.</div>
 
-### 13) Sync Planes (2D UI brought into 3D)
-  Generally, planar UI in 3OS is discouraged. Default UI elements are volumetric and isometric, whereas planar elements typically require perspective-based raycasting for far field interaction, which is not impossible, but it must be custom-built case-by-case at the service and application layers since 3OS offers no built-in raycast and recommends against 3rd parties using it too. In general, if a planar UI exists in 3OS, it typically represents the virtual twin of a physical screen in an MR context. For instance, in a room with 12 2-monitor workstations mounted to its walls, any pair of monitors might be in use with WIMP-style UI elements on-screen. 3OS will be able to render that screen's output at any size via a sync plane, but more likely the sync plane will be invisible and superimposed over the physical screen it represents, enabling remote control interaction. Sync planes will feature API integration and transition between 2D and 3D elements. The WIMP instance running on the 2D screens would be rendered by the same server as the OS driving the eyewear, thus it holds an inventory of all shared interactive elements, which means an HMD user could use a voodoo volume to target the screen itself, or target one of its open windows, e.g. a File Explorer. Once the 2D File Explorer window is targeted, it would automatically be converted to its 3D representation in the near field in the same fashion as using a 3D-to-3D voodoo volume. This 2D-to-3D transition can work identically for any 3rd party software. For example, a control widget in a 2D Autodesk Maya window might be pulled into 3D MR space via a voodoo volume if Autodesk developers used the 3OS SDK to enable that transition.
+</details>
 
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">12) Spherical Multi-Choice Nodes</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">Radio buttons... but 3D</span></span>
+</summary>
+
+<div style="margin-left:20px">
+  A 3D-ified radio button element. 3OS supports easy creation of these spherical interfaces which are similar to desktop radio button lists in that alternate choices (A or B or C etc.) are arranged near each other, but in 3OS they can occupy uniform angular space around a center point. They may render as segments of a sphere, or each as 3D buttons floating in a formation. The cursor's vector relative to the center point changes hover state enabling highlight of one of the elements in that collection. This interface style is the highest-performance voxel-based multiple-choice option because it eliminates any possibility of overshoot errors. The multi-choice node may have an extra core node at its center which could be an extra multi-choice option or a neutral "none" option, and it may also have an out-of-bounds limit radius encapsulating the group.</div>
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">13) Sync Planes</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">2D UI brought into 3D</span></span>
+</summary>
+
+<div style="margin-left:20px">
+Generally, planar UI in 3OS is discouraged. Default UI elements are volumetric and isometric, whereas planar elements typically require perspective-based raycasting for far field interaction, which is not impossible, but it must be custom-built case-by-case at the service and application layers since 3OS offers no built-in raycast and recommends against 3rd parties using it too. In general, if a planar UI exists in 3OS, it typically represents the virtual twin of a physical screen in an MR context. For instance, in a room with 12 2-monitor workstations mounted to its walls, any pair of monitors might be in use with WIMP-style UI elements on-screen. 3OS will be able to render that screen's output at any size via a sync plane, but more likely the sync plane will be invisible and superimposed over the physical screen it represents, enabling remote control interaction. Sync planes will feature API integration and transition between 2D and 3D elements. The WIMP instance running on the 2D screens would be rendered by the same server as the OS driving the eyewear, thus it holds an inventory of all shared interactive elements, which means an HMD user could use a voodoo volume to target the screen itself, or target one of its open windows, e.g. a File Explorer. Once the 2D File Explorer window is targeted, it would automatically be converted to its 3D representation in the near field in the same fashion as using a 3D-to-3D voodoo volume. This 2D-to-3D transition can work identically for any 3rd party software. For example, a control widget in a 2D Autodesk Maya window might be pulled into 3D MR space via a voodoo volume if Autodesk developers used the 3OS SDK to enable that transition.</div>
+
+</details>
 
 </details>
 
 ---
 <a id="the-application-layer"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧩 The Application Layer</summary>
 
-### Early Adopters
 
-3OS is designed first-and-foremost for professionals who are already working in 3D editing software (CAD, VFX, and Gaming), but it is also designed to be able to grow into mass market adoption after establishing 3D professionals as early adopters. Eventually, a Home IoT version of 3OS could be a thing. To approach early adopters though, 3OS must start by natively supporting XR ports of a few dozen professional software suites.
 
-### Early VR Ports in the 20-teens
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">Early Adopters</span></span>
+</summary>
 
-At the advent of modern VR with the Oculus Kickstarter, millions of us dreamed of being able to use Maya or Fusion or Unreal from inside a VR headset, but so far to date, these systems don't feel compatible with HMDs for productive eight-hour work yet because there is always some part of the task flow that requires constant removal of the HMD for fallback to a desktop interface, not to mention the ergonomic issues of bulky headsets worn all day.
+<div style="margin-left:20px">
+3OS is designed first-and-foremost for professionals who are already working in 3D editing software (CAD, VFX, and Gaming), but it is also designed to be able to grow into mass market adoption after establishing 3D professionals as early adopters. Eventually, a Home IoT version of 3OS could be a thing. To approach early adopters though, 3OS must start by natively supporting XR ports of a few dozen professional software suites.</div>
 
-### The Hardware is Nearly Out of the Oven
+</details>
 
-Hardware engineers are doing their part to shrink the technology to near-sunglasses form factor. As we approach elimination of this ergo bottleneck, it's well-past time for the OS layer to have provided a uniform 3D UI paradigm capable of enabling all 3D software compatibility, including CAD, VFX tools, and game engines to run in a cohesive single environment with multitasking (e.g. Maya and Unreal both running in a shared field).
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">Early VR Ports in the 20-teens</span></span>
+</summary>
 
-### The Content IS the Interface
+<div style="margin-left:20px">
+At the advent of modern VR with the Oculus Kickstarter, millions of us dreamed of being able to use Maya or Fusion or Unreal from inside a VR headset, but so far to date, these systems don't feel compatible with HMDs for productive eight-hour work yet because there is always some part of the task flow that requires constant removal of the HMD for fallback to a desktop interface, not to mention the ergonomic issues of bulky headsets worn all day.</div>
 
-3OS encourages 3rd parties not to think of their ported app as a floating window. In 3OS, floating windows are like command-line tools. Power users may need them occasionally, but most users should prefer engaging directly with the 3D content. For example, it may be challenging to picture all of Autodesk Maya's many features working without the panoply of sidebars and menus and dropdowns, but it can be done with a little imagination. It is likely to include conversion of 2D sidebars into 3D widgets that are summon-able per-context relative to the content itself. Widgets are also anchorable to any rolling standing desk as a feature of the 3OS Server spec, but for the most part, <b>the content itself IS the interface.</b>
+</details>
 
-### App Multitasking
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">The Hardware is Nearly Out of the Oven</span></span>
+</summary>
 
-3OS aims to support XR app multitasking despite its immense perf op challenges. The first professional deployments of 3OS are intended to run on on-prem VDI servers with plenty of horsepower to handle the job, and 3OS aims to provide an SDK for enterprise 3rd parties to finally port their apps natively into XR.
+<div style="margin-left:20px">
+Hardware engineers are doing their part to shrink the technology to near-sunglasses form factor. As we approach elimination of this ergo bottleneck, it's well-past time for the OS layer to have provided a uniform 3D UI paradigm capable of enabling all 3D software compatibility, including CAD, VFX tools, and game engines to run in a cohesive single environment with multitasking (e.g. Maya and Unreal both running in a shared field).</div>
 
-### Deep Agentic Integration
+</details>
 
-3OS assumes that every app in the future will not only have an MCP server or similar protocol installed for agentic integration, but eventually, basic agent servers will evolve into full-blown concierge agents themselves. Every app could theoretically engage with every other app where appropriate based on data that didn't exist until the app instance arrived in a 3OS context, e.g. the internal agent of a Maya instance may realize it is sitting in an MR room in close proximity to an Unreal instance agent, and they can automatically establish a series of pipeline handshakes without any work from the user. The user placed them side-by-side, implying they will soon want pipeline capabilities between them. This evolution of every app becoming conversational with every other app implies that app multitasking may evolve beyond simple pipeline toolchaining into real-time improvisation, desire, personality, etc. 
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">The Content IS the Interface</span></span>
+</summary>
 
-### Blurring the Lines of All Previous Metaphors
+<div style="margin-left:20px">
+3OS encourages 3rd parties not to think of their ported app as a floating window. In 3OS, floating windows are like command-line tools. Power users may need them occasionally, but most users should prefer engaging directly with the 3D content. For example, it may be challenging to picture all of Autodesk Maya's many features working without the panoply of sidebars and menus and dropdowns, but it can be done with a little imagination. It is likely to include conversion of 2D sidebars into 3D widgets that are summon-able per-context relative to the content itself. Widgets are also anchorable to any rolling standing desk as a feature of the 3OS Server spec, but for the most part, <b>the content itself IS the interface.</b></div>
 
-The most basic example is a T-rex app that understands it is a predator, and it actively hunts through a room at the OS level, seeking another app that broadcasts itself as prey. Such an app has no enterprise utility, but it is not architecturally much different from a coding agent. It simply wears a t-rex skin. The lines between agents, apps, and objects may blur significantly. They may all become variations on the same theme eventually.
+</details>
+
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">App Multitasking</span></span>
+</summary>
+
+<div style="margin-left:20px">
+3OS aims to support XR app multitasking despite its immense perf op challenges. The first professional deployments of 3OS are intended to run on on-prem VDI servers with plenty of horsepower to handle the job, and 3OS aims to provide an SDK for enterprise 3rd parties to finally port their apps natively into XR.</b></div>
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">Deep Agentic Integration</span></span>
+</summary>
+
+<div style="margin-left:20px">
+
+3OS assumes that every app in the future will not only have an MCP server or similar protocol installed for agentic integration, but eventually, basic agent servers will evolve into full-blown concierge agents themselves. Every app could theoretically engage with every other app where appropriate based on data that didn't exist until the app instance arrived in a 3OS context, e.g. the internal agent of a Maya instance may realize it is sitting in an MR room in close proximity to an Unreal instance agent, and they can automatically establish a series of pipeline handshakes without any work from the user. The user placed them side-by-side, implying they will soon want pipeline capabilities between them. This evolution of every app becoming conversational with every other app implies that app multitasking may evolve beyond simple pipeline toolchaining into real-time improvisation, desire, personality, etc. </div>
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">Blurring the Lines of All Previous Metaphors</span></span>
+</summary>
+
+<div style="margin-left:20px">
+
+The most basic example is a T-rex app that understands it is a predator, and it actively hunts through a room at the OS level, seeking another app that broadcasts itself as prey. Such an app has no enterprise utility, but it is not architecturally much different from a coding agent. It simply wears a t-rex skin. The lines between agents, apps, and objects may blur significantly. They may all become variations on the same theme eventually.</div>
+
+</details>
 
 </details>
 
 ---
 
 <a id="basic-transformation"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🔀 Basic Transformation</summary>
 
 The greatest challenge in resolving the chicken-egg problem of enterprise users having no natively supported XR enterprise apps and enterprise app companies (Adobe, Autodesk, etc.) having no enterprise XR-only users is...
@@ -1047,7 +1249,7 @@ In most cases, rendering complex gizmos on the object will be unnecessary, where
 ---
 
 <a id="the-mind-palace"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🧠 The Mind Palace</summary>
 
 ### History
@@ -1071,7 +1273,7 @@ Any given field can be decorated with static 3D objects (walls, furniture, etc.)
 ---
 
 <a id="collab-rooms-vdi-enterprise-edge-compute-phase-20"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🏢 Collab Rooms, VDI & Enterprise Edge Compute (Phase 2.0)</summary>
 
 Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handheld screen joins a shared volumetric field, sessions run on on-prem **VDI** or home **edge** compute, and collaboration semantics cover personal/shared/full-room workspaces, flyweight vs copy assets, view vs object transforms, spectator cameras, and optional site-to-site sync. The full design — reference 20×20 office fixture, desk docks, IMU monitors, co-editor VOIP/avatars, and VCS for simultaneous copies — is in [docs/COLLABORATIVE_ROOMS.md](docs/COLLABORATIVE_ROOMS.md); task checklists are Phase 2.0 in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
@@ -1082,7 +1284,7 @@ Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handhel
 ---
 
 <a id="AI-integration"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">🤖 Agentic Integration (Phase 3.0)</summary>
 
 It is assumed 3OS will host agentic integration, though that is not the focus for the early alpha prototype. The endgame is to enable agents to exist as avatars who can converse with team members in real time before diving lower in the stack to complete their work, then return to the visual field for reporting and for more instructions.
@@ -1102,7 +1304,7 @@ Therefore, if teams are ever able to transition to an agentic XR interface that 
 ---
 
 <a id="structural-outline"></a>
-<details>
+<details style="margin-left:20px">
 <summary style="font-size: 1.5em; font-weight: 600; line-height: 1.3; margin-bottom: 0.6em; padding-bottom: 0.15em;">📁 Source Structural Outline</summary>
 
 ```
@@ -1150,7 +1352,9 @@ Therefore, if teams are ever able to transition to an agentic XR interface that 
 
 </details>
 
----
+</details>
+
+<hr style="border: 1px solid gray;">
 
 <a id="prior-art"></a>
 <details>
@@ -1158,58 +1362,136 @@ Therefore, if teams are ever able to transition to an agentic XR interface that 
 
 Piles of incredible Human-Computer Interaction (HCI) literature have been left to languish by the modern spatial computing industry. In 2026, the following papers do not currently influence OS interfaces running on Meta Quest, Meta VR Glasses, Apple Vision Pro, Magic Leap, HoloLens, Snap Specs, XReal Aura, Vive, Pico, PlayStation VR, Lynx, Varjo, Bigscreen, or Steam Frame. They should.
 
-By grounding **3OS** in this seminal research, we bridge the historic gap between the late-1990s proprioceptive research labs and modern non-Euclidean spatial interaction theories to break the productivity chains of WIMP. Despite raycast having double the throughput of isometric virtual hands (point cursors), it is unsuitable for rapid serial and/or parallel two-handed interactions. Point cursors, on the other hand, are stellar at utilizing two-handed speed boosts, which more than covers the throughput gap even before completely unlocking the far field, allowing point cursors to leave raycast in the dust. The following research shows how and why.
+By grounding **3OS** in this seminal research, we bridge the historic gap between the late-1990s proprioceptive research labs and modern non-Euclidean spatial interaction theories to break the productivity chains of WIMP. The following research shows how and why volumetric isometric techniques are superior to raycasting.
 
 ---
 
-### 1. The "Silk Cursor" — 1994
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">1. The "Silk Cursor"</span><span style="font-weight: 400; font-style: italic; text-align: right; white-space: nowrap;">1994</span></span>
+
+</summary>
+
+<div style="margin-left:20px">
 
 **Citation:** Zhai, S., Buxton, W., & Milgram, P. (1994). *The 'silk cursor': investigating visual cues on target acquisition in 3D user interfaces. Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '94)*, 185–192.
-*   **Significance to 3OS:** Introduced a future where raycast cursors must be abandoned in order to access the entire XR field, implying that interaction via perspective is inferior to interaction via isometry. The "silk" metaphor heavily emphasized the need for most interactive elements to utilize semitransparency in such a system to prevent occlusion from causing confusion. The same is true in 3OS.
-
-
-### 2. Worlds in Miniature (WIM) — 1995
-*   **Citation:** Stoakley, R., Conway, M. J., & Pausch, R. (1995). "Virtual reality on a WIM: interactive worlds in miniature." *Proceedings of the 22nd annual conference on Computer graphics and interactive techniques (SIGGRAPH '95)*, 265–272.
-*   **Significance to 3OS:** This paper pioneered the paradigm of scaling down a massive, immersive 3D environment into a hand-held, near-field miniature copy to bypass the physical limitations of far-field targeting. It is the original world-to-user proxy, a voodoo doll of the entire virtual space. 3OS modernizes this concept into the **World Proxy Half-Dome**, updating it to track empty volumetric coordinate spaces and/or objects within those spaces.
-
-### 3. Proprioceptive Interaction Models — 1997
-*   **Citation:** Mine, M. R., Brooks Jr, F. P., & Sequin, C. H. (1997). "Moving objects in space: Exploiting proprioception in virtual-environment interaction." *Proceedings of the 24th annual conference on Computer graphics and interactive techniques (SIGGRAPH '97)*, 19–26.
-*   **Significance to 3OS:** Proved that humans possess a highly accurate, innate biological awareness of their hands' positions relative to their body frames without requiring constant visual feedback (**proprioception**). This serves as the scientific bedrock for the **3OS Drummer's Law**—keeping the shoulder girdle (coracobrachialis) completely neutral while the wrist and fingers drive intent inside near-field workspaces, i.e. peripheral remote controls in the near field manipulate objects in the far field.
-
-### 4. The Foundational Voodoo Dolls Paper — 1999
-*   **Citation:** Pierce, J. S., Stearns, B. C., & Pausch, R. (1999). "Voodoo Dolls: Seamless Interaction at Multiple Scales in Virtual Environments." *Proceedings of the 1999 symposium on Interactive 3D graphics (I3D '99)*, 141–145.
-*   **Significance to 3OS:** Introduced the first dynamic object-proxy architecture, allowing users to instantiate scale-adjusted, hand-held replicas ("dolls") to manipulate distant assets bidirectionally. 3OS adopts this fundamental workflow but eliminates its rigid, skeuomorphic, object-bound limits—expanding proxies to target unconstrained voxel coordinate structures rather than just pre-existing 3D models.
-
-### 5. Pointing at Trivariate Targets — 2004
-
-*   **Citation:** Grossman, T., & Balakrishnan, R. (2004). "Pointing at trivariate targets in 3D environments." *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '04)*, 447–454.
-*   **Significance to 3OS:** Introduced an important equation derived from Fitts' Law that models a 6DOF hand's ability to hit voxel-based targets in 3D space at maximum speed without overshoot. 3OS relies on a slight modification of this equation to determine the default 3" voxel size (see spatial_os_trivariate_validation.md).
-
-
-### 6. Conserving Ergonomic Energy in Mid-Air Interaction — 2014
-*   **Citation:** Hincapié-Ramos, J. D., Guo, X., Moghadasian, P., & Irani, P. (2014). "Conserving ergonomic energy in mid-air interaction." *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '14)*, 919–928.
-*   **Significance to 3OS:** Introduced the Consumed Endurance (CE) metric, a foundational framework for algorithmically predicting the onset of "gorilla arm" fatigue without the need for medical-grade sensors. By demonstrating a direct correlation between real-time skeletal joint torque and a user's physical limit, it backs up the 3OS author's instinct as a drum teacher to enable low-fatigue micro-gestures by designing the interface to encourage neutral-pose elbows more than 90% of the time.
-
-### 7. Predicting Mid-Air Interaction Fatigue Using Biomechanical Modeling — 2017
-*   **Citation:** Jang, S., Ambike, S., Stuerzlinger, W., & Ramani, K. (2017). "Predicting mid-air interaction fatigue using biomechanical modeling." *Proceedings of the 2017 CHI Conference on Human Factors in Computing Systems (CHI '17)*, 1640–1652.
-*   **Significance to 3OS:** Provided a dynamic, state-based approach to spatial computing fatigue by adapting a Three-Compartment Muscle Model to track active, rested, and fatigued muscle units over time. This paper validated the 3OS philosophy that users can operate outside an "ergo-safe" volume for short stints, but must return to that "ergo-safe" volume to let neutral pose recharge their muscles for a majority of a spatial compute session.
-
-### 8. The Poros Framework — 2021
-*   **Citation:** Pohl, H., Lilija, K., McIntosh, J., & Hornbæk, K. (2021). "Poros: Configurable Proxies for Distant Interactions in VR." *Proceedings of the 2021 CHI Conference on Human Factors in Computing Systems (CHI '21)*, Article 357, 1–13.
-*   **Significance to 3OS:** The direct conceptual and geometric peer to 3OS. This paper broke the legacy "Flatland" window paradigm by showing that users can select arbitrary volumetric bounding regions in the far field and mirror them as non-Euclidean near-field workspace portals. 3OS adapts this concept for bimanual selection frustums that are cubic instead of spherical. The most salient difference between Poros and 3OS voodoo volumes is that Poros still used raycasting to generate portals, whereas 3OS engages a modified world-in-miniature technique as its creation model, yielding rapid cross-proxy multi-portal manipulation intended as a competitive volumetric corollary to a 2D desktop File Explorer.
-
-### 9. Reality Proxy — 2025
-*   **Citation:** Al-Sadoun, A., et al. (2025). "Reality Proxy: Fluid Interactions with Real-World Objects in MR." *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.
-*   **Significance to 3OS:** Evaluated and validated that using spatial computer vision and semantic machine intelligence are crucial for streamlining the associations between world mesh geo and virtual content that fully utilizes the context of that geo.
-
-### 10. Fitts' Law + XR Review of 122 Studies — 2025
-*   **Citation:** Amini, M., Stuerzlinger, W., Teather, R. J., & Batmaz, A. U. (2025). "A Systematic Review of Fitts' Law in 3D Extended Reality." *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.
-*   **Significance to 3OS:** Identified that only 36% of XR HCI studies of the past several decades (44 total) that focused on throughput performance targeted virtual hand (point cursor) interaction models, whereas more than 50% targeted raycast techniques. The other 14% were eye tracking studies. Many of the 36% either intentionally or unintentionally eliminated evaluation of the depth vector by arranging UI elements in a flat plane configuration. Such tests were classified as technically volumetric and isometric since the plane was not raycast-able, yet such studies show very little salient data pertaining to the competitive efficacy of volumetric isometric techniques. To establish truly competitive volumetric isometry in hand tracking, each of the three axes must be treated uniformly. It's clear that volumetric isometric methods have been under-explored not just by industry, but by Academia as well for the entire history of HCI. It's as though we all had an innate instinct to chase Steve Jobs and Jony Ive down the wrong rabbit hole looking for the next next big thing.
-
+*   **Significance to 3OS:** Introduced a future where raycast cursors must be abandoned in order to access the entire XR field, implying that interaction via perspective is inferior to interaction via isometry. The "silk" metaphor heavily emphasized the need for most interactive elements to utilize semitransparency in such a system to prevent occlusion from causing confusion. The same is true in 3OS.</div>
 
 </details>
 
----
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">2. Worlds in Miniature (WIM) — 1995</span></span>
+</summary>
+
+<div style="margin-left:20px">
+
+**Citation:** Stoakley, R., Conway, M. J., & Pausch, R. (1995). "Virtual reality on a WIM: interactive worlds in miniature." *Proceedings of the 22nd annual conference on Computer graphics and interactive techniques (SIGGRAPH '95)*, 265–272.
+*   **Significance to 3OS:** This paper pioneered the paradigm of scaling down a massive, immersive 3D environment into a hand-held, near-field miniature copy to bypass the physical limitations of far-field targeting. It is the original world-to-user proxy, a voodoo doll of the entire virtual space. 3OS modernizes this concept into the **World Proxy Half-Dome**, updating it to track empty volumetric coordinate spaces and/or objects within those spaces.</div>
+
+</details>
+
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">3. Proprioceptive Interaction Models — 1997</span></span>
+</summary>
+
+<div style="margin-left:20px">
+
+*   **Citation:** Mine, M. R., Brooks Jr, F. P., & Sequin, C. H. (1997). "Moving objects in space: Exploiting proprioception in virtual-environment interaction." *Proceedings of the 24th annual conference on Computer graphics and interactive techniques (SIGGRAPH '97)*, 19–26.
+*   **Significance to 3OS:** Proved that humans possess a highly accurate, innate biological awareness of their hands' positions relative to their body frames without requiring constant visual feedback (**proprioception**). This serves as the scientific bedrock for the **3OS Drummer's Law**—keeping the shoulder girdle (coracobrachialis) completely neutral while the wrist and fingers drive intent inside near-field workspaces, i.e. peripheral remote controls in the near field manipulate objects in the far field.</div>
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">4. The Foundational Voodoo Dolls Paper — 1999</span></span>
+</summary>
+
+<div style="margin-left:20px">
+
+*   **Citation:** Pierce, J. S., Stearns, B. C., & Pausch, R. (1999). "Voodoo Dolls: Seamless Interaction at Multiple Scales in Virtual Environments." *Proceedings of the 1999 symposium on Interactive 3D graphics (I3D '99)*, 141–145.
+*   **Significance to 3OS:** Introduced the first dynamic object-proxy architecture, allowing users to instantiate scale-adjusted, hand-held replicas ("dolls") to manipulate distant assets bidirectionally. 3OS adopts this fundamental workflow but eliminates its rigid, skeuomorphic, object-bound limits—expanding proxies to target unconstrained voxel coordinate structures rather than just pre-existing 3D models.</div>
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">5. Pointing at Trivariate Targets — 2004</span></span>
+</summary>
+
+<div style="margin-left:20px">
+
+*   **Citation:** Grossman, T., & Balakrishnan, R. (2004). "Pointing at trivariate targets in 3D environments." *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '04)*, 447–454.
+*   **Significance to 3OS:** Introduced an important equation derived from Fitts' Law that models a 6DOF hand's ability to hit voxel-based targets in 3D space at maximum speed without overshoot. 3OS relies on a slight modification of this equation to determine the default 3" voxel size (see spatial_os_trivariate_validation.md).</div>
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">6. Conserving Ergonomic Energy in Mid-Air Interaction — 2014</span></span>
+</summary>
+
+<div style="margin-left:20px">
+
+*   **Citation:** Hincapié-Ramos, J. D., Guo, X., Moghadasian, P., & Irani, P. (2014). "Conserving ergonomic energy in mid-air interaction." *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '14)*, 919–928.
+*   **Significance to 3OS:** Introduced the Consumed Endurance (CE) metric, a foundational framework for algorithmically predicting the onset of "gorilla arm" fatigue without the need for medical-grade sensors. By demonstrating a direct correlation between real-time skeletal joint torque and a user's physical limit, it backs up the 3OS author's instinct as a drum teacher to enable low-fatigue micro-gestures by designing the interface to encourage neutral-pose elbows more than 90% of the time.</div>
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">7. Predicting Mid-Air Interaction Fatigue Using Biomechanical Modeling — 2017</span></span>
+</summary>
+
+<div style="margin-left:20px">
+
+*   **Citation:** Jang, S., Ambike, S., Stuerzlinger, W., & Ramani, K. (2017). "Predicting mid-air interaction fatigue using biomechanical modeling." *Proceedings of the 2017 CHI Conference on Human Factors in Computing Systems (CHI '17)*, 1640–1652.
+*   **Significance to 3OS:** Provided a dynamic, state-based approach to spatial computing fatigue by adapting a Three-Compartment Muscle Model to track active, rested, and fatigued muscle units over time. This paper validated the 3OS philosophy that users can operate outside an "ergo-safe" volume for short stints, but must return to that "ergo-safe" volume to let neutral pose recharge their muscles for a majority of a spatial compute session.</div>
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">8. The Poros Framework — 2021</span></span>
+</summary>
+
+<div style="margin-left:20px">
+
+*   **Citation:** Pohl, H., Lilija, K., McIntosh, J., & Hornbæk, K. (2021). "Poros: Configurable Proxies for Distant Interactions in VR." *Proceedings of the 2021 CHI Conference on Human Factors in Computing Systems (CHI '21)*, Article 357, 1–13.
+*   **Significance to 3OS:** The direct conceptual and geometric peer to 3OS. This paper broke the legacy "Flatland" window paradigm by showing that users can select arbitrary volumetric bounding regions in the far field and mirror them as non-Euclidean near-field workspace portals. 3OS adapts this concept for bimanual selection frustums that are cubic instead of spherical. The most salient difference between Poros and 3OS voodoo volumes is that Poros still used raycasting to generate portals, whereas 3OS engages a modified world-in-miniature technique as its creation model, yielding rapid cross-proxy multi-portal manipulation intended as a competitive volumetric corollary to a 2D desktop File Explorer.</div>
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">9. Reality Proxy — 2025</span></span>
+</summary>
+
+<div style="margin-left:20px">
+
+*   **Citation:** Al-Sadoun, A., et al. (2025). "Reality Proxy: Fluid Interactions with Real-World Objects in MR." *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.
+*   **Significance to 3OS:** Evaluated and validated that using spatial computer vision and semantic machine intelligence are crucial for streamlining the associations between world mesh geo and virtual content that fully utilizes the context of that geo.</div>
+
+</details>
+
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 900;">10. Fitts' Law + XR Review of 122 Studies — 2025</span></span>
+</summary>
+
+<div style="margin-left:20px">
+
+*   **Citation:** Amini, M., Stuerzlinger, W., Teather, R. J., & Batmaz, A. U. (2025). "A Systematic Review of Fitts' Law in 3D Extended Reality." *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.
+*   **Significance to 3OS:** Identified that only 36% of XR HCI studies of the past several decades (44 total) that focused on throughput performance targeted virtual hand (point cursor) interaction models, whereas more than 50% targeted raycast techniques. The other 14% were eye tracking studies. Many of the 36% either intentionally or unintentionally eliminated evaluation of the depth vector by arranging UI elements in a flat plane configuration. Such tests were classified as technically volumetric and isometric since the plane was not raycast-able, yet such studies show very little salient data pertaining to the competitive efficacy of volumetric isometric techniques. To establish truly competitive volumetric isometry in hand tracking, each of the three axes must be treated uniformly. It's clear that volumetric isometric methods have been under-explored not just by industry, but by Academia as well for the entire history of HCI. It's as though we all had an innate instinct to chase Steve Jobs and Jony Ive down the wrong rabbit hole looking for the next next big thing.</div>
+
+</details>
+
+</details>
+
+<hr style="border: 1px solid gray;">
 
 <a id="control-basics"></a>
 <details>
@@ -1403,7 +1685,7 @@ See "App/Object Activation" above as the precursor to this gesture. The user has
 
 </details>
 
----
+<hr style="border: 1px solid gray;">
 
 <a id="getting-started"></a>
 <details>
