@@ -1503,8 +1503,8 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 </summary>
 
 <blockquote>
-**Citation:** Zhai, S., Buxton, W., & Milgram, P. (1994). *The 'silk cursor': investigating visual cues on target acquisition in 3D user interfaces. Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '94)*, 185–192.
-*   **Significance to 3OS:** Introduced a future where raycast cursors must be abandoned in order to access the entire XR field, implying that interaction via perspective is inferior to interaction via isometry. The "silk" metaphor heavily emphasized the need for most interactive elements to utilize semitransparency in such a system to prevent occlusion from causing confusion. The same is true in 3OS.
+<p><b>Citation:</b> Zhai, S., Buxton, W., & Milgram, P. (1994). <i>The 'silk cursor': investigating visual cues on target acquisition in 3D user interfaces. Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '94)</i>, 185–192.</p>
+<p><b>Significance to 3OS:</b> Introduced a future where raycast cursors must be abandoned in order to access the entire XR field, implying that interaction via perspective is inferior to interaction via isometry. The "silk" metaphor heavily emphasized the need for most interactive elements to utilize semitransparency in such a system to prevent occlusion from causing confusion. The same is true in 3OS.</p>
 </blockquote>
 
 </details>
@@ -1516,8 +1516,8 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 </summary>
 
 <blockquote>
-**Citation:** Stoakley, R., Conway, M. J., & Pausch, R. (1995). "Virtual reality on a WIM: interactive worlds in miniature." *Proceedings of the 22nd annual conference on Computer graphics and interactive techniques (SIGGRAPH '95)*, 265–272.
-*   **Significance to 3OS:** This paper pioneered the paradigm of scaling down a massive, immersive 3D environment into a hand-held, near-field miniature copy to bypass the physical limitations of far-field targeting. It is the original world-to-user proxy, a voodoo doll of the entire virtual space. 3OS modernizes this concept into the **World Proxy Half-Dome**, updating it to track empty volumetric coordinate spaces and/or objects within those spaces.
+<p><b>Citation:</b> Stoakley, R., Conway, M. J., & Pausch, R. (1995). "Virtual reality on a WIM: interactive worlds in miniature." <i>Proceedings of the 22nd annual conference on Computer graphics and interactive techniques (SIGGRAPH '95)</i>, 265–272.</p>
+<p><b>Significance to 3OS:</b> This paper pioneered the paradigm of scaling down a massive, immersive 3D environment into a hand-held, near-field miniature copy to bypass the physical limitations of far-field targeting. It is the original world-to-user proxy, a voodoo doll of the entire virtual space. 3OS modernizes this concept into the <b>World Proxy Half-Dome</b>, updating it to track empty volumetric coordinate spaces and/or objects within those spaces.</p>
 </blockquote>
 
 </details>
@@ -1530,8 +1530,8 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 </summary>
 
 <blockquote>
-*   **Citation:** Mine, M. R., Brooks Jr, F. P., & Sequin, C. H. (1997). "Moving objects in space: Exploiting proprioception in virtual-environment interaction." *Proceedings of the 24th annual conference on Computer graphics and interactive techniques (SIGGRAPH '97)*, 19–26.
-*   **Significance to 3OS:** Proved that humans possess a highly accurate, innate biological awareness of their hands' positions relative to their body frames without requiring constant visual feedback (**proprioception**). This serves as the scientific bedrock for the **3OS Drummer's Law**—keeping the shoulder girdle (coracobrachialis) completely neutral while the wrist and fingers drive intent inside near-field workspaces, i.e. peripheral remote controls in the near field manipulate objects in the far field.
+<p><b>Citation:</b> Mine, M. R., Brooks Jr, F. P., & Sequin, C. H. (1997). "Moving objects in space: Exploiting proprioception in virtual-environment interaction." <i>Proceedings of the 24th annual conference on Computer graphics and interactive techniques (SIGGRAPH '97)</i>, 19–26.</p>
+<p><b>Significance to 3OS:</b> Proved that humans possess a highly accurate, innate biological awareness of their hands' positions relative to their body frames without requiring constant visual feedback (<b>proprioception</b>). This serves as the scientific bedrock for the <b>3OS Drummer's Law</b>—keeping the shoulder girdle (coracobrachialis) completely neutral while the wrist and fingers drive intent inside near-field workspaces, i.e. peripheral remote controls in the near field manipulate objects in the far field.</p>
 </blockquote>
 
 </details>
@@ -1543,8 +1543,8 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 </summary>
 
 <blockquote>
-*   **Citation:** Pierce, J. S., Stearns, B. C., & Pausch, R. (1999). "Voodoo Dolls: Seamless Interaction at Multiple Scales in Virtual Environments." *Proceedings of the 1999 symposium on Interactive 3D graphics (I3D '99)*, 141–145.
-*   **Significance to 3OS:** Introduced the first dynamic object-proxy architecture, allowing users to instantiate scale-adjusted, hand-held replicas ("dolls") to manipulate distant assets bidirectionally. 3OS adopts this fundamental workflow but eliminates its rigid, skeuomorphic, object-bound limits—expanding proxies to target unconstrained voxel coordinate structures rather than just pre-existing 3D models.
+<p><b>Citation:</b> Pierce, J. S., Stearns, B. C., & Pausch, R. (1999). "Voodoo Dolls: Seamless Interaction at Multiple Scales in Virtual Environments." <i>Proceedings of the 1999 symposium on Interactive 3D graphics (I3D '99)</i>, 141–145.</p>
+<p><b>Significance to 3OS:</b> Introduced the first dynamic object-proxy architecture, allowing users to instantiate scale-adjusted, hand-held replicas ("dolls") to manipulate distant assets bidirectionally. 3OS adopts this fundamental workflow but eliminates its rigid, skeuomorphic, object-bound limits—expanding proxies to target unconstrained voxel coordinate structures rather than just pre-existing 3D models.</p>
 </blockquote>
 
 </details>
@@ -1556,8 +1556,8 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 </summary>
 
 <blockquote>
-*   **Citation:** Grossman, T., & Balakrishnan, R. (2004). "Pointing at trivariate targets in 3D environments." *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '04)*, 447–454.
-*   **Significance to 3OS:** Introduced an important equation derived from Fitts' Law that models a 6DOF hand's ability to hit voxel-based targets in 3D space at maximum speed without overshoot. 3OS relies on a slight modification of this equation to determine the default 3" voxel size (see spatial_os_trivariate_validation.md).
+<p><b>Citation:</b> Grossman, T., & Balakrishnan, R. (2004). "Pointing at trivariate targets in 3D environments." <i>Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '04)</i>, 447–454.</p>
+<p><b>Significance to 3OS:</b> Introduced an important equation derived from Fitts' Law that models a 6DOF hand's ability to hit voxel-based targets in 3D space at maximum speed without overshoot. 3OS relies on a slight modification of this equation to determine the default 3" voxel size (see spatial_os_trivariate_validation.md).</p>
 </blockquote>
 
 </details>
@@ -1569,8 +1569,8 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 </summary>
 
 <blockquote>
-*   **Citation:** Hincapié-Ramos, J. D., Guo, X., Moghadasian, P., & Irani, P. (2014). "Conserving ergonomic energy in mid-air interaction." *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '14)*, 919–928.
-*   **Significance to 3OS:** Introduced the Consumed Endurance (CE) metric, a foundational framework for algorithmically predicting the onset of "gorilla arm" fatigue without the need for medical-grade sensors. By demonstrating a direct correlation between real-time skeletal joint torque and a user's physical limit, it backs up the 3OS author's instinct as a drum teacher to enable low-fatigue micro-gestures by designing the interface to encourage neutral-pose elbows more than 90% of the time.
+<p><b>Citation:</b> Hincapié-Ramos, J. D., Guo, X., Moghadasian, P., & Irani, P. (2014). "Conserving ergonomic energy in mid-air interaction." <i>Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '14)</i>, 919–928.</p>
+<p><b>Significance to 3OS:</b> Introduced the Consumed Endurance (CE) metric, a foundational framework for algorithmically predicting the onset of "gorilla arm" fatigue without the need for medical-grade sensors. By demonstrating a direct correlation between real-time skeletal joint torque and a user's physical limit, it backs up the 3OS author's instinct as a drum teacher to enable low-fatigue micro-gestures by designing the interface to encourage neutral-pose elbows more than 90% of the time.</p>
 </blockquote>
 
 </details>
@@ -1582,8 +1582,8 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 </summary>
 
 <blockquote>
-*   **Citation:** Jang, S., Ambike, S., Stuerzlinger, W., & Ramani, K. (2017). "Predicting mid-air interaction fatigue using biomechanical modeling." *Proceedings of the 2017 CHI Conference on Human Factors in Computing Systems (CHI '17)*, 1640–1652.
-*   **Significance to 3OS:** Provided a dynamic, state-based approach to spatial computing fatigue by adapting a Three-Compartment Muscle Model to track active, rested, and fatigued muscle units over time. This paper validated the 3OS philosophy that users can operate outside an "ergo-safe" volume for short stints, but must return to that "ergo-safe" volume to let neutral pose recharge their muscles for a majority of a spatial compute session.
+<p><b>Citation:</b> Jang, S., Ambike, S., Stuerzlinger, W., & Ramani, K. (2017). "Predicting mid-air interaction fatigue using biomechanical modeling." <i>Proceedings of the 2017 CHI Conference on Human Factors in Computing Systems (CHI '17)</i>, 1640–1652.</p>
+<p><b>Significance to 3OS:</b> Provided a dynamic, state-based approach to spatial computing fatigue by adapting a Three-Compartment Muscle Model to track active, rested, and fatigued muscle units over time. This paper validated the 3OS philosophy that users can operate outside an "ergo-safe" volume for short stints, but must return to that "ergo-safe" volume to let neutral pose recharge their muscles for a majority of a spatial compute session.</p>
 </blockquote>
 
 </details>
@@ -1595,8 +1595,8 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 </summary>
 
 <blockquote>
-*   **Citation:** Pohl, H., Lilija, K., McIntosh, J., & Hornbæk, K. (2021). "Poros: Configurable Proxies for Distant Interactions in VR." *Proceedings of the 2021 CHI Conference on Human Factors in Computing Systems (CHI '21)*, Article 357, 1–13.
-*   **Significance to 3OS:** The direct conceptual and geometric peer to 3OS. This paper broke the legacy "Flatland" window paradigm by showing that users can select arbitrary volumetric bounding regions in the far field and mirror them as non-Euclidean near-field workspace portals. 3OS adapts this concept for bimanual selection frustums that are cubic instead of spherical. The most salient difference between Poros and 3OS voodoo volumes is that Poros still used raycasting to generate portals, whereas 3OS engages a modified world-in-miniature technique as its creation model, yielding rapid cross-proxy multi-portal manipulation intended as a competitive volumetric corollary to a 2D desktop File Explorer.
+<p><b>Citation:</b> Pohl, H., Lilija, K., McIntosh, J., & Hornbæk, K. (2021). "Poros: Configurable Proxies for Distant Interactions in VR." <i>Proceedings of the 2021 CHI Conference on Human Factors in Computing Systems (CHI '21)</i>, Article 357, 1–13.</p>
+<p><b>Significance to 3OS:</b> The direct conceptual and geometric peer to 3OS. This paper broke the legacy "Flatland" window paradigm by showing that users can select arbitrary volumetric bounding regions in the far field and mirror them as non-Euclidean near-field workspace portals. 3OS adapts this concept for bimanual selection frustums that are cubic instead of spherical. The most salient difference between Poros and 3OS voodoo volumes is that Poros still used raycasting to generate portals, whereas 3OS engages a modified world-in-miniature technique as its creation model, yielding rapid cross-proxy multi-portal manipulation intended as a competitive volumetric corollary to a 2D desktop File Explorer.</p>
 </blockquote>
 
 </details>
@@ -1608,8 +1608,8 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 </summary>
 
 <blockquote>
-*   **Citation:** Al-Sadoun, A., et al. (2025). "Reality Proxy: Fluid Interactions with Real-World Objects in MR." *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.
-*   **Significance to 3OS:** Evaluated and validated that using spatial computer vision and semantic machine intelligence are crucial for streamlining the associations between world mesh geo and virtual content that fully utilizes the context of that geo.
+<p><b>Citation:</b> Al-Sadoun, A., et al. (2025). "Reality Proxy: Fluid Interactions with Real-World Objects in MR." <i>Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)</i>.</p>
+<p><b>Significance to 3OS:</b> Evaluated and validated that using spatial computer vision and semantic machine intelligence are crucial for streamlining the associations between world mesh geo and virtual content that fully utilizes the context of that geo.</p>
 </blockquote>
 
 </details>
@@ -1622,8 +1622,8 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 </summary>
 
 <blockquote>
-*   **Citation:** Amini, M., Stuerzlinger, W., Teather, R. J., & Batmaz, A. U. (2025). "A Systematic Review of Fitts' Law in 3D Extended Reality." *Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)*.
-*   **Significance to 3OS:** Identified that only 36% of XR HCI studies of the past several decades (44 total) that focused on throughput performance targeted virtual hand (point cursor) interaction models, whereas more than 50% targeted raycast techniques. The other 14% were eye tracking studies. Many of the 36% either intentionally or unintentionally eliminated evaluation of the depth vector by arranging UI elements in a flat plane configuration. Such tests were classified as technically volumetric and isometric since the plane was not raycast-able, yet such studies show very little salient data pertaining to the competitive efficacy of volumetric isometric techniques. To establish truly competitive volumetric isometry in hand tracking, each of the three axes must be treated uniformly. It's clear that volumetric isometric methods have been under-explored not just by industry, but by Academia as well for the entire history of HCI. It's as though we all had an innate instinct to chase Steve Jobs and Jony Ive down the wrong rabbit hole looking for the next next big thing.
+<p><b>Citation:</b> Amini, M., Stuerzlinger, W., Teather, R. J., & Batmaz, A. U. (2025). "A Systematic Review of Fitts' Law in 3D Extended Reality." <i>Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)</i>.</p>
+<p><b>Significance to 3OS:</b> Identified that only 36% of XR HCI studies of the past several decades (44 total) that focused on throughput performance targeted virtual hand (point cursor) interaction models, whereas more than 50% targeted raycast techniques. The other 14% were eye tracking studies. Many of the 36% either intentionally or unintentionally eliminated evaluation of the depth vector by arranging UI elements in a flat plane configuration. Such tests were classified as technically volumetric and isometric since the plane was not raycast-able, yet such studies show very little salient data pertaining to the competitive efficacy of volumetric isometric techniques. To establish truly competitive volumetric isometry in hand tracking, each of the three axes must be treated uniformly. It's clear that volumetric isometric methods have been under-explored not just by industry, but by Academia as well for the entire history of HCI. It's as though we all had an innate instinct to chase Steve Jobs and Jony Ive down the wrong rabbit hole looking for the next next big thing.</p>
 </blockquote>
 
 </details>
@@ -1702,8 +1702,11 @@ The 3OS interface layer reserves all primary event triggers and secondary-palm-d
 
 
 
+<hr style="border: 1px solid gray;">
 
-**Gesture Combos**
+### Gesture Combos
+
+<hr style="border: 1px solid gray;">
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
