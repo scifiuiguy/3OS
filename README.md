@@ -29,7 +29,7 @@ Welcome to **3OS**! It's an enterprise-grade volumetric XR operating system inte
 <b>Hands-First Interaction Model Obsessed with Speed and Best-in-Class Ergonomics</b>
 </summary>
 
-Using low-fatigue, volumetric, isometric, proprioceptive hand tracking, 3OS eliminates "gorilla arm" potential by relying on small, localized gestures and a proprioceptive merging of the near field and far field via a careful amalgam of techniques derived from a treasure trove of classic HCI studies going all the way back to 1991. This interaction technique formula was inspired by a dozen overlooked SIGCHI gems. (see Prior Art)
+Using low-fatigue, volumetric, isotropic, proprioceptive hand tracking, 3OS eliminates "gorilla arm" potential by relying on small, localized gestures and a proprioceptive merging of the near field and far field via a careful amalgam of techniques derived from a treasure trove of classic HCI studies going all the way back to 1994. This interaction technique formula was inspired by a dozen overlooked SIGCHI gems. (see Prior Art)
 
 </details>
 </blockquote>
@@ -40,7 +40,9 @@ Using low-fatigue, volumetric, isometric, proprioceptive hand tracking, 3OS elim
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Author Background (former Technicolor XR Tech Lead & Magic Leap Prototyping Engineer)</span></span>
 </summary>
 
-  I was deeply frustrated with state-of-the-art XR UI/UX design while working as a Lead Product Prototyping Engineer at Magic Leap in 2019 when I decided there must be <i>SOMEONE</i> in Academia who solved the myriad of problems slowing down our XR UI/UX. That's when I discovered SIGCHI. I had no idea of the rich history of UI research in Academia before that, and I became obsessed with mining for the gold that would unlock speed in 3D UI. It took a while to synthesize an end-to-end solution.
+I was deeply frustrated with state-of-the-art XR UI/UX design failing to compete with desktop speed while working as a Lead Product Prototyping Engineer at Magic Leap in 2019 when I decided there must be <i>SOMEONE</i> in Academia who solved the myriad of problems slowing down our XR UI/UX. That's when I discovered SIGCHI. I had no idea of the rich history of UI research in Academia before that, and I became obsessed with mining for the gold that would unlock speed in 3D UI. This led me to the treasure trove of Prior Art (mostly '90s research studies) that birthed 3OS.
+
+I also gravitated toward perf-op studies involving Fitts' Law variations (few of which test isotropic techniques apples-to-apples against raycast techniques). Ergonomic studies battling "gorilla arm" also fascinated me because I was deeply familiar with the problematic muscle groups in the shoulders (especially the coracobrachialis) since I targeted those same muscle groups with relaxation techniques in college while teaching one-on-one drum lessons to hundreds of students.
 
 </details>
 </blockquote>
@@ -51,7 +53,11 @@ Using low-fatigue, volumetric, isometric, proprioceptive hand tracking, 3OS elim
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">The Solution In A Nutshell</span></span>
 </summary>
 
-Raycast models and floating 2D windows waste most of XR’s adjacency/multitasking space and encourage slow, single-handed interaction. 3OS makes a compelling case for a volumetric isometric OS model (instead of a raycast model) as <i>THE</i> solution to the many speed bottlenecks preventing 3D UI adoption in enterprise spatial computing by encouraging snap-twitch voxel-based actions that <i>can</i> work with one hand but get faster for enterprise power users with two hands in concert. While mining SIGCHI archives, I gravitated toward perf-op studies involving Fitts' Law variations. Ergonomic studies battling "gorilla arm" also fascinated me because I was deeply familiar with the problematic muscle groups in the shoulders (especially the coracobrachialis) since I targeted those same muscle groups with relaxation techniques in college while teaching one-on-one drum lessons to hundreds of students.
+Current OS design habits kill our ability to prove XR is faster than desktop PCs.
+
+Raycast models and floating 2D windows waste most of XR’s adjacency/multitasking space and encourage slow, single-handed interaction. 3OS offers a <b>volumetric isotropic OS model</b> instead. Isotropic techniques are <i>THE</i> solution to the many speed bottlenecks preventing 3D UI adoption in enterprise by integrating snap-twitch voxel-based actions, not surface-based actions.
+
+<b><i>isotropic interaction:</i></b> The cursor or driven object moves either 1-to-1 or 1-to-N driven by 3D hand motion on all axes uniformly, as opposed to raycast (perspective projection) where X/Y hand motion yields scaling cursor motion as Z scales.
 
 </details>
 </blockquote>
@@ -102,7 +108,7 @@ I hope you enjoy the demo!
 
 3OS (pronounced **"three-oh-ess"**) is inspired by cult classic sci-fi flicks like Johnny Mnemonic, The Matrix, Minority Report, Iron Man, and The Expanse, but it also grounds its efficacy in our rich history of HCI research.
 
-3OS is a voxel-first operating system interface that attempts to take us back to our optimistic roots by drawing upon nearly-forgotten 90s HCI studies (see the Prior Art section). It aims to be the first 3D interface that's faster than desktop PCs for enterprise teams using the HCI road less traveled (A.K.A. volumetric isometric interaction, NOT raycast cursors), but it also supports hybrid integration of all legacy 2D apps with virtual and physical monitors in a collaborative development room.
+3OS is a voxel-first operating system interface that attempts to take us back to our optimistic roots by drawing upon nearly-forgotten 90s HCI studies (see the Prior Art section). It aims to be the first 3D interface that's faster than desktop PCs for enterprise teams using the HCI road less traveled (A.K.A. volumetric isotropic interaction, NOT raycast cursors), but it also supports hybrid integration of all legacy 2D apps with virtual and physical monitors in a collaborative development room.
 
 ### Target hardware: 
   * XR HMDs
@@ -126,7 +132,7 @@ I hope you enjoy the demo!
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">A Prototype Interface</span></span>
 </summary>
 
-A fast-twitch volumetric isometric interaction model (called voodoo volumes) that merges near-field/far-field content for rapid whole-field interaction.
+A fast-twitch volumetric isotropic interaction model (called voodoo volumes) that merges near-field/far-field content for rapid whole-field interaction.
 
 </details>
 
@@ -183,6 +189,32 @@ There are 100 million potential early adopters in all fields of professional 3D 
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Verticals</span></span>
+</summary>
+
+**VFX and Game Dev** (entertainment) are easiest to target because they require the least server performance optimization. They are also the smallest vertical at <2 million professionals, but the case studies they offer via association with A-list IP are strong marketing for following verticals.
+
+**CAD** is the most obvious larger early adopter vertical with 50 million professionals. It can be subdivided into hundreds of sub-verticals (aerospace, auto, architecture, etc.).
+
+**Software engineering** is less obvious, but equally powerful to CAD. See <i>'Why Would All Software Engineers Work in 3D?'</i> below.
+
+**University Schools** including Comp. Sci., Engineering, Film/TV, and Game Dev will want 3D OS training bays as soon as it emerges as a career opportunity. Eventually tech-focused high schools may adopt this new computer lab trend too.
+
+Other less-obvious verticals that have little to do with 3D content creation, but will probably transition to 3D due to its data visualization potential:
+
+* **Finance** (e.g. 3D terminals from Bloomberg, LSEG, etc.)
+* **Supply Chain Management** (e.g. 3D ERP systems from SAP, Oracle, etc.)
+* **Defense** (e.g. 3D telemetry from Anduril, Lockheed, Boeing, etc.)
+* **Home IoT** (e.g. 3D smart device control from Amazon, Google, Apple, etc.)
+
+Some of these systems already have complex 3D telemetry interfaces, but they're often accessed through the tight constraints of mouse/keyboard/monitor, and they tend to have no 3D multitasking capability between apps from different providers, which would facilitate visualized agentic integration.
+
+Through word of mouth from these early adopters, the mass market may eventually recognize that interacting with agents in 3D is much more intuitive than doing so in a chat window. It's the way a Metaverse might grow organically, by yielding profit at every step toward mass adoption, like mainframes to PCs or intranet-to-internet.
+
+</details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">How to take 3OS to the next level</span></span>
 </summary>
 
@@ -201,7 +233,7 @@ The server code will be written with or without enterprise-grade hardware. A Pro
 <summary><b>💻 Why Would All Software Engineers Work in 3D?</b></summary>
 <hr style="border: 1px solid gray;">
 
-Most people could imagine CAD engineers enjoying an Iron-Man-style interface if it legitimiately made work faster, but software engineers? What would it even mean for THEM to "work in 3D"?
+Most people could imagine CAD engineers enjoying an Iron-Man-style interface if it legitimately made work faster, but software engineers? What would it even mean for THEM to "work in 3D"?
 
 
 <details>
@@ -220,7 +252,7 @@ Most of us recognize that agents place human programmers yet another layer away 
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">The New Stack Layer Must Be Visual</span></span>
 </summary>
 
-Every layer of the abstraction stack has been <b><i>visual</i></b> for a reason. Our eyes are the highest-throughput way to put data into to our brains by a long-shot. Agents do not currently give us a new <b><i>visual</i></b> representation of the stack. They reply in a chat thread, but that chat thread is not the program. They can show us the code they changed, but that layer of the stack was already here long before they arrived. That's not the new layer either. There is no <i>NEW</i> layer of the stack to look at. <i>YET</i>.
+Every layer of the abstraction stack has been <b><i>visual</i></b> for a reason. Our eyes are the highest-throughput way to put data into our brains by a long shot. Agents do not currently give us a new <b><i>visual</i></b> representation of the stack. They reply in a chat thread, but that chat thread is not the program. They can show us the code they changed, but that layer of the stack was already here long before they arrived. That's not the new layer either. There is no <i>NEW</i> layer of the stack to look at. <i>YET</i>.
 
 </details>
 
@@ -253,7 +285,7 @@ We use icons for many things, but not programming. YET. Why write a class name w
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Why VPLs must go 3D</span></span>
 </summary>
 
-Anyone familiar with Unreal Blueprints will know there's something magical about the way it visualzes execution flow. The connectors glow as data flows through them. However, it's really not useful yet, because you must zoom all the way in to read the text on the nodes, and zooming that far in will make you miss potential issues elsewhere in the application when the execution flow breaks at the wrong time. 
+Anyone familiar with Unreal Blueprints will know there's something magical about the way it visualizes execution flow. The connectors glow as data flows through them. However, it's really not useful yet, because you must zoom all the way in to read the text on the nodes, and zooming that far in will make you miss potential issues elsewhere in the application when the execution flow breaks at the wrong time. 
 
 The nodes are all rectangles in all current VPLs. This is their downfall. You can't tell any node apart at a distance. None use iconography yet. If they did, then we could see the entire app lighting up like a Christmas tree all at once, or like clusters of synapses, and we'd realize we WANT to zoom out all the time, making it obvious that 3D clusters will give yet another order of magnitude of zoom-out capability. This would be a better debugger than anything we've ever had in an IDE. THIS is the new layer of the stack, a real-time VISUALIZER of agentic changes to the code.
 
@@ -266,7 +298,7 @@ The nodes are all rectangles in all current VPLs. This is their downfall. You ca
 
 The new layer of the stack is 3D node-based collections of synapses where each synapse represents a class, method, or property, and each unit glows on activation like a realtime MRI machine for your application. That's what Unreal Blueprints are, except the text and rectangles make us look at it only through a magnifying glass, which breaks the purpose. Turing-complete 3D VPLs will start popping up like flies in the next few years, and one of them will become the new Javascript, taking the spatial computing industry by storm and finding its way into the back-end of most software systems. 
 
-These new languages will be nothing more than visual wrappers on top of high-level and low-level languages (Javascript, C#, Swift, C++, Rust, etc.), but one could argue that C was nothing more than an assembly wrapper in similar fashion. 3D VPLs will be the primary way new generations of programmers engage with code. Just as the elder Millenial author of 3OS has never touched Fortran, it's possible some of the youngest Gen-Alpha software kids will rarely need to touch Javascript.
+These new languages will be nothing more than visual wrappers on top of high-level and low-level languages (Javascript, C#, Swift, C++, Rust, etc.), but one could argue that C was nothing more than an assembly wrapper in similar fashion. 3D VPLs will be the primary way new generations of programmers engage with code. Just as the elder Millennial author of 3OS has never touched Fortran, it's possible some of the youngest Gen-Alpha software kids will rarely need to touch Javascript.
 
 </details>
 
@@ -275,7 +307,7 @@ These new languages will be nothing more than visual wrappers on top of high-lev
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Agents Are Too Fast For Us Without 3D VPLs</span></span>
 </summary>
 
-Fixing this is the only way to keep up with agents as they make sweeping changes to our code in real time. It takes hours to review the code they write line-by-line. 3D VPLs are simply real-time visualizers of the CPU as it runs your program. They are the only way to ensure code stays clean mid-development without falling behind your competitors. Line-by-line code review is the new low-level perf op. It must be done for safety prior to release, but we can't do it for every changelist anymore. There's no time. Full code review will be a low-level task for advanced human programmers. It will occur approaching a release candidate. 3D node-based debugging will replace full code review in the early-to-mid dev cycle.
+3D VPLs are the only way to keep up with agents as they make sweeping changes to our code in real time. It takes hours to review the code they write line-by-line. 3D VPLs are simply real-time visualizers of the CPU as it runs your program. They are the only way to ensure code stays clean mid-development without falling behind your competitors. Line-by-line code review is the new low-level perf op. It must be done for safety prior to release, but we can't do it for every changelist anymore. There's no time. Full code review will be a low-level task for advanced human programmers. It will occur approaching a release candidate. 3D node-based debugging will replace full code review in the early-to-mid dev cycle.
 
 </details>
 
@@ -306,7 +338,7 @@ Legacy paradigms are supported for full real-time integration, but they are not 
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">WIMP Is To XR As Comannd Line Was to Windows 95</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">WIMP Is To XR As Command Line Was to Windows 95</span></span>
 </summary>
 
 The WIMP paradigm is a backwards compatibility tool in XR. It should not be front-and-center in any spatial computing OS. A VR or MR HMD that uses WIMP as its default metaphor set is like Windows 95 launching into a command line with no Desktop, no Start button, and no File Explorer, except at least the command line still brought extra speed for power users. WIMP interfaces do the opposite in XR. Their primary value is familiarity comfort (appropriate for consumer apps), but their incredible UX latency baggage comes with it. Even so, they're currently the ONLY XR OS interface available in 2026.
@@ -377,14 +409,40 @@ The author of 3OS suspects it's primarily because companies like Meta and HTC hi
 
 </details>
 
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Debunking Raycast</span></span>
+</summary>
+
+The case needs to be reopened. The data led our best HCI PhDs to the wrong conclusion (see Prior Art #5, #11, and #12). We know this intuitively because nothing we do in modern XR is yet as fast as desktop PCs in practical applications despite raycast HCI tests claiming competitive throughput results versus mouse cursors. 
+
+Raycast <i>appears</i> fast in HCI studies only because of biased data. Furthermore, it discourages bimanual (two-hand) interaction because one instance is anti-proprioceptive enough for one hand. Moving an object through a 3D field is easy along X or Y. For any Z motion or any diagonal involving Z, raycast motion feels like drawing diagonals on an Etch-A-Sketch. With two hands, it's two Etch-A-Sketch knobs per hand. It's a double brain-teaser, a complete non-starter for power users, yet most raycast UIs hide this utter failure by never letting the user move an object through Z at all. Even so, two raycasts <i>still</i> feels like a brain teaser when constrained to a plane. Mountains of HCI research proved dual mice a non-starter decades ago.
+
+</details>
+
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">HCI Needs More Musicians</span></span>
 </summary>
 
-The case needs to be reopened. HCI PhDs were right about the data, but wrong about the conclusion. Raycast discourages bimanual (two-hand) interaction, so its 2X throughput is cancelled by nearly always being used one-hand-at-a-time in practice, whereas volumetric isometric models feel effortless with two hands. This was obvious to the author of 3OS years before he started nerding out on ancient SIGCHI papers because, once upon a time, he taught over 300 students how to play the drums. Nearly every student started with no bimanual coordination whatsoever, a lot like most HCI research study participants. Yet suddenly, after a few good words of advice, bimanual talent started coming out of the woodwork for every human being who learned a sliver of technique. Consumers may be less willing to adopt a stick-shift car, but what about CAD engineers, computer programmers, game devs, and VFX artists? They'll want paddle-shifters on their Ferraris if we can figure out how to build them.
+The 2X theoretical throughput of raycasting, even if real (it's not), is cancelled by nearly always being used one-hand-at-a-time in practice, whereas volumetric isotropic models feel effortless with two hands. Mysteriously, bimanual isotropic techniques (serial and/or parallel) have never once been speed-tested in Academia. Their value was obvious to the author of 3OS long before he started devouring ancient SIGCHI papers because, once upon a time, he taught hundreds of students how to play the drums. Who better than drummers to tease out the value of bimanual speed boosts? 
+
+The early ABC vocabulary of every drum student is a set of patterns called Rudiments, with which we build muscle memory for dual-hand actions in serial, parallel, and often combinations of both. Spatial computing need not delve into the complexity of such patterns, but the most basic patterns called "flam" and "single-stroke roll" (e.g. tap two targets at once versus tap each sequentially in alternating RLRL fashion) are likely to become fundamental XR interaction building blocks as soon as their massive speed gains are actualized by enough wicked-fast new apps.
+
+"Bimanual-boosts-for-power-users" will become an XR UI staple, especially in enterprise UIs, and competitive interfaces must design from the ground up around this need without sacrificing accessibility, i.e. the interface must work in full via either hand alone, but it gets faster with both hands in concert.
 
 </details>
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Consumers Drive Automatic... Professional Drive Stick</span></span>
+</summary>
+
+Nearly every music student starts with no bimanual coordination whatsoever, a lot like most HCI research study participants, plus all of them exhibit Beginner-Stiff-Arm on Day 1. Yet suddenly, after a few good words of advice, relaxation and bimanual talent come out of the woodwork. Consumers may be less willing to jump into a stick-shift car that requires ANY practice, but CAD engineers, computer programmers, game devs, and VFX artists are the racecar drivers in this analogy. They'll want paddle-shifters for their Ferraris if their colleagues next door are using them to produce faster work. Isotropic models are the racecar: they provide rapid access to manual controls. Raycast is the ecoomy car with automatic transmission... fine for a layperson's commute, not for competition.
+
+</details>
+
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
@@ -400,7 +458,7 @@ Aside from feeling wrong with two hands, raycast squashes the field to a plane, 
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">We Took The Path The Research Told Us to Take</span></span>
 </summary>
 
-The author of 3OS doesn't blame anyone on the design teams at Meta or Apple or Steam or Microsoft. If the path to becoming Iron Man or Tom Cruise were easy to see, thousands of us would have built it and no one would care, because it was just too easy. But our best UI scientists led us in the footsteps of Steve Jobs and Jony Ive with their best efforts AND mountains of valid scientific data, which all implied "this XR platform will NEVER do the things your desktop PC can do."
+The author of 3OS doesn't blame anyone on the design teams at Meta or Apple or Steam or Microsoft. If the path to becoming Iron Man or Tom Cruise were easy to see, thousands of us would have built it and no one would care, because it was just too easy. The collective consciousness of humanity couldn't crack this nut in less than 30 years, so our best UI scientists led us in the footsteps of Steve Jobs and Jony Ive with their best efforts AND mountains of seemingly-valid scientific data, which all implied "this XR platform will NEVER do the things your desktop PC can do."
 
 </details>
 
@@ -418,7 +476,7 @@ Which enterprise company would consider porting their desktop features into XR i
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Hope Is Not Lost</span></span>
 </summary>
 
-XR has always had greater enterprise potential than desktop computers. Those VR ports will be resurrected with new MR life. This will be obvious as soon as the right OS interface enables the medium to shine with all of its advantages. AI interfaces are part of that story, but we can't always speak our work to an agent. Sometimes, work needs to be more private, even among colleagues in a shared office. We can't adopt XR in the office if the interaction model slows us to a crawl in those quiet moments. Thus, the XR industry must present an interface that is faster than desktop interfaces WITH OR WITHOUT an AI assistant. Only then can we put the interface on steroids with agentic integration.
+XR has always had greater enterprise potential than desktop computers. Those VR ports will be resurrected with new MR life. This will be obvious as soon as the right OS interface enables the medium to shine with all of its advantages. AI interfaces are part of that story, but we can't always speak our work to an agent, and agents shouldn't always show their work in just speech or text. Sometimes, work needs to be more private and/or more visual. We can't adopt XR in the office if the interaction model slows us to a crawl in quiet moments or in moments where the agent is presenting mountains of changes in graphically visualized form. Thus, the XR industry must present an interface that is faster than desktop interfaces WITH OR WITHOUT an AI assistant acting as intermediary to the direct manual controls. Only then can we put the interface on steroids with agentic integration.
 
 </details>
 
@@ -453,22 +511,22 @@ XR has millions of interaction zones in each frustum which would enable adjacenc
 
 The crutch of WIMP denies the use of the depth vector in concert with common 2D table layouts (i.e. WIMP makes 3D matrix and cluster layouts impossible), which occludes the vast potential utility of the XR field almost entirely, which in turn masks the throughput jank of the default raycasting interaction model. Raycasting successfully hides how terribly slow it is by forcing us to drive our Ferrari at 5mph as though that's how fast all racecars drive. A model that can enable hands or cursors to hover in any subdivision of the field with equivalent effort must replace the legacy model. 
 
-Raycast has won the XR OS implementation battle so far by putting up HCI speed test numbers that double volumetric isometric competitors only because the tests in research studies are never done apples-to-apples according to real-world applications. In the real world, users only use raycast with one hand, not two, and apples-to-apples interfaces built to take full advantage of adjacency have rarely been tested in HCI studies at all. The author of 3OS can build apples-to-apples tests that prove raycast actually has slower throughput in the real world than volumetric isometric techniques under fair criteria, and that's before accounting for the value of volumetric isometric models having access to every depth layer of the far field simultaneously.
+Raycast has won the XR OS implementation battle so far by putting up HCI speed test numbers that double volumetric isotropic competitors only because the tests in research studies are never done apples-to-apples according to real-world applications. In the real world, users only use raycast with one hand, not two, and apples-to-apples interfaces built to take full advantage of adjacency have rarely been tested in HCI studies at all. The author of 3OS can build apples-to-apples tests that prove raycast actually has slower throughput in the real world than volumetric isotropic techniques under fair criteria, and that's before accounting for the value of volumetric isotropic models having access to every depth layer of the far field simultaneously.
 
 </details>
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">3) Perspective Projection vs. Isometric Proprioception:</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">3) Perspective Projection vs. Isotropic Proprioception:</span></span>
 </summary>
 
-We see in perspective, but perspective can warp our mind's eye of Euclidean space. Our short arms define the near field where perspective causes almost unnoticeable size warping, thus our mind's eye for hand coordination is formed isometrically. We think of 3D space the way it actually is... true width, depth, and height have an equal relationship, not a scalar one. We know the object moving away is not actually shrinking, but if we need to use a magical interface to reach out and touch that object, we should not expect our hands to easily convert to angular space where farther objects require scaled hand motions. To access the far field with equivalent efficacy to the near field, we need to use a volumetric isometric interaction model, one that treats hand motion in the near field identically to the far field and unlocks our proprioceptive instincts.
+We see in perspective, but perspective can warp our mind's eye of Euclidean space. Our short arms define the near field where perspective causes almost unnoticeable size warping, thus our mind's eye for hand coordination is formed isotropically. We think of 3D space the way it actually is... true width, depth, and height have an equal relationship, not a scalar one. We know the object moving away is not actually shrinking, but if we need to use a magical interface to reach out and touch that object, we should not expect our hands to easily convert to angular space where farther objects require scaled hand motions. To access the far field with equivalent efficacy to the near field, we need to use a volumetric isotropic interaction model, one that treats hand motion in the near field identically to the far field and unlocks our proprioceptive instincts.
 
 </details>
 
 ### Long story short - 
 
-An XR OS interface that works at rapid speed for enterprise MUST use <b>a volumetric isometric model</b>, NOT a raycast model. It must be volume-based, not surface-based. Raycast has no chance of achieving speeds competitive to 2D desktops. Volumetric isometric models can beat desktop speeds if they're built to the kinds of careful specs that have rarely been tested in Academia. Solve this problem, and enterprise adoption of XR can begin as soon as we have sunglasses-form-factor HMDs capable of MR and ergo-safe hand tracking (e.g. the hand tracking FOV of Quest is sufficient).
+An XR OS interface that works at rapid speed for enterprise MUST use <b>a volumetric isotropic model</b>, NOT a raycast model. It must be volume-based, not surface-based. Raycast has no chance of achieving speeds competitive to 2D desktops. Volumetric isotropic models can beat desktop speeds if they're built to take full advantage of bimanual techniques that have never been tested in Academia. Solve this problem, and enterprise adoption of XR can begin as soon as we have sunglasses-form-factor HMDs capable of MR and ergo-safe hand tracking (e.g. the hand tracking FOV of Quest is sufficient... anything less is DOA).
 
 </details>
 </blockquote>
@@ -502,7 +560,7 @@ A single hand gesture interface orchestrates all of the following:
 * Rapid-access workspaces for multiplayer collab, comms, presentation, and solo work
 
 
-The 3OS Bay can be productized as a roomscale supercomputer that increases productivity for professionals already working with 3D content. It is very specifically <b>NOT</b> a conference room. It's not for meetings. It's for simultaneous colocated collab and solo development. It can be used to present work progress, but a majority of the time it is best dedicated to the 12 workers working in small teams together to complete a large range of tasks involving 3D assets. One user can work in a solo workspace using the same space as 11 other users who are in a separate collab workspace. Early adopters are teams of developers and artists in product dev, engineering, VFX, game dev, architecture, auto, aerospace, etc.
+The 3OS Bay can be productized as a roomscale supercomputer that increases productivity for professionals already working with 3D content. It is very specifically <b>NOT</b> a conference room. It's not for meetings. It's for simultaneous colocated collab and solo development. It can be used to present work progress, but a majority of the time it is best dedicated to the 2-12 workers working in small teams together to complete a large range of tasks involving 3D assets. One user can work in a solo workspace using the same space as 11 other users who are in a separate collab workspace. Early adopters are teams of developers and artists in product dev, engineering, VFX, game dev, architecture, auto, aerospace, etc.
 
 
 </details>
@@ -528,7 +586,7 @@ The 3OS Bay can be productized as a roomscale supercomputer that increases produ
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">It's All Voxels</span></span>
 </summary>
 
-Instead of forcing users to aim virtual laser pointers at floating 2D windows, 3OS treats the entire environment as a high-capacity voxel field where the parameterized resolution defaults to a 3-inch voxel, the approximate size that satisfies high selection accuracy at rapid speed with 6DOF 10-finger hand motion (see the Trivariate validation below). The goal is to provide users a voxel grid representing all the subdivisions of 3D space in which they can hover, select, or otherwise interact with any voxel in under 0.25 seconds regardless of their body's distance away from that voxel. This is an impossible feat in all current spatial computing operating systems because of the false assumption that OS interfaces must use WIMP.
+Instead of forcing users to aim virtual laser pointers at floating 2D windows, 3OS treats the entire environment as a high-capacity voxel field where the parameterized resolution defaults to a 3-inch voxel, the approximate size that satisfies high selection accuracy at rapid speed with 6DOF 10-finger hand motion (see Prior Art #6, the Trivariate Target paper). The goal is to provide users a voxel grid representing all the subdivisions of 3D space in which they can hover, select, or otherwise interact with any voxel in under 0.25 seconds regardless of their body's distance away from that voxel. This is an impossible feat in all current spatial computing operating systems because of the false assumption that OS interfaces must use WIMP.
 
 </details>
 
@@ -599,7 +657,7 @@ Voodoo volumes (large gaps instantly) and Telekinesis (small translations) follo
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">The limits of the body determine ideal interaction volume bounds</span></span>
 </summary>
 
-The Trivariate Target paper by Grossman and Balakrishnan (see Prior Art #5) was instrumental in determining how large the voxels should be for fast-moving hands in a voxel-based OS. The default assumption in 3OS is that hands will be moving rapidly at various moments within the bounding box of a given voodoo volume. Elimination of overshoot errors is paramount. Also, the constraint of elbow position for "gorilla arm" prevention requires a specific bounding box size for that volume.
+The Trivariate Target paper by Grossman and Balakrishnan (see Prior Art #6) was instrumental in determining how large the voxels should be for fast-moving hands in a voxel-based OS. The default assumption in 3OS is that hands will be moving rapidly at various moments within the bounding box of a given voodoo volume. Elimination of overshoot errors is paramount. Also, the constraint of elbow position for "gorilla arm" prevention requires a specific bounding box size for that volume.
 
 </details>
 
@@ -635,7 +693,7 @@ In 3OS, the user can instantiate multiple voodoo volumes side-by-side. 3OS may u
 
 The left and right bounds of the "ergo-safe" volume are marked by the user's shoulder width, since twisting hands outward beyond that range is a shoulder cuff hyperextension, or an opening of the wingspan, which engages pecs and lats (generally a mistake of wasted energy and speed). To access to the left and to the right, the user should be trained to turn the entire upper body as a unit, effectively retargeting their "ergo-safe" volume.
 
-Shoulder widths vary drastically. Thus, for 3OS, we target a lowest-common denominator of 12", which allows for most body sizes to instantiate up to three voodoo volumes in immediate "ergo-safe" positions, one in center, and one each on left and right flank. The flankin volumes are always in periphery, and engaging with them requires only a tiny twist of the spine to retarget both hands at once. User's should be encouraged to bring both hands together toward each target volume by aligning the shoulders on it, since this encourages restful elbows and allows them to take full advantage of the dual-hand power user features of 3OS.
+Shoulder widths vary drastically. Thus, for 3OS, we target a lowest-common denominator of 12", which allows for most body sizes to instantiate up to three voodoo volumes in immediate "ergo-safe" positions, one in center, and one each on left and right flank. The flanking volumes are always in periphery, and engaging with them requires only a tiny twist of the spine to retarget both hands at once. User's should be encouraged to bring both hands together toward each target volume by aligning the shoulders on it, since this encourages restful elbows and allows them to take full advantage of the dual-hand power user features of 3OS.
 
 </details>
 
@@ -694,11 +752,11 @@ To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR s
 
 * **The Solution:** 
   
-  Via gesture or button press, the user instantiates a localized, downscaled **Invisible Isometric Field Proxy** within comfortable, elbow-nearly-at-rest reach. The proxy is one of two types, snap or free-range, each mapped to a different gesture. The snap proxy contains a cluster of focus anchor visualizers to target, whereas the free-range proxy has no widget, allowing unbiased manual placement of the far-field voodoo volume anywhere in the field. The default ratio of the actual field to the invisible proxy miniature is 50-to-1 at default parameters in an open field e.g. the Mind Palace. These parameters flex to the size of the room, typically constraining down in MR since most MR indoor rooms are less than 50' wide. 
+  Via gesture or button press, the user instantiates a localized, downscaled **Invisible Isotropic Field Proxy** within comfortable, elbow-nearly-at-rest reach. The proxy is one of two types, snap or free-range, each mapped to a different gesture. The snap proxy contains a cluster of focus anchor visualizers to target, whereas the free-range proxy has no widget, allowing unbiased manual placement of the far-field voodoo volume anywhere in the field. The default ratio of the actual field to the invisible proxy miniature is 50-to-1 at default parameters in an open field e.g. the Mind Palace. These parameters flex to the size of the room, typically constraining down in MR since most MR indoor rooms are less than 50' wide. 
   
-* **Isometric, Not Perspective:**
+* **Isotropic, Not Perspective:**
 
-  For every 1' the user moves their hand on X, Y, or Z, the new voodoo volume moves 50' on that same axis. This world-to-user proxy is technically a World-In-Miniature technique except it provides no mini-map widget because none is needed. The technique is meant for fast-twitch action to rapidly grab a chunk of volume from anywhere in the far field. It's a technique not intended to be held long. It has a small offset allowing the new far-field voodoo volume to instantiate a few feet forward of the user, just out of reach and out of the way of its near-field voodoo copy. Importantly, this is not a "go-go" solution, a term popularized by a 90s research study that referenced Go-Go-Gadget, though it might easily be mistaken for one. Go-go variations are perspective-based. The Voodoo drop is isometric, a key distinction for accessing the whole field uniformly. It feels like egocentric raycast or go-go in that it feels like your intent is shooting out of your hand or body, but then the wacky and unpredictable fast-far-and-slow-near speed variations of the target are magically normalized by the isometric mapping.
+  For every 1' the user moves their hand on X, Y, or Z, the new voodoo volume moves 50' on that same axis. This world-to-user proxy is technically a World-In-Miniature technique except it provides no mini-map widget because none is needed. The technique is meant for fast-twitch action to rapidly grab a chunk of volume from anywhere in the far field. It's a technique not intended to be held long. It has a small offset allowing the new far-field voodoo volume to instantiate a few feet forward of the user, just out of reach and out of the way of its near-field voodoo copy. Importantly, this is not a "go-go" solution, a term popularized by a 90s research study that referenced Go-Go-Gadget, though it might easily be mistaken for one. Go-go variations are perspective-based. The Voodoo drop is isotropic, a key distinction for accessing the whole field uniformly. It feels like egocentric raycast or go-go in that it feels like your intent is shooting out of your hand or body, but then the wacky and unpredictable fast-far-and-slow-near speed variations of the target are magically normalized by the isotropic mapping.
 
 </details>
 
@@ -747,7 +805,7 @@ To eliminate physical exhaustion ("Gorilla Arm") and sluggishness of legacy XR s
 <summary><b>🌀 Voodoo Volumes</b></summary>
 <hr style="border: 1px solid gray;">
 
-3OS bypasses the slow, physics-based fishing-line-reeling or lassoing of legacy XR raycasting techniques by utilizing **Non-Euclidean Voodoo Volumes**, A.K.A. rectangular chunks of volume that act as wormholes between the near field and far field. The technique is heavily inspired by the Poros Framework (see Prior Art #8).
+3OS bypasses the slow, physics-based fishing-line-reeling or lassoing of legacy XR raycasting techniques by utilizing **Non-Euclidean Voodoo Volumes**, A.K.A. rectangular chunks of volume that act as wormholes between the near field and far field. The technique is heavily inspired by the Poros Framework (see Prior Art #9).
 
 
 <details>
@@ -764,7 +822,7 @@ The user sees an object or cluster of objects in the far field and decides to in
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Voodoo Volume Dragging</span></span>
 </summary>
 
-If a double-proxy voodoo volume is open, dragging an object from the near field into the voodoo volume teleports that object out into the far-field. Vice versa, dragging an object out of a voodoo volume teleports it from its far field volume into the near field. The need to grab onto a far field object with raycast and reel it in is entirely eliminated. The concept is heavily inspired by the Poros Framework (see Prior Art #8).
+If a double-proxy voodoo volume is open, dragging an object from the near field into the voodoo volume teleports that object out into the far-field. Vice versa, dragging an object out of a voodoo volume teleports it from its far field volume into the near field. The need to grab onto a far field object with raycast and reel it in is entirely eliminated. The concept is heavily inspired by the Poros Framework (see Prior Art #9).
 
 </details>
 
@@ -802,7 +860,7 @@ An optional feature. If the user selects an object within a voodoo volume and th
 * **Walking Mode (Egocentric - User-Locked):** The global reference frame for the OS becomes a hit point at dead-center on the floor below the user's HMD pose and heavily dampened on global Y (vertical). All virtual content that is not world-locked  fixes itself to this global reference until this mode toggles off. Objects already anchored in the primary dev room reference frame will de-anchor to cache dual walking+stationary anchors for seamless transition between an office and travel outside e.g. a trip to a coffee shop. These dual anchor transitions will only occur if the object is in MR, not VR, and only if not flagged as world-locked.
 * **Worldspace (Default) Mode (Allocentric - World-Locked):** Grounded permanently into the physical world mesh, mapped by SLAM tracking and cached on the server.
 
-* **World Mesh Caching:** World meshes will be cached on the server in Worldspace mode if possible. The server expects a primary default room mesh of up to 50'x50'. It can store larger, but it defers to the caching capability of the HMDs. Attempting to scan adjacent rooms may result in the server caching each room separately in the future for appropriate occlusion culling, but this is also anticipated to be handled by the HMD OEM. The server and streaming client also may reference GPS data and/or world mesh digital twin aggregation data in the future to support long-distance travel, but 3OS Server by default will permanently store a scan of the primary dev room for rapid anchoring under the assumption that much of this caching work will be done on each HMD by the OEM. The server will make itself available as expansion storage for the HMD's local world mesh caching algorithm if the OEM allows it via API, including caching one shared room mesh for all HMDs sahring the room if possible.
+* **World Mesh Caching:** World meshes will be cached on the server in Worldspace mode if possible. The server expects a primary default room mesh of up to 50'x50'. It can store larger, but it defers to the caching capability of the HMDs. Attempting to scan adjacent rooms may result in the server caching each room separately in the future for appropriate occlusion culling, but this is also anticipated to be handled by the HMD OEM. The server and streaming client also may reference GPS data and/or world mesh digital twin aggregation data in the future to support long-distance travel, but 3OS Server by default will permanently store a scan of the primary dev room for rapid anchoring under the assumption that much of this caching work will be done on each HMD by the OEM. The server will make itself available as expansion storage for the HMD's local world mesh caching algorithm if the OEM allows it via API, including caching one shared room mesh for all HMDs sharing the room if possible.
 
 
 
@@ -926,7 +984,7 @@ These ring subdivisions are not necessary in every context, but they exist to su
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Concentric Data Ring Layout</span></span>
 </summary>
 
-The far field is non-uniform, but it can often be logically and conceptually subdivided especially during instantiation of large numbers of objects that must align in matrices and also avoid collision with each other. The rule of thumb for incoming objects is to instantiate in the near field if the total number of objects is fewer than 6 and the near field is clear of potential collisions. Otherwise, priority instantiation happens at ground level, and matrices lay out isometrically relative to themselves but concentrically relative to each other. For example, if two dozen matrices each containing 125 objects must instantiate simultaneously, they would do so in a panorama of 5x5x5 matrices side by side in the far field as close as possible with adequate padding and margins.
+The far field is non-uniform, but it can often be logically and conceptually subdivided especially during instantiation of large numbers of objects that must align in matrices and also avoid collision with each other. The rule of thumb for incoming objects is to instantiate in the near field if the total number of objects is fewer than 6 and the near field is clear of potential collisions. Otherwise, priority instantiation happens at ground level, and matrices lay out isotropically relative to themselves but concentrically relative to each other. For example, if two dozen matrices each containing 125 objects must instantiate simultaneously, they would do so in a panorama of 5x5x5 matrices side by side in the far field as close as possible with adequate padding and margins.
 
 </details>
 
@@ -944,7 +1002,7 @@ Until extensive UX testing can be done on densely populated fields, it is assume
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Best Practices On Per-Field Capacity</span></span>
 </summary>
 
-It is less than ideal to fill an entire field and leave no breathing room to utilize extra empty space just as it is less than ideal to fill a 2D desktop with hundreds of icons until there is no room to move an icon anywhere. Thus, we assum the functional working range of the total number of objects in a field can be measured in six figures at maximum capacity, though most users will probably opt for sparse fields in the three-to-four figure range since they can jump from one field to another as easily as a change-directory command in a CLI.
+It is less than ideal to fill an entire field and leave no breathing room to utilize extra empty space just as it is less than ideal to fill a 2D desktop with hundreds of icons until there is no room to move an icon anywhere. Thus, we assume the functional working range of the total number of objects in a field can be measured in six figures at maximum capacity, though most users will probably opt for sparse fields in the three-to-four figure range since they can jump from one field to another as easily as a change-directory command in a CLI.
 
 </details>
 
@@ -1128,7 +1186,7 @@ Boxes in 3OS are the 3D equivalent of folders in legacy platforms. They can expa
 </summary>
 
 <blockquote>
-These are the workhorse of 3OS, merging the near and far field via non-Euclidean portal behaviors. To engage one, the user performs a <b>voodoo drop</b> (see Field Unification State Machine): an invisible isometric field proxy maps near-hand motion to far-field placement—snap mode for focus-anchor clusters, free-range for unbiased drops. While the gesture is held, a far-field voodoo volume instantiates and moves in concert around the actual field. Releasing the gesture parks that far volume and opens the matching near-field voodoo volume in hand's reach, completing the portal. Now any contents or empty space in that part of the far field are suddenly reachable in the near field. Objects or boxes encapsulated by the volume show ghostly copies within reach; placing a point cursor or hand into the near volume projects a ghost of that cursor/hand out into the far field. The user may gaze at either end of the portal. The volume's bounding box can be pinched/stretched to scale the far-field box while the near box stays ergonomically fixed. If an object is dragged in real far-field space, the far box grows to keep it in scope while near contents appear to scale down. The box can also be single-hand dragged for velocity-based far translation. A control at the top back right corner collapses the portal.
+These are the workhorse of 3OS, merging the near and far field via non-Euclidean portal behaviors. To engage one, the user performs a <b>voodoo drop</b> (see Field Unification State Machine): an invisible isotropic field proxy maps near-hand motion to far-field placement—snap mode for focus-anchor clusters, free-range for unbiased drops. While the gesture is held, a far-field voodoo volume instantiates and moves in concert around the actual field. Releasing the gesture parks that far volume and opens the matching near-field voodoo volume in hand's reach, completing the portal. Now any contents or empty space in that part of the far field are suddenly reachable in the near field. Objects or boxes encapsulated by the volume show ghostly copies within reach; placing a point cursor or hand into the near volume projects a ghost of that cursor/hand out into the far field. The user may gaze at either end of the portal. The volume's bounding box can be pinched/stretched to scale the far-field box while the near box stays ergonomically fixed. If an object is dragged in real far-field space, the far box grows to keep it in scope while near contents appear to scale down. The box can also be single-hand dragged for velocity-based far translation. A control at the top back right corner collapses the portal.
 </blockquote>
 </details>
 <br clear="all">
@@ -1235,7 +1293,7 @@ A 3D-ified radio button element. 3OS supports easy creation of these spherical i
 </summary>
 
 <blockquote>
-Generally, planar UI in 3OS is discouraged. Default UI elements are volumetric and isometric, whereas planar elements typically require perspective-based raycasting for far field interaction, which is not impossible, but it must be custom-built case-by-case at the service and application layers since 3OS offers no built-in raycast and recommends against 3rd parties using it too. In general, if a planar UI exists in 3OS, it typically represents the virtual twin of a physical screen in an MR context. For instance, in a room with 12 2-monitor workstations mounted to its walls, any pair of monitors might be in use with WIMP-style UI elements on-screen. 3OS will be able to render that screen's output at any size via a sync plane, but more likely the sync plane will be invisible and superimposed over the physical screen it represents, enabling remote control interaction. Sync planes will feature API integration and transition between 2D and 3D elements. The WIMP instance running on the 2D screens would be rendered by the same server as the OS driving the eyewear, thus it holds an inventory of all shared interactive elements, which means an HMD user could use a voodoo volume to target the screen itself, or target one of its open windows, e.g. a File Explorer. Once the 2D File Explorer window is targeted, it would automatically be converted to its 3D representation in the near field in the same fashion as using a 3D-to-3D voodoo volume. This 2D-to-3D transition can work identically for any 3rd party software. For example, a control widget in a 2D Autodesk Maya window might be pulled into 3D MR space via a voodoo volume if Autodesk developers used the 3OS SDK to enable that transition.
+Generally, planar UI in 3OS is discouraged. Default UI elements are volumetric and isotropic, whereas planar elements typically require perspective-based raycasting for far field interaction, which is not impossible, but it must be custom-built case-by-case at the service and application layers since 3OS offers no built-in raycast and recommends against 3rd parties using it too. In general, if a planar UI exists in 3OS, it typically represents the virtual twin of a physical screen in an MR context. For instance, in a room with 12 2-monitor workstations mounted to its walls, any pair of monitors might be in use with WIMP-style UI elements on-screen. 3OS will be able to render that screen's output at any size via a sync plane, but more likely the sync plane will be invisible and superimposed over the physical screen it represents, enabling remote control interaction. Sync planes will feature API integration and transition between 2D and 3D elements. The WIMP instance running on the 2D screens would be rendered by the same server as the OS driving the eyewear, thus it holds an inventory of all shared interactive elements, which means an HMD user could use a voodoo volume to target the screen itself, or target one of its open windows, e.g. a File Explorer. Once the 2D File Explorer window is targeted, it would automatically be converted to its 3D representation in the near field in the same fashion as using a 3D-to-3D voodoo volume. This 2D-to-3D transition can work identically for any 3rd party software. For example, a control widget in a 2D Autodesk Maya window might be pulled into 3D MR space via a voodoo volume if Autodesk developers used the 3OS SDK to enable that transition.
 </blockquote>
 
 </details>
@@ -1302,7 +1360,7 @@ Hardware engineers are doing their part to shrink the technology to near-sunglas
 </summary>
 
 <blockquote>
-3OS aims to support XR app multitasking despite its immense perf op challenges. The first professional deployments of 3OS are intended to run on on-prem VDI servers with plenty of horsepower to handle the job, and 3OS aims to provide an SDK for enterprise 3rd parties to finally port their apps natively into XR.</b>
+3OS aims to support XR app multitasking despite its immense perf op challenges. The first professional deployments of 3OS are intended to run on on-prem VDI servers with plenty of horsepower to handle the job, and 3OS aims to provide an SDK for enterprise 3rd parties to finally port their apps natively into XR.
 </blockquote>
 
 </details>
@@ -1416,10 +1474,12 @@ Any given field can be decorated with static 3D objects (walls, furniture, etc.)
 <a id="collab-rooms-vdi-enterprise-edge-compute-phase-20"></a>
 <blockquote>
 <details>
-<summary><b>🏢 Collab Rooms, VDI & Enterprise Edge Compute (Phase 2.0)</b></summary>
+<summary><b>🏢 Collab Rooms (A.K.A. 3OS Bays), VDI & Enterprise Edge Compute (Phase 2.0)</b></summary>
 <hr style="border: 1px solid gray;">
 
-Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handheld screen joins a shared volumetric field, sessions run on on-prem **VDI** or home **edge** compute, and collaboration semantics cover personal/shared/full-room workspaces, flyweight vs copy assets, view vs object transforms, spectator cameras, and optional site-to-site sync. The full design — reference 20×20 office fixture, desk docks, IMU monitors, co-editor VOIP/avatars, and VCS for simultaneous copies — is in [docs/COLLABORATIVE_ROOMS.md](docs/COLLABORATIVE_ROOMS.md); task checklists are Phase 2.0 in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+A 3OS Bay is a room outfitted with HMDs, monitors, spectator cameras, rechargeable rolling standing desk consoles, and connection to a state-of-the-art on-prem compute stack e.g. AMD EPYC 9004 + Pro 6000 Blackwell. It supports ~2-12 team members. Workstations line the edges of the room. The center of the room is the working volume. Generally, colleagues avoid walking through the center of the room during work because it is similar to putting your head in the way of a coworker's monitor. The center of the room <i>IS</i> the monitor.
+
+Phase **2.0** takes 3OS into multi-user enterprise rooms: every wall and handheld screen joins a shared volumetric field, sessions run on on-prem **VDI**, and collaboration semantics cover personal/shared/full-room workspaces, flyweight vs copy assets, view vs object transforms, spectator cameras, and optional site-to-site real-time multiplayer sync (expensive but feasible). The full design — reference 20'×20' maximum office fixture, desk docks, monitors, co-editor VOIP/avatars, and VCS for simultaneous copies — is in [docs/COLLABORATIVE_ROOMS.md](docs/COLLABORATIVE_ROOMS.md); task checklists are Phase 2.0 in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
 
 </details>
@@ -1532,9 +1592,10 @@ Therefore, if teams are ever able to transition to an agentic XR interface that 
 
 Piles of incredible Human-Computer Interaction (HCI) literature have been left to languish by the modern spatial computing industry. In 2026, the following papers do not currently influence OS interfaces running on Meta Quest, Meta VR Glasses, Apple Vision Pro, Magic Leap, HoloLens, Snap Specs, XReal Aura, Vive, Pico, PlayStation VR, Lynx, Varjo, Bigscreen, or Steam Frame. They should.
 
-By grounding **3OS** in this seminal research, we bridge the historic gap between the late-1990s proprioceptive research labs and modern non-Euclidean spatial interaction theories to break the productivity chains of WIMP. The following research shows how and why volumetric isometric techniques are superior to raycasting.
+By grounding **3OS** in this seminal research, we bridge the historic gap between the late-1990s proprioceptive research labs and modern non-Euclidean spatial interaction theories to break the productivity chains of WIMP. The following research shows how and why volumetric isotropic techniques are superior to raycasting.
 
 ---
+
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
@@ -1543,7 +1604,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <blockquote>
 <p><b>Citation:</b> Zhai, S., Buxton, W., & Milgram, P. (1994). <i>The 'silk cursor': investigating visual cues on target acquisition in 3D user interfaces. Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '94)</i>, 185–192.</p>
-<p><b>Significance to 3OS:</b> Introduced a future where raycast cursors must be abandoned in order to access the entire XR field, implying that interaction via perspective is inferior to interaction via isometry. The "silk" metaphor heavily emphasized the need for most interactive elements to utilize semitransparency in such a system to prevent occlusion from causing confusion. The same is true in 3OS.</p>
+<p><b>Significance to 3OS:</b> The "silk" metaphor heavily emphasized the need for most interactive elements to utilize semitransparency to prevent occlusion from causing confusion in complex object clusters. In addition, this paper laid bare the value of varieties of 3D XR joystick control schemes by analyzing isotonic versus isometric control systems, i.e. 3D 1-to-N uniform mapping versus velocity and acceleration mapping. These distinctions are foundational to 3OS point cursors (isotonic), voodoo relationships (also isotonic), and telekinesis (isometric).</p>
 </blockquote>
 
 </details>
@@ -1556,7 +1617,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <blockquote>
 <p><b>Citation:</b> Stoakley, R., Conway, M. J., & Pausch, R. (1995). "Virtual reality on a WIM: interactive worlds in miniature." <i>Proceedings of the 22nd annual conference on Computer graphics and interactive techniques (SIGGRAPH '95)</i>, 265–272.</p>
-<p><b>Significance to 3OS:</b> This paper pioneered the paradigm of scaling down a massive, immersive 3D environment into a hand-held, near-field miniature copy to bypass the physical limitations of far-field targeting. It is the original world-to-user proxy, a voodoo doll of the entire virtual space. 3OS modernizes this into the <b>voodoo drop</b>: an invisible isometric field proxy (no mini-map widget) that places far-field <b>voodoo volumes</b>, tracking empty volumetric coordinate spaces and/or objects within those spaces.</p>
+<p><b>Significance to 3OS:</b> This paper pioneered the paradigm of scaling down a massive, immersive 3D environment into a hand-held, near-field miniature copy to bypass the physical limitations of far-field targeting. It is the original world-to-user proxy, a voodoo doll of the entire virtual space. 3OS modernizes this into the <b>voodoo drop</b>: an invisible isotropic field proxy (no mini-map widget) that places far-field <b>voodoo volumes</b>, tracking empty volumetric coordinate spaces and/or objects within those spaces.</p>
 </blockquote>
 
 </details>
@@ -1591,7 +1652,20 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<table align="right" border="0"><tr><td><i>2004</i></td></tr></table><b>5. Pointing at Trivariate Targets</b>
+<table align="right" border="0"><tr><td><i>2002</i></td></tr></table><b>5. Joint Co-Contraction and Motor Learning</b>
+</summary>
+
+<blockquote>
+<p><b>Citation:</b> Osu, R., Franklin, D. W., Yoshioka, T., Hodatsu, R., Yoshioka, S., Hock, C. G., Kawato, M., & Ikeda, K. (2002). <i>Short- and long-term changes in joint co-contraction associated with motor learning as revealed from surface EMG. Journal of Neurophysiology</i>, 88(2), 991–1004.</p>
+<p><b>Significance to 3OS:</b> Provides the foundational neuro-mechanical defense against flawed single-day spatial usability data of most XR HCI papers involving index-of-difficulty and throughput, especially those that conclude high throughput for raycast projection and low throughput for isotropic models (if tested at all). 30-day tests would show tighter competition between raycast and isotropic techniques. Beginner-Stiff-Arm A.K.A. the Novelty Effect is less prevalent with raycast models due to their similarity to mouse cursors, which helps mask their poor real-world performance in isolated HCI tests. This is the only paper 3OS cites that is not an XR HCI paper, but it delivers the neuroscientific proof that most XR HCI researchers have been conducting studies with questionable data simply because most of them test each participant for a single day only to evaluate interaction model performance, which measures Novelty Effect more than true long-term use response. Osu proves that the central nervous system inherently defaults to high muscle co-contraction (simultaneous firing of opposing muscle groups) to stiffen joints when a physical trajectory is completely novel. This defensive physiological response systematically declines only over a multi-session learning phase as internal predictive muscle memory forms. This tracks exactly with the 3OS author's experience teaching hundreds of drum students. Evaluating them on Day 1 versus Day 30 would produce drastically different results. Likewise, evaluating novel spatial interfaces during brief, single-day windows inevitably captures temporary biological muscle armor rather than the long-term ergonomic utility of the system architecture.</p>
+</blockquote>
+
+</details>
+<br clear="all">
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<table align="right" border="0"><tr><td><i>2004</i></td></tr></table><b>6. Pointing at Trivariate Targets</b>
 </summary>
 
 <blockquote>
@@ -1604,7 +1678,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<table align="right" border="0"><tr><td><i>2014</i></td></tr></table><b>6. Conserving Ergonomic Energy in Mid-Air Interaction</b>
+<table align="right" border="0"><tr><td><i>2014</i></td></tr></table><b>7. Conserving Ergonomic Energy in Mid-Air Interaction</b>
 </summary>
 
 <blockquote>
@@ -1617,7 +1691,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<table align="right" border="0"><tr><td><i>2017</i></td></tr></table><b>7. Predicting Mid-Air Interaction Fatigue Using Biomechanical Modeling</b>
+<table align="right" border="0"><tr><td><i>2017</i></td></tr></table><b>8. Predicting Mid-Air Interaction Fatigue Using Biomechanical Modeling</b>
 </summary>
 
 <blockquote>
@@ -1630,7 +1704,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<table align="right" border="0"><tr><td><i>2021</i></td></tr></table><b>8. The Poros Framework</b>
+<table align="right" border="0"><tr><td><i>2021</i></td></tr></table><b>9. The Poros Framework</b>
 </summary>
 
 <blockquote>
@@ -1643,7 +1717,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<table align="right" border="0"><tr><td><i>2025</i></td></tr></table><b>9. Reality Proxy</b>
+<table align="right" border="0"><tr><td><i>2025</i></td></tr></table><b>10. Reality Proxy</b>
 </summary>
 
 <blockquote>
@@ -1657,16 +1731,30 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<table align="right" border="0"><tr><td><i>2025</i></td></tr></table><b>10. Fitts' Law + XR Review of 122 Studies</b>
+<table align="right" border="0"><tr><td><i>2025</i></td></tr></table><b>11. Fitts' Law + XR Review of 122 Studies</b>
 </summary>
 
 <blockquote>
 <p><b>Citation:</b> Amini, M., Stuerzlinger, W., Teather, R. J., & Batmaz, A. U. (2025). "A Systematic Review of Fitts' Law in 3D Extended Reality." <i>Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)</i>.</p>
-<p><b>Significance to 3OS:</b> Identified that only 36% of XR HCI studies of the past several decades (44 total) that focused on throughput performance targeted virtual hand (point cursor) interaction models, whereas more than 50% targeted raycast techniques. The other 14% were eye tracking studies. Many of the 36% either intentionally or unintentionally eliminated evaluation of the depth vector by arranging UI elements in a flat plane configuration. Such tests were classified as technically volumetric and isometric since the plane was not raycast-able, yet such studies show very little salient data pertaining to the competitive efficacy of volumetric isometric techniques. To establish truly competitive volumetric isometry in hand tracking, each of the three axes must be treated uniformly. It's clear that volumetric isometric methods have been under-explored not just by industry, but by Academia as well for the entire history of HCI. It's as though we all had an innate instinct to chase Steve Jobs and Jony Ive down the wrong rabbit hole looking for the next next big thing.</p>
+<p><b>Significance to 3OS:</b> Identified that only 36% of XR HCI studies of the past several decades (44 total) that focused on throughput performance targeted virtual hand (point cursor) interaction models, whereas more than 50% targeted raycast techniques. The other 14% were eye tracking studies. Many of the 36% either intentionally or unintentionally eliminated evaluation of the depth vector by arranging UI elements in a flat plane configuration. Such tests were classified as technically volumetric and isotropic since the plane was not raycast-able, yet such studies show very little salient data pertaining to the competitive efficacy of volumetric isotropic techniques. To establish truly competitive volumetric isometry in hand tracking, each of the three axes must be treated uniformly. It's clear that volumetric isotropic methods have been under-explored not just by industry, but by Academia as well for the entire history of HCI. It's as though we all had an innate instinct to chase Steve Jobs and Jony Ive down the wrong rabbit hole looking for the next next big thing.</p>
 </blockquote>
 
 </details>
 <br clear="all">
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<table align="right" border="0"><tr><td><i>2026</i></td></tr></table><b>12. The Everyday-AR Golden Ergonomic Canvas</b>
+</summary>
+
+<blockquote>
+<p><b>Citation:</b> Wu, Y., et al. (2026). <i>Reimagining wearable AR gesture design: physical therapy reasoning in everyday contexts. Proceedings of the ACM SIGCHI Conference on Human Factors in Computing Systems (CHI '26)</i>, Article 719.</p>
+<p><b>Significance to 3OS:</b> Validates the architectural rejection of "naturalness" in first-exposure spatial interfaces in favor of long-term sustainable mastery. Like the Osu paper, it shows that XR HCI studies involving index-of-difficulty and throughput should not be conducted on a single day per each participant. By tracking licensed physical therapists mapping multi-round gesture optimization, this study details how unguided day-one users naturally default to highly fragile, distal-dominant muscle patterns that demand high static load, i.e. first-time users always flex way too much unless you train them to relax or they take several weeks to figure it out on their own. This paper establishes the "Golden Ergonomic Canvas": an elbow-anchored workspace bounded by a ±30° horizontal rotation cone, which keeps all spatial computing operations inside a low-fatigue cubic dashboard zone in front of the upper torso to eliminate shoulder abduction and prevent "gorilla arm" syndrome. This paper fascinated the 3OS author because he has drawn "ergo-safe" volume bounding boxes in his own documentation in the past that look nearly identical to the "golden ergonomic canvas" diagram. In fact, the Golden Ergonomic Canvas is almost verbatim the same dimensions as 3OS's default voodoo volume bounding box, which was established before the 3OS author discovered this paper. It's heartening to see that the anecdotal instincts of a former drum teacher align with the conclusions of actual physical therapists.</p>
+</blockquote>
+
+</details>
+<br clear="all">
+
 
 </details>
 
@@ -1739,13 +1827,11 @@ The 3OS interface layer reserves all primary event triggers and secondary-palm-d
 
 </details>
 
-
-
-<hr style="border: 1px solid gray;">
+---
 
 ### Gesture Combos
 
-<hr style="border: 1px solid gray;">
+---
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
@@ -1781,7 +1867,7 @@ Drag-selection is also volumetric. The objects encapsulated by the cubic volume 
 <blockquote>
 Once an object or box is selected, if it is still within reach of the point cursor, the user can place the point cursor inside it and drag it directly with <b>Primary-Pinch-Hold</b>.
 
-If the object is out of reach or the cursor is outside the object but still selected, the user can still <b>Primary-Pinch-Hold</b> and drag the object from range via Telekinesis. Telekinesis is accompanied by an arrow showing velocity from its own starting point. The user can shorten that arrow to zero by returning the hand to the starting point of the gesture, aided by the shrinking of the arrow to a dot. Telekinesis is essentially a 3D joystick enabling linear remote-control motion with variabl velocity. The bigger the drag, the faster the object flies in that direction.
+If the object is out of reach or the cursor is outside the object but still selected, the user can still <b>Primary-Pinch-Hold</b> and drag the object from range via Telekinesis. Telekinesis is accompanied by an arrow showing velocity from its own starting point. The user can shorten that arrow to zero by returning the hand to the starting point of the gesture, aided by the shrinking of the arrow to a dot. Telekinesis is essentially a 3D joystick enabling linear remote-control motion with variable velocity. The bigger the drag, the faster the object flies in that direction.
 </blockquote>
 
 
@@ -1878,7 +1964,7 @@ If a voodoo volume was generated previously with the right hand, the right hand 
 <blockquote>
 If you select an object in a voodoo volume and then Primary-Pinch outside that voodoo, the object will warp to that location. If your Primary-Pinch is on a box, the selected object(s) will warp into that box. Warping works from the far field to the near field, vice versa, or through one voodoo into another, allowing objects to cross the entire field instantaneously. 
 
-This feature will be a togglable power user tool in 3OS, though it is on by default in the pre-alpha demo. It potentially causes confusion with deselection, so new users may prefer it off. It requires the power user to understand that selection is in context of the current voodoo reference frame. If selection occurs inside a voodoo volume, deselection can only happen from also within that volume while this feature is on, since moving outside of that volume causes deselection to be overwritten by warp. Vice versa, a selection outside a voodoo volume will change deselection to warp when the cursor travels inside a voodoo volume. Deselection will still be available when warp is active wvia Palm UP + Primary Pinch.
+This feature will be a togglable power user tool in 3OS, though it is on by default in the pre-alpha demo. It potentially causes confusion with deselection, so new users may prefer it off. It requires the power user to understand that selection is in context of the current voodoo reference frame. If selection occurs inside a voodoo volume, deselection can only happen from also within that volume while this feature is on, since moving outside of that volume causes deselection to be overwritten by warp. Vice versa, a selection outside a voodoo volume will change deselection to warp when the cursor travels inside a voodoo volume. Deselection will still be available when warp is active via Palm UP + Primary Pinch.
 </blockquote>
 
 
@@ -1967,4 +2053,6 @@ For Artists:
 
 The shared library target is `3os_kernel` (`3os_kernel.dll` / `lib3os_kernel.so`). The console harness prints `threeos_version` (currently `0.6.0`) and checks the frozen ABI (`InteropInputFrame` = 192 bytes). Host ABI headers: `include/interop/threeos_abi.h`. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md); Unity Quest verification lives in a separate repo: [3OS_Unity](https://github.com/scifiuiguy/3OS_Unity).
 
+
 </details>
+<hr style="border: 1px solid gray;">

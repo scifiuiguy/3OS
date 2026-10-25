@@ -21,13 +21,13 @@ The design target is a **20 ft × 20 ft** room. Three walls are workstation wall
 
 ### Displays
 
-- **Workstation walls:** **8× 24"** monitors per wall on a **single rail**, ball joint for quick **portrait ↔ landscape**, with padding for rotation. **Each monitor has an IMU on the back** feeding pose to the server so 3OS always knows where that screen lives in room space.
+- **Workstation walls:** **8× 24"** monitors per wall on a **single rail**, ball joint for quick **portrait ↔ landscape**, with padding for rotation. **No per-monitor hardware sensors.** 3OS localizes each screen with **digital corner fiducials** rendered on the display itself, or by using the monitor's own **real-time output as the fiducial**, so the room cameras can resolve pose and 3OS always knows where that screen lives in room space (portrait vs. landscape falls out of the same solve).
 - **Guest / spectator walls:** The couch wall **and** the three workstation walls each add **two large 4K screens** (above the workstation monitors), for clearer viewing by anyone without eyewear.
 - **Handhelds:** Any issued touchscreen, laptop, or similar device with login credentials joins the same display registry once localized (see cameras below).
 
 ### Cameras
 
-Four cameras, one in each corner, aimed at the carpet. Each captures **virtual content** in the shared 3D workspace and, by default, drives the monitors on the **opposite** side of the room as wide-angle **spectator** views. Cameras also help **semantically track** logged-in devices (for example a tablet) so their room coordinates stay authoritative alongside the IMU-backed wall monitors.
+Four cameras, one in each corner, aimed at the carpet. Each captures **virtual content** in the shared 3D workspace and, by default, drives the monitors on the **opposite** side of the room as wide-angle **spectator** views. Cameras also help **semantically track** logged-in devices (for example a tablet) so their room coordinates stay authoritative alongside the fiducial-tracked wall monitors.
 
 ## Arrival & workspace model
 
@@ -98,7 +98,7 @@ Because corner cameras and the VDI/edge session track logged-in devices in 3D, a
 
 | Layer | Role |
 | --- | --- |
-| **VDI / edge server** | Auth & tenancy, workspace invites, display registry + IMU/camera fusion, spectator compositor, media sync, GPU-heavy shared renders, **flyweight vs copy** residency (room/campus default; optional **paid site-to-site** sync fabric), **VCS plumbing** when copies |
+| **VDI / edge server** | Auth & tenancy, workspace invites, display registry + camera-based fiducial localization, spectator compositor, media sync, GPU-heavy shared renders, **flyweight vs copy** residency (room/campus default; optional **paid site-to-site** sync fabric), **VCS plumbing** when copies |
 | **Eyewear / host client** | Login UI, personal + shared workspace interaction, gestures, local OpenXR input; view/camera rigs; copy promote/merge UX when not flyweight; consumes compositor feeds rather than re-rendering every wall |
 | **3OS Core** | Session/display/workspace ABI, possession & snap semantics, mask rules, **reference vs copy** + **locality** gates, **view vs object** transform split, VCS intent hooks for copies only (not a full VCS engine), headless contracts |
 
