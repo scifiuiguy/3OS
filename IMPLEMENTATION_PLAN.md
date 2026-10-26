@@ -479,16 +479,20 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 
 - [ ] **Task 8.1.1: Drag multi-selection (volumetric box)**
   - [ ] **Primary-pinch-drag** creates an axis-aligned cube/box from the **start point** to the **current hand position**. Its orientation is fixed at drag start to the **direction the user was facing** (yaw heading at start), and does not rotate with later head motion.
-  - [ ] Any object inside the box is **toggled selected in real time**, and **deselected** when it leaves the box (membership recomputed every update; no sticky selection from a transient pass).
+  - [ ] The box is **fully 3D** (hand height = height, hand depth = depth) but **never yaws**: it is aligned to the horizontal (floor-parallel) component of the gaze at drag start and only its dimensions change.
+  - [ ] **Inclusion:** an object is in the box when its **center** is inside. Membership is recomputed every update; entering selects, leaving deselects (no sticky selection from a transient pass).
+  - [ ] **Replace vs add:** by default the drag **replaces** the selection with the box contents. If the **opposite hand is holding the ternary** input, the result is **cumulative** (added to the existing selection).
+  - [ ] **Scope:** the drag selects only within the space where it **starts**. Starting in the far field selects far-field objects only (never ghosts or items inside a near BB). Starting inside a near BB selects only items in that near BB. Never crosses volumes (cross-volume stays in 0.8.2).
   - [ ] Draw the box edges with a **very light gray line renderer** (Unity side; core owns the bounds math and membership).
   - [ ] Core ABI: begin / update / end multi-select drag, plus a selection-set query (ids toggled by the drag). Selection state flows through the existing selection set; no double-counting.
   - [ ] Harness: membership toggling on enter / exit; orientation locked at start heading.
 - [ ] **Task 8.1.2: Solo Voodoo Drop (gaze + "Use The Force")**
-  - [ ] **Target candidate (criterion 1, gaze):** the gaze vector must be within a **fairly tight dot-product threshold** of the object's position.
+  - [ ] **Target candidate (criterion 1, gaze):** the gaze vector must be within a **fairly tight dot-product threshold** of the object's position. If several pass, pick the **highest gaze dot product**.
+  - [ ] **Eligible objects:** any object **without an accessible centroid** (e.g. a file carried into MR from a folder whose centroid does not exist there). Objects with an accessible centroid use the normal focus-anchor path.
   - [ ] **Occlusion rule:** ignore any candidate that is occluded by another object (needs a **clean raycast hit** between head pose and the object pose). This is the only raycast in 3OS, per README.
-  - [ ] **Arming (criterion 2, palm):** the hand's **palm normal** must be within a **very general dot-product threshold** of the direction to the target. Arming should take only the slightest effort to turn the palm vaguely toward the object. The palm does **not** need to point at the object's pinpoint.
+  - [ ] **Arming (criterion 2, palm):** **either hand**; the hand's **palm normal** must be within a **very general dot-product threshold** of the direction to the target. Arming should take only the slightest effort to turn the palm vaguely toward the object. The palm does **not** need to point at the object's pinpoint.
   - [ ] **Armed state:** the far BB becomes **visible but not active**, like other voodoo drops. This drop has **no drag**, and the volume does **not move**. It snaps to the target as a single object (no focus anchor needed).
-  - [ ] **Dismiss:** if either criterion is lost while armed, the voodoo is dismissed. A single **pinch release** while armed **drops** the voodoo and generates the near BB.
+  - [ ] **Dismiss:** if either criterion is lost while armed, the voodoo is dismissed. A single **pinch release by the same hand whose palm armed it** while armed **drops** the voodoo and generates the near BB.
   - [ ] Harness: threshold edges for both criteria, occluded-target rejection, and dismiss on criterion loss.
 - **Quest gate (0.8.1):** Drag-select a cluster in the far field and see live toggling plus the light-gray box. Solo-drop a non-anchored far object using gaze + open palm, then pinch to open its near BB. Losing gaze or palm cancels the drop.
 
