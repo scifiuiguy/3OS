@@ -30,9 +30,23 @@ public sealed class ThreeOSFinalDemoPalaceContents : MonoBehaviour
     {
         EnsureRefs();
         Hook();
-        // Cold open is MR — enclosure on.
-        if (voodoo != null)
-            voodoo.SetWorldMeshCollisionActive(true);
+        EnsureWorldMeshCollisionForMr();
+    }
+
+    void Start()
+    {
+        // VoodooController may spawn after PalaceContents Awake — reassert MR enclosure.
+        EnsureRefs();
+        EnsureWorldMeshCollisionForMr();
+    }
+
+    void EnsureWorldMeshCollisionForMr()
+    {
+        if (voodoo == null)
+            return;
+        // Cold open / MR: WorldMesh* BoxColliders must be ON (Palace wipe turns them off).
+        var inPalace = stage != null && stage.InPalace;
+        voodoo.SetWorldMeshCollisionActive(!inPalace);
     }
 
     void OnDestroy()
@@ -117,6 +131,8 @@ public sealed class ThreeOSFinalDemoPalaceContents : MonoBehaviour
             ThreeOSStorageController.BillboardAllFarFieldLabels = false;
             // Soft-dismiss can finish after wipe settle — reassert MR hide next frames.
             storage?.EnsurePalaceSoftDismissedVisuals();
+            // Belt-and-suspenders: WorldMesh enclosure must be live in MR.
+            EnsureWorldMeshCollisionForMr();
             return;
         }
 

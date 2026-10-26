@@ -22,10 +22,13 @@ public sealed class ThreeOSAndroidMouthAmpDriver : MonoBehaviour
     Vector3 _restScale = Vector3.one;
     float _currentYMul = 1f;
     bool _driving;
+    bool _hasRest;
+    Transform _restMouth;
     float[] _samples;
 
     public void Configure(Transform mouthTransform, AudioSource source)
     {
+        var mouthChanged = mouth != mouthTransform;
         mouth = mouthTransform;
         audioSource = source;
         // Force intended range — scene serialization can leave stale openYMul≤1.35.
@@ -33,7 +36,14 @@ public sealed class ThreeOSAndroidMouthAmpDriver : MonoBehaviour
         openYMul = 4f;
         amplitudeGain = 48f;
         smoothSpeed = 28f;
-        CacheRest();
+        // Only cache authored rest once per Mouth. Re-caching mid-drive (Speak during
+        // clip 01) baked the open scale as the new rest → wider mouth every retry.
+        if (!_hasRest || mouthChanged || _restMouth != mouth)
+        {
+            if (_driving)
+                ResetToRest();
+            CacheRest(force: true);
+        }
     }
 
     public void SetDriving(bool driving)
@@ -59,8 +69,8 @@ public sealed class ThreeOSAndroidMouthAmpDriver : MonoBehaviour
         _currentYMul = 1f;
         if (mouth == null)
             return;
-        if (_restScale.sqrMagnitude < 1e-8f)
-            CacheRest();
+        if (!_hasRest || _restScale.sqrMagnitude < 1e-8f)
+            CacheRest(force: true);
         mouth.localScale = _restScale;
     }
 
@@ -72,7 +82,7 @@ public sealed class ThreeOSAndroidMouthAmpDriver : MonoBehaviour
         smoothSpeed = 28f;
         if (mouth == null && transform != null)
             mouth = FindNamed(transform.root != null ? transform.root : transform, "Mouth");
-        CacheRest();
+        CacheRest(force: true);
         _samples = new float[Mathf.ClosestPowerOfTwo(Mathf.Max(64, sampleCount))];
     }
 
@@ -106,12 +116,20 @@ public sealed class ThreeOSAndroidMouthAmpDriver : MonoBehaviour
         ApplyY(_currentYMul);
     }
 
-    void CacheRest()
+    void CacheRest(bool force = false)
     {
-        if (mouth != null)
-            _restScale = mouth.localScale;
+        if (mouth == null)
+            return;
+        if (_hasRest && !force && _restMouth == mouth)
+            return;
+        // Never sample rest while lip-flap is driving — that freezes an open pose.
+        if (_driving && _hasRest && _restMouth == mouth && !force)
+            return;
+        _restScale = mouth.localScale;
         if (_restScale.y < 1e-4f)
             _restScale.y = 1f;
+        _restMouth = mouth;
+        _hasRest = true;
     }
 
     void ApplyY(float yMul)

@@ -98,6 +98,21 @@ public sealed class ThreeOSFinalDemoPerfPlayer : MonoBehaviour
             TryLoadSlot(i);
     }
 
+    /// <summary>Load one slot only (cold open uses slot 0; others load on first play).</summary>
+    public void PrefetchSlot(int slotIndex) => TryLoadSlot(slotIndex);
+
+    /// <summary>Non-blocking seed+load for Meta Start (yields jar StreamingAssets read).</summary>
+    public System.Collections.IEnumerator PrefetchSlotRoutine(int slotIndex)
+    {
+        if (slots == null || slotIndex < 0 || slotIndex >= slots.Length)
+            yield break;
+        var slot = slots[slotIndex];
+        if (slot == null || string.IsNullOrEmpty(slot.jsonFileName))
+            yield break;
+        yield return EnsurePersistCopyRoutine(slot);
+        TryLoadSlot(slotIndex);
+    }
+
     public bool TryApplyColdPoseSlot0()
     {
         if (!TryGetClip(0, out var clip) || clip.frames == null || clip.frames.Count == 0)
@@ -268,6 +283,8 @@ public sealed class ThreeOSFinalDemoPerfPlayer : MonoBehaviour
         npcFloorParent.localScale = _floorRestScale.sqrMagnitude > 1e-6f
             ? _floorRestScale
             : Vector3.one;
+        // Re-enable NPC head focus anchor for agent Multi-Choice snap.
+        FindFirstObjectByType<ThreeOSFinalDemoNpcFocusAnchor>()?.ForceReregister();
     }
 
     void LateUpdate()
@@ -344,6 +361,8 @@ public sealed class ThreeOSFinalDemoPerfPlayer : MonoBehaviour
         npcFloorParent.localScale = Vector3.zero;
         if (npcFloorParent.gameObject.activeSelf)
             npcFloorParent.gameObject.SetActive(false);
+        // Drop focus-anchor registration so CentroidDebug / snap cannot leave a floor node.
+        FindFirstObjectByType<ThreeOSFinalDemoNpcFocusAnchor>()?.SuppressWhileNpcHidden();
     }
 
     /// <summary>
@@ -436,18 +455,22 @@ public sealed class ThreeOSFinalDemoPerfPlayer : MonoBehaviour
         if (bytes == null || bytes.Length == 0)
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
-            // Blocking read from APK StreamingAssets (jar).
-            var uri = Path.Combine(Application.streamingAssetsPath, "3OS", "FinalDemoPerf", slot.jsonFileName);
+            // Last resort for mid-demo Play (slot N not prefetched). Cold open uses
+            // PrefetchSlotRoutine instead — do not call this on Meta Start frames.
+            var uri = Path.Combine(Application.streamingAssetsPath, "3OS", "FinalDemoPerf",
+                slot.jsonFileName);
             using (var req = UnityEngine.Networking.UnityWebRequest.Get(uri))
             {
                 req.SendWebRequest();
-                while (!req.isDone) { }
-
+                var guard = 0;
+                while (!req.isDone && guard++ < 6000)
+                    System.Threading.Thread.Sleep(1);
                 if (req.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
                     bytes = req.downloadHandler.data;
             }
 #else
-            var streaming = Path.Combine(Application.streamingAssetsPath, "3OS", "FinalDemoPerf", slot.jsonFileName);
+            var streaming = Path.Combine(Application.streamingAssetsPath, "3OS", "FinalDemoPerf",
+                slot.jsonFileName);
             if (File.Exists(streaming))
                 bytes = File.ReadAllBytes(streaming);
 #endif
@@ -457,6 +480,54 @@ public sealed class ThreeOSFinalDemoPerfPlayer : MonoBehaviour
         {
             Debug.LogWarning($"[3OS][7.5] Could not seed {slot.jsonFileName}");
             return;
+        }
+
+        File.WriteAllBytes(dst, bytes);
+        Debug.Log($"[3OS][7.5] Seeded {dst} ({bytes.Length} bytes)");
+    }
+
+    static System.Collections.IEnumerator EnsurePersistCopyRoutine(Slot slot)
+    {
+        var dir = Path.Combine(Application.persistentDataPath, PersistFolder);
+        Directory.CreateDirectory(dir);
+        var dst = Path.Combine(dir, slot.jsonFileName);
+        if (File.Exists(dst))
+            yield break;
+
+        byte[] bytes = null;
+        if (slot.jsonAsset != null)
+            bytes = slot.jsonAsset.bytes;
+
+        if (bytes == null || bytes.Length == 0)
+        {
+            var resName = "3OS/FinalDemoPerf/" + Path.GetFileNameWithoutExtension(slot.jsonFileName);
+            var res = Resources.Load<TextAsset>(resName);
+            if (res != null)
+                bytes = res.bytes;
+        }
+
+        if (bytes == null || bytes.Length == 0)
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            var uri = Path.Combine(Application.streamingAssetsPath, "3OS", "FinalDemoPerf", slot.jsonFileName);
+            using (var req = UnityEngine.Networking.UnityWebRequest.Get(uri))
+            {
+                yield return req.SendWebRequest();
+                if (req.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+                    bytes = req.downloadHandler.data;
+            }
+#else
+            var streaming = Path.Combine(Application.streamingAssetsPath, "3OS", "FinalDemoPerf",
+                slot.jsonFileName);
+            if (File.Exists(streaming))
+                bytes = File.ReadAllBytes(streaming);
+#endif
+        }
+
+        if (bytes == null || bytes.Length == 0)
+        {
+            Debug.LogWarning($"[3OS][7.5] Could not seed {slot.jsonFileName}");
+            yield break;
         }
 
         File.WriteAllBytes(dst, bytes);

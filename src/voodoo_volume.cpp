@@ -35,6 +35,42 @@ Vec3 pos_from_az(const Vec3& body, float az, float radius, float y) {
   return Vec3{body.x + std::sin(az) * radius, y, body.z + std::cos(az) * radius};
 }
 
+// Far-field overlap separation (far space is the ground truth inside a voodoo volume; near
+// ghosts just copy it). Pushes `a` (and `b`, when given) apart to min_gap. With b == nullptr,
+// `fixed` is an immovable neighbor and only `a` moves. Coincident points split along a
+// deterministic golden-angle heading.
+bool separate_pair(Vec3& a, Vec3* b, float min_gap, size_t salt, const Vec3* fixed = nullptr) {
+  const Vec3& other = b != nullptr ? *b : *fixed;
+  Vec3 d{a.x - other.x, a.y - other.y, a.z - other.z};
+  float len = std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
+  if (len >= min_gap) {
+    return false;
+  }
+  if (len < 1e-4f) {
+    const float ang = 2.3999632f * static_cast<float>(salt + 1);
+    d = Vec3{std::cos(ang), 0.f, std::sin(ang)};
+    len = 1.f;
+    const float k0 = (b != nullptr ? 0.5f : 1.f) * min_gap;
+    a.x += d.x * k0;
+    a.z += d.z * k0;
+    if (b != nullptr) {
+      b->x -= d.x * k0;
+      b->z -= d.z * k0;
+    }
+    return true;
+  }
+  const float k = (b != nullptr ? 0.5f : 1.f) * (min_gap - len) / len;
+  a.x += d.x * k;
+  a.y += d.y * k;
+  a.z += d.z * k;
+  if (b != nullptr) {
+    b->x -= d.x * k;
+    b->y -= d.y * k;
+    b->z -= d.z * k;
+  }
+  return true;
+}
+
 }  // namespace
 
 VoodooPortal* VoodooVolumeEngine::portal_mut(uint64_t portal_id) {
@@ -97,6 +133,8 @@ bool VoodooVolumeEngine::move_ghost_to_portal(EntityId entity_id, VoodooPortal& 
   if (entity_id == 0) {
     return false;
   }
+  // NOTE: this path follows a user drop (near_pose drives, far derives). It does not yet
+  // resolve overlaps with existing ghosts in far space; see far-first convention on VoodooGhost.
   strip_content_ghost_everywhere(entity_id);
   remove_ghost_from_other_portals(target.id, entity_id);
 
@@ -696,6 +734,16 @@ bool VoodooVolumeEngine::place_items_at_pinch(VoodooPortal* home, const std::vec
         home != nullptr ? home->near_bb.pose.orientation : target->near_bb.pose.orientation;
     const Quat dest_yaw = target->near_bb.pose.orientation;
 
+    // Collision-avoidance convention: inside a voodoo volume the FAR field is the position and
+    // orientation ground truth. Direct user input may drive the ghost (that is the point of the
+    // ghost), but any other force, like this paste, must update far first, resolve overlaps in
+    // far space, and let the near ghost copy the result. (Bump-lerping moves the voodoo volumes
+    // themselves in the near field; it never decides where content sits inside one.) So resolve
+    // overlaps in far space, let the far BB grow to the resolved positions, then refit the near
+    // BB. Clamping to the current near BB instead would collapse a large cluster onto its faces.
+    const float scale = content_scale_for_portal(*target);
+    std::vector<Pose> far_poses;
+    far_poses.reserve(items.size());
     for (const auto& it : items) {
       const Vec3 d{it.near_pose.position.x - near_centroid.x,
                    it.near_pose.position.y - near_centroid.y,
@@ -706,10 +754,58 @@ bool VoodooVolumeEngine::place_items_at_pinch(VoodooPortal* home, const std::vec
       near_pose.position = Vec3{pinch_world.x + world_off.x, pinch_world.y + world_off.y,
                                 pinch_world.z + world_off.z};
       near_pose.orientation = dest_yaw;
-      if (move_ghost_to_portal(it.id, *target, near_pose, &workspace)) {
-        any = true;
+      far_poses.push_back(map_near_to_far_pose(*target, near_pose, scale));
+    }
+
+    std::vector<Vec3> fixed_far;
+    for (const auto& g : target->ghosts) {
+      if (g.is_parent_box || g.entity_id == 0) {
+        continue;
+      }
+      bool moving = false;
+      for (const auto& it : items) {
+        if (it.id == g.entity_id) {
+          moving = true;
+          break;
+        }
+      }
+      if (!moving) {
+        fixed_far.push_back(g.far_pose.position);
       }
     }
+
+    const float min_gap = 2.f * kGlyphHalfM + kNearClearGapM;
+    for (int iter = 0; iter < 32; ++iter) {
+      bool moved = false;
+      for (size_t i = 0; i < far_poses.size(); ++i) {
+        for (size_t j = i + 1; j < far_poses.size(); ++j) {
+          moved |= separate_pair(far_poses[i].position, &far_poses[j].position, min_gap, i + j);
+        }
+        for (const Vec3& f : fixed_far) {
+          Vec3 fixed = f;
+          moved |= separate_pair(far_poses[i].position, nullptr, min_gap, i, &fixed);
+        }
+      }
+      if (!moved) {
+        break;
+      }
+    }
+
+    for (size_t i = 0; i < items.size(); ++i) {
+      const auto& it = items[i];
+      strip_content_ghost_everywhere(it.id);
+      remove_ghost_from_other_portals(target->id, it.id);
+      VoodooGhost ng;
+      ng.entity_id = it.id;
+      ng.is_parent_box = false;
+      ng.scale = scale;
+      ng.far_pose = far_poses[i];
+      target->ghosts.push_back(ng);
+      begin_pose_lerp(it.id, far_poses[i], workspace);
+      any = true;
+    }
+    // Settle: far BB expands to the real positions, then near BB rescales to fit.
+    refit_far_bb_to_content_ghosts(*target, workspace, /*settle_bump=*/true);
   } else if (!cluster_open_air) {
     // Summon open-air / single release: strip ghost and lerp real to pinch.
     for (const auto& it : items) {

@@ -67,6 +67,7 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
         AlignPlayerToSpawn();
         EnsureModeToggle();
         EnsureBlenderSpawn();
+        EnsureChairCullFix();
     }
 
     void Start()
@@ -75,6 +76,7 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
         AlignPlayerToSpawn();
         EnsureModeToggle();
         EnsureBlenderSpawn();
+        EnsureChairCullFix();
     }
 
     /// <summary>
@@ -110,6 +112,14 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
         }
 
         contents.Configure(this, toggle);
+    }
+
+    void EnsureChairCullFix()
+    {
+        if (FindFirstObjectByType<ThreeOSFinalDemoChairCullFix>() != null)
+            return;
+        var go = new GameObject("FinalDemoChairCullFix");
+        go.AddComponent<ThreeOSFinalDemoChairCullFix>();
     }
 
     void EnsureBlenderSpawn()

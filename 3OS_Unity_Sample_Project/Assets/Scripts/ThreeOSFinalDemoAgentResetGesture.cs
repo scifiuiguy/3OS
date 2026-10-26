@@ -17,12 +17,15 @@ public sealed class ThreeOSFinalDemoAgentResetGesture : MonoBehaviour
     [Tooltip("Reject if palmar normal · world-up is this strong (Dismiss All zone).")]
     [SerializeField] float palmUpRejectDot = 0.30f;
     [SerializeField] float edgeCooldownSec = 0.6f;
+    [Tooltip("After Dismiss All / single dismiss pulse, block reset rising-edges (pulse is 1 frame).")]
+    [SerializeField] float dismissSuppressSec = 1.0f;
 
     [SerializeField] ThreeOSInputRouter inputRouter;
 
     readonly List<XRHandSubsystem> _subsystems = new List<XRHandSubsystem>();
     XRHandSubsystem _subsystem;
     float _cooldownUntil;
+    float _dismissSuppressUntil;
     bool _prevActive;
     bool _leftPinching;
     bool _rightPinching;
@@ -40,16 +43,27 @@ public sealed class ThreeOSFinalDemoAgentResetGesture : MonoBehaviour
         if (!EnsureSubsystem())
             return;
 
-        // Kernel already classified this frame's dismiss-all — never also reset.
+        // Kernel dismiss pulses are single-frame. Latch a suppress window so the next
+        // frames (still dual-secondary, palms settling) cannot rising-edge into Act I reset.
         if (inputRouter != null)
         {
             var flags = (InteractionIntentFlags)inputRouter.LastIntents.flags;
             if ((flags & InteractionIntentFlags.VoodooDismissAllPulse) != 0 ||
                 (flags & InteractionIntentFlags.VoodooDismissPulse) != 0)
             {
-                _prevActive = false;
+                _dismissSuppressUntil = Time.unscaledTime + dismissSuppressSec;
+                // Treat as already-active so release→re-pinch is required after suppress.
+                _prevActive = true;
+                _leftPinching = true;
+                _rightPinching = true;
                 return;
             }
+        }
+
+        if (Time.unscaledTime < _dismissSuppressUntil)
+        {
+            _prevActive = true;
+            return;
         }
 
         _subsystem.TryUpdateHands(XRHandSubsystem.UpdateType.Dynamic);
@@ -95,9 +109,12 @@ public sealed class ThreeOSFinalDemoAgentResetGesture : MonoBehaviour
             inputRouter.LastLeftCursor.active != 0 &&
             inputRouter.LastRightCursor.active != 0)
         {
-            var leftDown = (PalmMode)inputRouter.LastLeftCursor.palmMode == PalmMode.Down;
-            var rightDown = (PalmMode)inputRouter.LastRightCursor.palmMode == PalmMode.Down;
-            if (!leftDown || !rightDown)
+            var leftMode = (PalmMode)inputRouter.LastLeftCursor.palmMode;
+            var rightMode = (PalmMode)inputRouter.LastRightCursor.palmMode;
+            // Any palm-up → Dismiss All / menu zone; never Act I reset.
+            if (leftMode == PalmMode.Up || rightMode == PalmMode.Up)
+                return false;
+            if (leftMode != PalmMode.Down || rightMode != PalmMode.Down)
                 return false;
             var left = IsSecondaryPinch(_subsystem.leftHand, ref _leftPinching);
             var right = IsSecondaryPinch(_subsystem.rightHand, ref _rightPinching);

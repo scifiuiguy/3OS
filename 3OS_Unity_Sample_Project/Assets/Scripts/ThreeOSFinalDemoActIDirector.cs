@@ -66,7 +66,9 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
     {
         yield return null;
         yield return null;
-        player?.PrefetchSlots();
+        // Slot 0 only for cold pose — remaining clips load lazy on first play (Meta Start).
+        if (player != null)
+            yield return player.PrefetchSlotRoutine(0);
         yield return null;
         player?.TryApplyColdPoseSlot0();
         // Offline Demo1/2 layout for Act I reset — load once, never scan disk mid-demo.
@@ -509,16 +511,18 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
                 string.IsNullOrEmpty(snap.demo3_folder) ? "3OS_Demo3" : snap.demo3_folder);
 
             var bgDone = false;
+            var restoreOk = false;
             System.Threading.ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
                 {
-                    ThreeOSFinalDemoFsSnapshot.RestoreDemoRootsFromSnapshot(
+                    restoreOk = ThreeOSFinalDemoFsSnapshot.RestoreDemoRootsFromSnapshot(
                         snap, docs1, docs2, docs3);
                 }
                 catch (System.Exception ex)
                 {
                     Debug.LogError("[3OS][7.4] snapshot restore failed: " + ex.Message);
+                    restoreOk = false;
                 }
                 finally
                 {
@@ -527,12 +531,30 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
                 }
             });
 
+            // Shell mv of ~40 DemonProject tops is usually <10s; copy fallback can be longer.
+            // Remounting before bgDone left partial Demo1/2 + DemonProject duplicates.
             var waited = 0f;
-            while (!bgDone && waited < 60f)
+            const float restoreTimeoutSec = 180f;
+            while (!bgDone && waited < restoreTimeoutSec)
             {
                 waited += Time.unscaledDeltaTime;
                 yield return null;
             }
+
+            if (!bgDone)
+            {
+                Debug.LogError(
+                    $"[3OS][7.4] snapshot restore still running after {waited:F1}s — remount deferred");
+                while (!bgDone)
+                {
+                    waited += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+            }
+
+            Debug.Log(
+                $"[3OS][7.4] snapshot restore finished ok={restoreOk} waited={waited:F1}s " +
+                $"d1={docs1} d2={docs2}");
         }
         else
         {
@@ -619,8 +641,11 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
             mouth = ThreeOSAndroidMouthAmpDriver.FindNamed(npcHead, "Mouth");
         if (mouth == null && npcRoot != null)
             mouth = ThreeOSAndroidMouthAmpDriver.FindNamed(npcRoot, "Mouth");
+        // Configure once (or when Mouth/AudioSource changes). Calling every Speak re-cached
+        // live open scale as rest → progressive wider mouth on each retry.
         mouthAmp.Configure(mouth, audioSource);
-        mouthAmp.ResetToRest();
+        if (player == null || !player.IsPlaying)
+            mouthAmp.ResetToRest();
 
         if (player == null)
             player = GetComponent<ThreeOSFinalDemoPerfPlayer>()

@@ -74,6 +74,14 @@ enum class VoodooSessionPhase : uint32_t {
 };
 
 /// Near-portal ghost of a far entity (or parent Box base marker).
+///
+/// Ground-truth rule: inside a voodoo volume the FAR field owns position and orientation.
+/// - Direct user input (hand drag/drop) may drive the ghost's near_pose; far_pose is derived
+///   from it, because driving the ghost is the point of the ghost.
+/// - Any other force (paste, bump, collision avoidance, snap, layout) must update far_pose
+///   FIRST, resolve overlaps in far space, then let the near BB refit and near_pose copy far.
+/// Bump-lerp moves the voodoo volumes themselves in the near field; it never places content
+/// inside one.
 struct VoodooGhost {
   EntityId entity_id = 0;
   bool is_parent_box = false;

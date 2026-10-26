@@ -11,8 +11,14 @@ public sealed class ThreeOSFinalDemoNpcFocusAnchor : MonoBehaviour
     [SerializeField] Transform head;
     [Tooltip("Optional; defaults to searching PerfNPC/NPC_Head under Stage.")]
     [SerializeField] ThreeOSFinalDemoStage stage;
+    [SerializeField] ThreeOSFinalDemoPerfPlayer perfPlayer;
+    [Tooltip("Body yaw parent — faces the player when voodoo opens the agent.")]
+    [SerializeField] Transform floorParent;
+    [SerializeField] float faceYawSeconds = 0.25f;
 
     ulong _anchorId;
+    bool _suppressed;
+    Coroutine _faceRoutine;
 
     public ulong AnchorId => _anchorId;
 
@@ -22,24 +28,95 @@ public sealed class ThreeOSFinalDemoNpcFocusAnchor : MonoBehaviour
             bridge = FindObjectOfType<ThreeOSBridge>();
         if (stage == null)
             stage = FindObjectOfType<ThreeOSFinalDemoStage>();
+        if (perfPlayer == null)
+            perfPlayer = FindObjectOfType<ThreeOSFinalDemoPerfPlayer>();
         if (head == null)
             head = ResolveHead();
+        if (floorParent == null)
+            floorParent = ResolveFloor();
     }
 
     void OnEnable()
     {
-        TryRegister();
+        ThreeOSAgentSession.AgentOpened += OnAgentOpened;
+        if (!_suppressed)
+            TryRegister();
     }
 
     void OnDisable()
     {
+        ThreeOSAgentSession.AgentOpened -= OnAgentOpened;
+        if (_faceRoutine != null)
+        {
+            StopCoroutine(_faceRoutine);
+            _faceRoutine = null;
+        }
+
         Clear();
+    }
+
+    void OnAgentOpened()
+    {
+        if (floorParent == null)
+            floorParent = ResolveFloor();
+        if (floorParent == null)
+            return;
+        if (_faceRoutine != null)
+            StopCoroutine(_faceRoutine);
+        _faceRoutine = StartCoroutine(FacePlayerYawRoutine());
+    }
+
+    System.Collections.IEnumerator FacePlayerYawRoutine()
+    {
+        var cam = Camera.main;
+        if (cam == null || floorParent == null)
+            yield break;
+
+        var to = cam.transform.position - floorParent.position;
+        to.y = 0f;
+        if (to.sqrMagnitude < 1e-6f)
+            yield break;
+
+        var target = Quaternion.LookRotation(to.normalized, Vector3.up);
+        var start = floorParent.rotation;
+        var dur = Mathf.Max(0.05f, faceYawSeconds);
+        var t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / dur;
+            floorParent.rotation = Quaternion.Slerp(start, target, Mathf.SmoothStep(0f, 1f, t));
+            yield return null;
+        }
+
+        floorParent.rotation = target;
+        _faceRoutine = null;
     }
 
     void LateUpdate()
     {
         if (bridge == null || !bridge.IsLoaded || head == null)
             return;
+
+        // NPC floor scaled away — drop the kernel anchor so it cannot sit as a floor blob
+        // (CentroidDebug also skips FocusAnchor markers for the same reason).
+        var dismissed = perfPlayer != null && perfPlayer.FloorDismissed;
+        if (dismissed)
+        {
+            if (!_suppressed)
+            {
+                Clear();
+                _suppressed = true;
+            }
+
+            return;
+        }
+
+        if (_suppressed)
+        {
+            _suppressed = false;
+            TryRegister();
+        }
+
         if (_anchorId == 0)
         {
             TryRegister();
@@ -56,16 +133,24 @@ public sealed class ThreeOSFinalDemoNpcFocusAnchor : MonoBehaviour
         }
     }
 
-    /// <summary>Drop and re-create after Act I reset / StorageClear.</summary>
+    /// <summary>Drop and re-create after Act I reset / StorageClear / NPC restore.</summary>
     public void ForceReregister()
     {
+        _suppressed = false;
         Clear();
         TryRegister();
     }
 
+    /// <summary>Clear without re-register (NPC dismissed / floor hidden).</summary>
+    public void SuppressWhileNpcHidden()
+    {
+        _suppressed = true;
+        Clear();
+    }
+
     void TryRegister()
     {
-        if (bridge == null || !bridge.IsLoaded || head == null || _anchorId != 0)
+        if (_suppressed || bridge == null || !bridge.IsLoaded || head == null || _anchorId != 0)
             return;
         var pose = InteropStructs.ToOpenXrPose(new Pose(head.position, head.rotation));
         _anchorId = bridge.RegisterFocusAnchor("npc_head", pose);
@@ -97,6 +182,16 @@ public sealed class ThreeOSFinalDemoNpcFocusAnchor : MonoBehaviour
         }
 
         var go = GameObject.Find("NPC_Head");
+        return go != null ? go.transform : null;
+    }
+
+    Transform ResolveFloor()
+    {
+        if (stage != null && stage.NpcFloorParent != null)
+            return stage.NpcFloorParent;
+        if (stage != null && stage.NpcRoot != null)
+            return stage.NpcRoot;
+        var go = GameObject.Find("NPC_Floor_Parent");
         return go != null ? go.transform : null;
     }
 }

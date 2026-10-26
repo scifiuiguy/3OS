@@ -559,7 +559,7 @@ Optimal layout: **20 ft × 20 ft**. Three walls are workstation walls; the fourt
 | Element | Spec |
 | --- | --- |
 | Workstation walls | 3 walls × **4 stations** each (**12 workers**); each station **50" wide** |
-| Monitors / wall | **8× 24"** displays on a single wall rail; ball joint for quick portrait ↔ landscape; small padding for rotation; **IMU on each monitor back** (pose → server) |
+| Monitors / wall | **8× 24"** displays on a single wall rail; ball joint for quick portrait ↔ landscape; small padding for rotation; **no per-monitor sensors** (pose from digital corner fiducials / real-time output as fiducial, via room cameras → server) |
 | Console | **48" wide**; two drawers **22" wide × 10" deep**; feet raise console **4"** off floor |
 | Desk beam dock | Square groove **3.0625"** wide at console center for a **3" square-tube** standing-desk beam; pogo-pin power/data + spring latch; press-release within reach on entry |
 | Standing desk | Off-the-shelf unit with power/data routing; surface **30" × 16"** (keyboard, mouse, flush USB/power only). Worker unlatches, pulls out, spins to face room center for volumetric work; can latch back to wall for legacy dual-monitor work |
@@ -576,7 +576,7 @@ Optimal layout: **20 ft × 20 ft**. Three walls are workstation walls; the fourt
   - [ ] Solo-in-shared: other invitees’ volumetric content **masked** in eyewear until explicitly unmasked or co-possessed — personal focus without leaving the shared session.
 - [ ] **Task 12.2: Display registry (every 2D screen in the room)**
   - [ ] First-class **Display** entities: wall monitors, large 4K guest screens, handheld tablets/phones once logged in.
-  - [ ] Pose pipeline: per-display **IMU** (and/or camera-assisted localization for handhelds) fused into room coordinates; portrait/landscape from mount/IMU.
+  - [ ] Pose pipeline: per-display localization from **digital corner fiducials** (or the display's real-time output as fiducial) seen by room cameras, plus camera-assisted localization for handhelds, fused into room coordinates; portrait/landscape from the fiducial solve.
   - [ ] Static vs handheld lifecycle; hot-plug / battery / tracking-lost soft-fail without dropping the session.
   - [ ] Reference-room catalog helpers (optional): 3×8 workstation monitors + 4× 4K guest screens + N handhelds — parameterization, not a hardcode-only layout.
 - [ ] **Task 12.3: Spectator cameras & default monitor routing**
@@ -591,7 +591,7 @@ Optimal layout: **20 ft × 20 ft**. Three walls are workstation walls; the fourt
 - [ ] **Task 12.5: Logged-in device localization & pull-in**
   - [ ] Cameras + session creds **semantically track** issued devices (e.g. tablet) in room space while logged in.
   - [ ] Gesture/ABI to **pull** that device’s live surface into the shared volumetric workspace (real-time mirror), using localized pose for placement.
-  - [ ] Same localization authority used for wall displays (IMU → server) so handheld and bolted screens share one coordinate frame.
+  - [ ] Same localization authority used for wall displays (fiducials → server) so handheld and bolted screens share one coordinate frame.
 - [ ] **Task 12.6: Asset references (flyweights) vs asset copies**
   - [ ] First-class open binding: each workspace open of an asset is either a **copy** (independent instance) or a **reference** (flyweight to one server-RAM object). Same filename / same path must not imply a mode by accident.
   - [ ] Flyweight: attribute edits and **object** transforms propagate immediately to every workspace holding that reference, even across parallel workspaces with different view angles. **No merge** — one singleton in RAM; durable save/commit of that singleton is ordinary persistence, not a collaboration merge path. Teams may choose flyweight specifically to avoid diff/merge (especially same-room).

@@ -29,7 +29,7 @@ Welcome to **3OS**! It's an enterprise-grade volumetric XR operating system inte
 <b>Hands-First Interaction Model Obsessed with Speed and Best-in-Class Ergonomics</b>
 </summary>
 
-Using low-fatigue, volumetric, isotropic, proprioceptive hand tracking, 3OS eliminates "gorilla arm" potential by relying on small, localized gestures and a proprioceptive merging of the near field and far field via a careful amalgam of techniques derived from a treasure trove of classic HCI studies going all the way back to 1994. This interaction technique formula was inspired by a dozen overlooked SIGCHI gems. (see Prior Art)
+Using a unique volumetric isotropic hand tracking technique, 3OS eliminates "gorilla arm" potential by relying on small, localized gestures and a proprioceptive merging of the near field and far field via a careful amalgam of ideas derived from a treasure trove of classic HCI studies going all the way back to 1994. This interaction technique formula was inspired by a dozen overlooked SIGCHI gems. (see Prior Art)
 
 </details>
 </blockquote>

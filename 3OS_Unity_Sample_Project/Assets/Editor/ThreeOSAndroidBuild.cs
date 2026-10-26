@@ -1,9 +1,11 @@
 #if UNITY_EDITOR
+using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 /// <summary>
 /// Batchmode APK builder for Quest sideload (no ADB required).
@@ -123,12 +125,67 @@ public static class ThreeOSAndroidBuild
         if (report.summary.result == BuildResult.Succeeded)
         {
             Debug.Log($"[3OS] APK build succeeded: {Path.GetFullPath(outputApk)} ({report.summary.totalSize} bytes)");
+            // Final Demo write-through tests need a clean Documents baseline each sideload.
+            if (string.Equals(apkBaseName, FinalDemoApkBaseName, System.StringComparison.Ordinal))
+                TryResetQuestDemoDocuments();
             if (exitEditor) EditorApplication.Exit(0);
         }
         else
         {
             Debug.LogError($"[3OS] APK build failed: {report.summary.result}");
             if (exitEditor) EditorApplication.Exit(1);
+        }
+    }
+
+    /// <summary>
+    /// Host-side adb wipe+reseed of Documents/3OS_Demo* from the Act I snapshot.
+    /// Best-effort: missing adb/device must not fail the APK build.
+    /// </summary>
+    static void TryResetQuestDemoDocuments()
+    {
+        try
+        {
+            // Assets → sample project → repo root (F:/3OS)/tools/...
+            var script = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "tools",
+                "reset_quest_demo_docs.ps1"));
+            if (!File.Exists(script))
+            {
+                Debug.LogWarning($"[3OS] Quest demo reset script missing: {script}");
+                return;
+            }
+
+            Debug.Log($"[3OS] Resetting Quest demo Documents via {script}");
+            var psi = new ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            using var p = Process.Start(psi);
+            if (p == null)
+            {
+                Debug.LogWarning("[3OS] Quest demo reset: failed to start powershell");
+                return;
+            }
+
+            var stdout = p.StandardOutput.ReadToEnd();
+            var stderr = p.StandardError.ReadToEnd();
+            p.WaitForExit(120_000);
+            if (!string.IsNullOrWhiteSpace(stdout))
+                Debug.Log("[3OS] demo reset:\n" + stdout.Trim());
+            if (!string.IsNullOrWhiteSpace(stderr))
+                Debug.LogWarning("[3OS] demo reset stderr:\n" + stderr.Trim());
+            if (p.ExitCode != 0)
+                Debug.LogWarning($"[3OS] Quest demo Documents reset exited {p.ExitCode}");
+            else
+                Debug.Log("[3OS] Quest demo Documents reset OK");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[3OS] Quest demo Documents reset skipped: {ex.Message}");
         }
     }
 

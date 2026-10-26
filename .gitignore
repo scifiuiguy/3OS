@@ -72,3 +72,5 @@ build-android-arm64/
 
 # Accidental Unity Hub license/config dumps at repo root (Editor lives under Program Files)
 /Unity/
+
+build-win64/
