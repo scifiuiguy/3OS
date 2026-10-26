@@ -3,9 +3,9 @@
 This roadmap moves **3OS_Core** from an empty repo to a production-grade, hardware-native volumetric OS module. Phases are dependency-ordered. Contiguous semver tracks real deliverables (no fake version gaps).
 
 ```text
-Core  0.0 → … → 0.6 (voodoo) → 0.7 (final demo MR→Palace→MR) → 0.8 (multi-select) → 0.9 (layouts) → 1.0 (enclosure) → 1.1 (native OpenXR) → 2.0 (collab)
+Core  0.0 → … → 0.6 (voodoo) → 0.7 (final demo MR→Palace→MR) → 0.8.1 (drag multi-select + solo voodoo) → 0.8.2 (cross-volume multi-select) → 0.9 (layouts) → 1.0 (enclosure) → 1.1 (native OpenXR) → 2.0 (collab)
                                       │                                      │                    │                 │                    │
-Unity 0.0 → … → 0.6 (voodoo) → 0.7 (final demo) → 0.8 (multi-select) → 0.9 (layouts) → 1.0 (enclosure) → 1.1 (UPM polish) → 2.0 (enterprise host)
+Unity 0.0 → … → 0.6 (voodoo) → 0.7 (final demo) → 0.8.1 (drag multi-select + solo voodoo) → 0.8.2 (cross-volume multi-select) → 0.9 (layouts) → 1.0 (enclosure) → 1.1 (UPM polish) → 2.0 (enterprise host)
 ```
 
 ### Companion repo (parallel track)
@@ -231,7 +231,7 @@ Orientation is a **modifier** on pinch channels: the facade may bind distinct ac
 ### 🧿 Phase 0.6: Voodoo Volumes (v0.6.0)
 **Goal:** Ship **snap** and **free-range** voodoo volumes as the product interaction for far↔near editing — floor-aligned far-field bounding boxes, yellow drag arrows, sibling **centroids**, near-field ghost portals, and bump-lerp field hygiene. Core owns centroids, snap gravity, scale/aspect math, and state; Unity draws boxes/arrows/ghosts (paired Unity 0.6).
 
-**Scope note:** Phase 0.2 topology/portal remaps remain available as math. The **voodoo-drop proxy is imaginary** — do **not** render a dome or mini-map. Users see the far-field bounding box, yellow drag affordance, snap nodes (snap mode), and near-field ghost boxes. Final demo VR↔MR → **0.7**; multi-select across volumes → **0.8**; layouts/anchors → **0.9**; enclosure/shaders/AI → **1.0**; native OpenXR → **1.1**.
+**Scope note:** Phase 0.2 topology/portal remaps remain available as math. The **voodoo-drop proxy is imaginary** — do **not** render a dome or mini-map. Users see the far-field bounding box, yellow drag affordance, snap nodes (snap mode), and near-field ghost boxes. Final demo VR↔MR → **0.7**; multi-select across volumes → **0.8.2** (drag multi-select + Solo Voodoo Drop → **0.8.1**); layouts/anchors → **0.9**; enclosure/shaders/AI → **1.0**; native OpenXR → **1.1**.
 
 **Input remaps (supersede 0.5 voodoo stub)**
 
@@ -338,7 +338,7 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 
   **Exit for 6.8:** checklist reviewed post-6.7; migrations scheduled or parked with owners; no new Unity-originated semantic transform math for interaction/layout without a core twin.
 
-**0.6 exit note:** Formal harness/Quest gate checklist and parent-Box collapse are **shelved** to the parking lot (unscheduled). Task **6.8** waits on 6.7 debug. Final demo is **0.7**; multi-select across volumes is **0.8**.
+**0.6 exit note:** Formal harness/Quest gate checklist and parent-Box collapse are **shelved** to the parking lot (unscheduled). Task **6.8** waits on 6.7 debug. Final demo is **0.7**; multi-select across volumes is **0.8.2**.
 
 ---
 
@@ -350,7 +350,7 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 2. **Mind Palace** — Open-book VR toggle; FS cut-paste / third Palace node (as already scoped).
 3. **Back to MR** — Desk-anchored Box edited in VR; Blender floor spawn FX beside Unreal (loading glyph → laser perimeter → badge → logos → DemonA wipe). Optionally re-summon GitHub plane for the close. **No STREAM.**
 
-**Depends on:** 0.6 voodoo / MindPalace / Multi-Choice (debug closed). Multi-select (**0.8**) is not required for the scripted path. *(Inserted ahead of multi-select / layouts / enclosure.)* Hand-performance JSON **01/02** + matched audio already captured in the Android hands test scene (`Assets/3OS_FinalDemo/Performances/`, `Assets/Audio/jarvis_voice_clip_0{1,2}`).
+**Depends on:** 0.6 voodoo / MindPalace / Multi-Choice (debug closed). Multi-select (**0.8.1** / **0.8.2**) is not required for the scripted path. *(Inserted ahead of multi-select / layouts / enclosure.)* Hand-performance JSON **01/02** + matched audio already captured in the Android hands test scene (`Assets/3OS_FinalDemo/Performances/`, `Assets/Audio/jarvis_voice_clip_0{1,2}`).
 
 #### Act I — MR open + GitHub + NPC agent (~⅓, new)
 
@@ -447,26 +447,26 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
   ##### 7.8.d Dual-anchor Box (Palace vs MR desk) — demo slice
   - [x] **0.7 demo:** MR anchor for the **persisted selection** via `Player_Spawn_Point` (7.8.c) bridges toward 7.9; full multi-anchor storage not required.
   - [x] Full dual-anchor Box desk path + “open persisted file in MR → Blender spawn” are **out of 7.8 scope** (parking lot multi-anchor + **Task 7.9**).
-- [ ] **Task 7.9: App surface — Blender beside Unreal** *(was 7.10)*
-  - [ ] From the desk Box voodoo: pull the Blender source for an asset animating in the Unreal volume; dismiss that voodoo.
-  - [ ] **Double-pinch the Blender model file** → immediately spawn a **small spinning loading glyph** **above and slightly forward** of the **double-pinch hand** (that hand is the one that must later palm-drop the instance). No floor spawn yet.
-  - [ ] **Palm-drop arming (line-renderer start):** while the loading glyph is up, begin the floor perimeter line-renderer animation only when **both** hold:
+- [x] **Task 7.9: App surface — Blender beside Unreal** *(was 7.10)*
+  - [x] From the desk Box voodoo: pull the Blender source for an asset animating in the Unreal volume; dismiss that voodoo.
+  - [x] **Double-pinch the Blender model file** → immediately spawn a **small spinning loading glyph** **above and slightly forward** of the **double-pinch hand** (that hand is the one that must later palm-drop the instance). No floor spawn yet.
+  - [x] **Palm-drop arming (line-renderer start):** while the loading glyph is up, begin the floor perimeter line-renderer animation only when **both** hold:
     - **Fingers sufficiently splayed** (spread threshold vs closed fist / pinch), and
     - **Palm aiming toward the floor** (palm-normal · world-down / floor-up **dot-product threshold**).
-  - [ ] **Cancel / reset:** if palm leaves the toward-floor dot threshold **or** fingers close up past the splay threshold mid-trace, **cancel and reset** the line-renderer animation (no partial commit). Loading glyph may remain until a clean arm succeeds or the user cancels the hand flow.
-  - [ ] **Localization:** place the imaginary base plane where the palm points; center = **average of eye-gaze floor hit + palm-normal floor hit** (rare surface-control case) when both are valid.
-  - [ ] **Line renderer (loading perimeter):**
+  - [x] **Cancel / reset:** if palm leaves the toward-floor dot threshold **or** fingers close up past the splay threshold mid-trace, **cancel and reset** the line-renderer animation (no partial commit). Loading glyph may remain until a clean arm succeeds or the user cancels the hand flow.
+  - [x] **Localization:** place the imaginary base plane where the palm points; center = **average of eye-gaze floor hit + palm-normal floor hit** (rare surface-control case) when both are valid.
+  - [x] **Line renderer (loading perimeter):**
     - Traces the **edge of an imaginary base plane** matching the **in-scene `Blender_Badge` base-plane size** (same footprint as the staged badge mesh).
     - Material/texture with a **basic feathered opacity edge** (glowing laser look).
     - Color = **agent Multi-Choice widget blue** for now (`~0.45, 0.78, 0.95`).
     - On full perimeter complete → proceed to mesh reveal sequence (below).
-  - [ ] **Staged hierarchy (`Blender Group` parent):** all objects that become “the Blender instance” live under this parent. Keep them inactive / zero-scale / shader-hidden until their step fires.
-  - [ ] **Reveal sequence (strict order):**
+  - [x] **Staged hierarchy (`Blender Group` parent):** all objects that become “the Blender instance” live under this parent. Keep them inactive / zero-scale / shader-hidden until their step fires.
+  - [x] **Reveal sequence (strict order):**
     1. **`Blender_Badge`** is the **first** actual mesh to become visible. After the line renderer finishes tracing, instantiate / activate it at **0% scale** in the **center** of the traced square. **Lerp yaw** while **lerp-scaling** until it lands at **exactly the dimensions drawn by the line renderer** (footprint match).
     2. Immediately after badge settle: all four **`Blender_Logo`** children under `Blender Group` **simultaneously** lerp-scale **0% → 100%** with a **~10% overshoot** then settle.
     3. Then meshes under **`DemonA`**: **shader-wipe reveal toe→head / bottom→top**, **plasma-esque feathered wipe edge**, default duration **0.5 s** (quick).
-  - [ ] After the sequence: Blender instance is anchored on the floor beside the Unreal stand-in (same t-posed character as in the Unreal volume; side-by-side apps in one frustum). Stand-in apps OK for the reel.
-  - [ ] Floor Unreal stand-in: invisible rectangular volume (normal far-BB aspect rules) + Unreal logo on floor — **no** focus-anchor requirement; **no real Unreal runtime**.
+  - [x] After the sequence: Blender instance is anchored on the floor beside the Unreal stand-in (same t-posed character as in the Unreal volume; side-by-side apps in one frustum). Stand-in apps OK for the reel.
+  - [x] Floor Unreal stand-in: invisible rectangular volume (normal far-BB aspect rules) + Unreal logo on floor — **no** focus-anchor requirement; **no real Unreal runtime**.
 - [x] **Task 7.10: Monitor voodoo — spectator drop + STREAM** *(was 7.11)* — **86’d / cancelled for 0.7**
   - [x] Dropped from the filmed Final Demo path (no monitor voodoo chrome, spectator drop, or STREAM beat in 0.7). Revisit later only if a post-0.7 reel needs it; do not block Acts II–III gate.
 
@@ -474,25 +474,45 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 
 ---
 
-### ⧉ Phase 0.8: Multi-Select (v0.8.0)
-**Goal:** 3D equivalents of PC **Ctrl** / **Shift** multi-selection, including selection that crosses **voodoo volume** boundaries, plus moving objects through **multiple** open voodoo volumes.
+### 🎯 Phase 0.8.1: Refinements — Drag Multi-Selection & Solo Voodoo Drop (v0.8.1)
+**Goal:** Ship two interaction refinements that were not covered by 0.6/0.7: volumetric drag multi-selection and the gaze + palm Solo Voodoo Drop (both per README). *(Multi-select across voodoo boundaries and multi-volume moves, previously Phase 0.8, are bumped to **0.8.2**.)*
 
-**Scope note:** Task list intentionally thin — flesh out after 0.7 final demo. Builds on 0.5 pinch parity and 0.6 portal/ghost rules. Not required for the demo reel.
+- [ ] **Task 8.1.1: Drag multi-selection (volumetric box)**
+  - [ ] **Primary-pinch-drag** creates an axis-aligned cube/box from the **start point** to the **current hand position**. Its orientation is fixed at drag start to the **direction the user was facing** (yaw heading at start), and does not rotate with later head motion.
+  - [ ] Any object inside the box is **toggled selected in real time**, and **deselected** when it leaves the box (membership recomputed every update; no sticky selection from a transient pass).
+  - [ ] Draw the box edges with a **very light gray line renderer** (Unity side; core owns the bounds math and membership).
+  - [ ] Core ABI: begin / update / end multi-select drag, plus a selection-set query (ids toggled by the drag). Selection state flows through the existing selection set; no double-counting.
+  - [ ] Harness: membership toggling on enter / exit; orientation locked at start heading.
+- [ ] **Task 8.1.2: Solo Voodoo Drop (gaze + "Use The Force")**
+  - [ ] **Target candidate (criterion 1, gaze):** the gaze vector must be within a **fairly tight dot-product threshold** of the object's position.
+  - [ ] **Occlusion rule:** ignore any candidate that is occluded by another object (needs a **clean raycast hit** between head pose and the object pose). This is the only raycast in 3OS, per README.
+  - [ ] **Arming (criterion 2, palm):** the hand's **palm normal** must be within a **very general dot-product threshold** of the direction to the target. Arming should take only the slightest effort to turn the palm vaguely toward the object. The palm does **not** need to point at the object's pinpoint.
+  - [ ] **Armed state:** the far BB becomes **visible but not active**, like other voodoo drops. This drop has **no drag**, and the volume does **not move**. It snaps to the target as a single object (no focus anchor needed).
+  - [ ] **Dismiss:** if either criterion is lost while armed, the voodoo is dismissed. A single **pinch release** while armed **drops** the voodoo and generates the near BB.
+  - [ ] Harness: threshold edges for both criteria, occluded-target rejection, and dismiss on criterion loss.
+- **Quest gate (0.8.1):** Drag-select a cluster in the far field and see live toggling plus the light-gray box. Solo-drop a non-anchored far object using gaze + open palm, then pinch to open its near BB. Losing gaze or palm cancels the drop.
 
-- [ ] **Task 8.1: Multi-select gestures & ABI**
+---
+
+### ⧉ Phase 0.8.2: Cross-Volume Multi-Select & Multi-Volume Moves (v0.8.2)
+**Goal:** 3D equivalents of PC **Ctrl** / **Shift** multi-selection, including selection that crosses **voodoo volume** boundaries, plus moving objects through **multiple** open voodoo volumes. *(Was Phase 0.8; bumped by the 0.8.1 refinements. Basic drag multi-selection ships in 0.8.1.)*
+
+**Scope note:** Task list intentionally thin — flesh out after 0.7 final demo. Builds on 0.5 pinch parity, 0.6 portal/ghost rules, and 0.8.1 drag multi-selection. Not required for the demo reel.
+
+- [ ] **Task 8.2.1: Multi-select gestures & ABI** *(was 8.1)*
   - [ ] Define additive / range-style multi-select intents (Ctrl/Shift analogues) for hands and controllers.
   - [ ] Selection sets that span near-field ghosts and far-field reals without double-counting.
-- [ ] **Task 8.2: Cross-volume multi-select**
+- [ ] **Task 8.2.2: Cross-volume multi-select** *(was 8.2)*
   - [ ] Multi-select across boundaries of one or more open voodoo volumes; clear rules for ghost vs real identity.
-- [ ] **Task 8.3: Multi-volume object moves**
+- [ ] **Task 8.2.3: Multi-volume object moves** *(was 8.3)*
   - [ ] Move selected objects through multiple voodoo volumes in one interaction sequence (ordering, scale, centroid updates).
 
-**Headless / Quest gate (0.8):** Multi-select and multi-volume moves demonstrable on Quest with harness coverage for set membership across portal boundaries.
+**Headless / Quest gate (0.8.2):** Multi-select and multi-volume moves demonstrable on Quest with harness coverage for set membership across portal boundaries.
 
 ---
 
 ### 🗂️ Phase 0.9: Layouts, Anchors & Selection Frustum (v0.9.0)
-**Goal:** Cover README workspace features deferred from the original 0.5 slot — toggleable layouts, anchor subordination, and dual-hand selection frustum. *(Global Box expand without dismissing parents remains seeded in 0.4; this phase owns the explicit global/local mode toggle. Was 0.8 — bumped after final demo 0.7 / multi-select 0.8.)*
+**Goal:** Cover README workspace features deferred from the original 0.5 slot — toggleable layouts, anchor subordination, and dual-hand selection frustum. *(Global Box expand without dismissing parents remains seeded in 0.4; this phase owns the explicit global/local mode toggle. Was 0.8 — bumped after final demo 0.7 / multi-select 0.8.1–0.8.2.)*
 
 - [ ] **Task 9.1: Procedural volumetric layouts**
   - [ ] **Matrix View** — packed 3D cubic grids as a **toggleable layout mode** (demo cubic matrix already seeded in 0.4 `layout_demo_field`; 0.9 owns mode switching + persistence).
@@ -501,7 +521,7 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 - [ ] **Task 9.2: Layered coordinate subordination**
   - [ ] Toggle **Egocentric** (user-locked), **Allocentric** (world-locked), **Object-locked** (parent asset) origins.
 - [ ] **Task 9.3: Selection frustum**
-  - [ ] Dual-pinch / dual-hand scaled bounding frustum inside a double-proxy; rigid group transforms preserve relative offsets. *(Builds on 0.5 hand/controller pinch parity; multi-select sets from 0.8.)*
+  - [ ] Dual-pinch / dual-hand scaled bounding frustum inside a double-proxy; rigid group transforms preserve relative offsets. *(Builds on 0.5 hand/controller pinch parity; multi-select sets from 0.8.1 / 0.8.2.)*
 - [ ] **Task 9.4: Global vs local box drill-down**
   - [ ] Global mode (default): open Box without dismissing parent contents. *(Seeded in 0.4 Task 4.8 / Unity U4.8 — 0.9 owns an explicit mode toggle.)*
   - [ ] Local mode: dismiss parent level when opening a Box.
@@ -539,7 +559,7 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
 - [ ] **Task 11.3: Acceptance checklist**
   - [ ] Snap / free-range voodoo volumes with near-field ghosts (from 0.6).
   - [ ] Final demo VR↔MR path (from 0.7) or waived stand-in.
-  - [ ] Multi-select across voodoo boundaries (from 0.8).
+  - [ ] Multi-select across voodoo boundaries (from 0.8.2).
   - [ ] Hands **and** controllers complete the demo path (from 0.5).
   - [ ] Velocity glide with friction settle; floor clamp holds.
   - [ ] Wall masking does not clip through partition planes incorrectly (from 1.0).
@@ -641,6 +661,11 @@ Capture design notes and UX instincts that are not ready for checklist tasks. No
 - *(0.7 Task **7.10** monitor voodoo / STREAM **86’d** from the filmed path — see Phase 0.7 checklist.)*
 - [ ] **Remote / cloud / hypervisor drives (unscheduled):** Beyond Quest `Documents/…`, ingest wireless/LAN volumes and cloud providers (Google Drive, OneDrive, iCloud) as Multi-Choice MindPalace options when they come online. Includes understanding how Proxmox / ESXi (and similar) expose drives to the client so the same picker UI can list them — no phase number yet (likely folds into VDI / enterprise work later).
 - [ ] **Multi-anchor objects/boxes (unscheduled; seeded by 7.8.c demo):** Any object or Box in Mind Palace should carry **multiple spatial anchors** — **one per MindPalace field** it has occupied, **plus one MR / world-mesh desk anchor**. Mode toggles switch which anchor relationship is active without destroying the others; world pose may stay put while logical parent/centroid relinks (see 7.8.c persist). **0.7 only needs the MR anchor** on the carried selection (`Player_Spawn_Point`). Flesh out ABI + host storage (pose slots, field ids, promote/demote, Box dual-anchor desk path) in a later milestone — not required to close 7.8.
+- [ ] **Parking lot — focus anchors for single objects and dense clusters during Main Voodoo Drop (post-demo):** Today the Main Voodoo Drop only snaps to focus anchors. If an object has none, the user must cancel the snap drop and use a Solo Voodoo Drop, which makes exploring by dragging frustrating. Extend the focus-anchor system:
+  - **Include single objects** as snap targets whenever they are outside a threshold proximity range of a real focus anchor.
+  - **Shared proximity anchors:** when several single objects sit close together, give them one shared proximity anchor instead of one node each, so the user doesn't fight a high density of snap nodes.
+  - **Auto-generated temporary centroids:** objects that don't already share a centroid but happen to be clustered get a shared temporary centroid, recalculated whenever their positions update after input.
+  - Open design points: the proximity thresholds, and how temporary centroids interact with real anchors and the Solo Voodoo Drop (0.8.1).
 - [ ] **Parking lot — near-BB box → far-BB parent transition (post-0.7):** Double-pinch a box inside a near BB to **transition the current far BB** onto that box as the new parent (bottom of far BB), resizing the far BB to encapsulate its child contents. 0.7 ships a simpler interim: expand grows/refits the active portal far BB (+ lock-scaled near BB) in place without re-parenting the portal.
 
 ---
@@ -656,7 +681,8 @@ Do not duplicate the full Unity checklist here. Use **[3OS_Unity/IMPLEMENTATION_
 | **0.5** | Hands + controllers parity on device |
 | **0.6** | Snap / free-range voodoo volumes (BB, centroids, near ghosts) |
 | **0.7** | Final demo opens in MR: GitHub plane, NPC head focus-anchor → agent widget + Speak/EQ → clips 01/02 + floor shrink; Palace wipe (7.7 done) → Palace content scale-in / collider gate / selection persist (7.8) ↔ MR desk; Blender floor spawn FX (no monitor STREAM — 7.10 cancelled) |
-| **0.8** | Multi-select + multi-volume moves |
+| **0.8.1** | Drag multi-selection box + Solo Voodoo Drop (gaze + palm) |
+| **0.8.2** | Cross-volume multi-select + multi-volume moves |
 | **0.9** | Layouts / frustum / anchors |
 | **1.0** | Enclosure mask + shader adapters + AI command hooks |
 | **1.1** | UPM polish + native OpenXR parity / acceptance |
