@@ -95,7 +95,6 @@ public static class ThreeOSAndroidBuild
         PlayerSettings.companyName = "scifiuiguy";
         PlayerSettings.productName = productName;
         PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.scifiuiguy.threeos.sample");
-        PlayerSettings.bundleVersion = "0.5.0";
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel29;
         PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)34;
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;

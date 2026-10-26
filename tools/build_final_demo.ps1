@@ -5,6 +5,7 @@ $project = "F:\3OS\3OS_Unity_Sample_Project"
 $unity = "$env:LOCALAPPDATA\Unity\bin\unity.exe"
 Set-Location $project
 
+$before = Get-ChildItem "$project\Builds\Android\3OS_Final_Demo_*.apk" | Sort-Object LastWriteTime | Select-Object -Last 1
 $sw = [Diagnostics.Stopwatch]::StartNew()
 $out = & $unity command invoke_menu --path "3OS/Build/Final Demo APK" --detach --json 2>&1 | Out-String
 $m = [regex]::Match($out, '"(?:jobId|job_id|id)"\s*:\s*"([^"]+)"')
@@ -17,4 +18,9 @@ Write-Host "Build job: $jobId"
 Write-Host ("Build finished in {0:mm\:ss}" -f $sw.Elapsed)
 
 $apk = Get-ChildItem "$project\Builds\Android\3OS_Final_Demo_*.apk" | Sort-Object LastWriteTime | Select-Object -Last 1
+if (-not $apk -or ($before -and $apk.FullName -eq $before.FullName -and $apk.LastWriteTime -eq $before.LastWriteTime)) {
+    Write-Host "BUILD FAILED: no new APK was produced (newest is still $($before.Name))." -ForegroundColor Red
+    Write-Host "See the Editor log: $env:LOCALAPPDATA\Unity\Editor\Editor.log (search for 'Error building Player')."
+    exit 1
+}
 Write-Host "Newest APK: $($apk.Name) ($($apk.LastWriteTime))"
