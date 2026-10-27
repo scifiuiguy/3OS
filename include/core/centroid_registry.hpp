@@ -65,6 +65,14 @@ class CentroidRegistry {
   bool members_aabb(const Workspace& workspace, EntityId centroid_id, Vec3* out_min,
                     Vec3* out_max) const;
 
+  /// True if `entity_id` belongs to a live centroid the user can still snap to: an expanded,
+  /// in-field parent Box, a Box that is itself expanded, or a mind palace with members.
+  /// A file carried out of its folder (parent Box no longer in field) has none.
+  bool has_accessible_centroid(const Workspace& workspace, EntityId entity_id) const;
+
+  /// Accessible centroid id for `entity_id` (0 if none). Same rules as has_accessible_centroid.
+  EntityId accessible_centroid_id(const Workspace& workspace, EntityId entity_id) const;
+
  private:
   EntityId next_mind_palace_id_ = 100;       // below workspace ids (2000+)
   EntityId next_temp_id_ = 50;       // below mind palaces

@@ -219,6 +219,9 @@ typedef struct ThreeOS_StorageEvent {
 /** Packed semver: (major << 16) | (minor << 8) | patch. Phase 0.5 => 0.5.0 */
 THREEOS_API uint32_t threeos_version(void);
 
+/** Compile-time stamp of the native library ( __DATE__ " " __TIME__ ); for logcat / stale-SO checks. */
+THREEOS_API const char* threeos_kernel_build_stamp(void);
+
 /** ABI layout/feature version; 5 = hand interaction / point-cursor APIs present. */
 THREEOS_API uint32_t threeos_abi_version(void);
 
@@ -345,6 +348,85 @@ THREEOS_API int32_t threeos_glyph_install_pack(const uint8_t* bytes, uint32_t by
 THREEOS_API int32_t threeos_selection_get(uint64_t* out_entity_id);
 THREEOS_API int32_t threeos_selection_set(uint64_t entity_id);
 THREEOS_API void threeos_selection_clear(void);
+/** Number of entities in the selection set (primary selection is the last id). */
+THREEOS_API uint32_t threeos_selection_count(void);
+/** Copy up to cap selected far entity ids; returns the total count (may exceed cap). */
+THREEOS_API uint32_t threeos_selection_get_ids(uint64_t* out_ids, uint32_t cap);
+
+/* --- Drag multi-selection (Phase 0.8.1 Task 8.1.1; additive) ---
+ * Selection is always keyed by far entity ids. A drag that starts inside a near BB tests
+ * only that portal's ghosts (center in box) but toggles the ghost's far entity.
+ */
+
+/** Live drag box. Pose is center + yaw-only orientation; extents are full W x H x D. */
+typedef struct ThreeOS_MultiSelectBox {
+  uint32_t active;
+  uint32_t cumulative;
+  uint64_t portal_id; /* 0 = far field, else the near-BB portal that scopes the drag */
+  ThreeOS_Pose pose;
+  ThreeOS_Vec3 extents;
+  uint32_t reserved0;
+} ThreeOS_MultiSelectBox;
+
+THREEOS_API uint32_t threeos_sizeof_multiselect_box(void);
+/** head: gaze pose (box yaw locks to its floor-parallel heading). cumulative = ternary held. */
+THREEOS_API int32_t threeos_multiselect_begin(const ThreeOS_Vec3* start,
+                                              const ThreeOS_Pose* head, uint32_t cumulative);
+THREEOS_API int32_t threeos_multiselect_update(const ThreeOS_Vec3* hand, uint32_t cumulative);
+/** Commit; selection stays as last computed. */
+THREEOS_API void threeos_multiselect_end(void);
+/** Abort; selection returns to what it was at begin. */
+THREEOS_API void threeos_multiselect_cancel(void);
+THREEOS_API int32_t threeos_multiselect_get_box(ThreeOS_MultiSelectBox* out_box);
+
+/* --- Solo Voodoo Drop (Phase 0.8.1 Task 8.1.2; additive) --- */
+
+enum ThreeOS_SoloDropEvent : uint32_t {
+  THREEOS_SOLO_NONE = 0,
+  THREEOS_SOLO_ARMED = 1,
+  THREEOS_SOLO_DISMISSED = 2,
+  THREEOS_SOLO_DROPPED = 3,
+};
+
+typedef struct ThreeOS_SoloDropState {
+  uint32_t armed;
+  uint32_t hand;
+  uint64_t target_id;
+  ThreeOS_Vec3 far_position;
+  uint32_t last_event; /* ThreeOS_SoloDropEvent from the latest tick */
+  ThreeOS_Vec3 far_extents; /* full W×H×D; zeros ⇒ host uses default solo box */
+  uint32_t _pad0;
+} ThreeOS_SoloDropState; /* 48 bytes */
+
+THREEOS_API uint32_t threeos_sizeof_solo_drop_state(void);
+/**
+ * Gaze-passing far objects without an accessible centroid, highest gaze dot first.
+ * The host raycasts head -> each in order and reports the first unoccluded one to tick.
+ * Returns the total count written (<= cap).
+ */
+THREEOS_API uint32_t threeos_solo_drop_candidates(const ThreeOS_Pose* head, uint64_t* out_ids,
+                                                  uint32_t cap);
+/**
+ * Per hand per frame. clear_target_id = first unoccluded candidate (0 = none).
+ * Returns a ThreeOS_SoloDropEvent; on DROPPED the portal has been created (or the drop
+ * was refused, see threeos_last_error) and a pinch release is consumed.
+ */
+/**
+ * now_seconds: host unscaled time. Pinch held longer than ~0.22s cancels (drag, not tap).
+ * palm_normal: world-space palmar face normal (OVR/Meta palm joint local −Y, not +Z/fingers).
+ * hand_pos: palm-node position (not fingertip); kernel dots palm_normal against
+ *   normalize(target − hand_pos). Call once per hand per frame after begin_frame.
+ */
+THREEOS_API uint32_t threeos_solo_drop_tick(uint32_t hand, uint64_t clear_target_id,
+                                            const ThreeOS_Vec3* palm_normal, uint32_t pinch_pressed,
+                                            const ThreeOS_Pose* head, const ThreeOS_Vec3* hand_pos,
+                                            float now_seconds);
+/** Reset dual-pinch latch; call once per frame before per-hand solo_drop_tick. */
+THREEOS_API void threeos_solo_drop_begin_frame(void);
+/** 1 while Use The Force / armed solo / post-drop lockout (suppress snap drag on host + kernel). */
+THREEOS_API uint32_t threeos_solo_blocks_voodoo_snap(float now_seconds);
+THREEOS_API int32_t threeos_solo_drop_get_state(ThreeOS_SoloDropState* out_state);
+THREEOS_API void threeos_solo_drop_cancel(void);
 
 /* --- Hand interaction / point cursor (Phase 0.5; additive) --- */
 
@@ -448,7 +530,7 @@ typedef struct ThreeOS_HandSample {
   ThreeOS_Vec3 index_tip;
   ThreeOS_Vec3 middle_tip;
   ThreeOS_Vec3 ring_tip;
-  ThreeOS_Vec3 palm_normal; /* world; ignored if palm_mode_valid */
+  ThreeOS_Vec3 palm_normal; /* world palmar (−Y of palm joint); ignored if palm_mode_valid */
   uint32_t palm_mode;       /* ThreeOS_PalmMode */
   uint32_t palm_mode_valid;
   float primary_value;
@@ -458,10 +540,8 @@ typedef struct ThreeOS_HandSample {
   uint32_t secondary_pressed;
   uint32_t ternary_pressed;
   ThreeOS_Vec3 index_proximal; /* cursor anchor when tip_flags bit4 */
-  uint32_t reserved3;
-  uint32_t reserved4;
-  uint32_t reserved5;
-  uint32_t reserved6; /* pad to 128 */
+  ThreeOS_Vec3 palm_position;  /* world palm-node position (was reserved3–5) */
+  uint32_t reserved6;          /* pad to 128 */
 } ThreeOS_HandSample;
 
 /** Point cursor probe for one hand (32 bytes). */

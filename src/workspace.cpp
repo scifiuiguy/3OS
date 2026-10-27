@@ -1,5 +1,6 @@
 #include "storage/workspace.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <unordered_set>
@@ -59,6 +60,7 @@ void Workspace::clear() {
   entries_.clear();
   next_id_ = 2000;
   selected_id_ = 0;
+  selected_ids_.clear();
   field_spacing_m_ = kDefaultFieldSpacingM;
   snap_ = {};
   event_ = {};
@@ -68,14 +70,61 @@ void Workspace::clear() {
 
 bool Workspace::set_selection(EntityId id) {
   if (id == 0) {
-    selected_id_ = 0;
+    clear_selection();
     return true;
   }
   if (find(id) == nullptr) {
     return false;
   }
   selected_id_ = id;
+  selected_ids_.assign(1, id);
   return true;
+}
+
+void Workspace::clear_selection() {
+  selected_id_ = 0;
+  selected_ids_.clear();
+}
+
+bool Workspace::is_selected(EntityId id) const {
+  return id != 0 && std::find(selected_ids_.begin(), selected_ids_.end(), id) != selected_ids_.end();
+}
+
+void Workspace::set_selection_ids(const std::vector<EntityId>& ids) {
+  selected_ids_.clear();
+  for (EntityId id : ids) {
+    if (id != 0 && find(id) != nullptr && !is_selected(id)) {
+      selected_ids_.push_back(id);
+    }
+  }
+  selected_id_ = selected_ids_.empty() ? 0 : selected_ids_.back();
+}
+
+void Workspace::translate_selected_followers(EntityId leader, const Vec3& delta) {
+  if (leader == 0 || selected_ids_.size() < 2 || !is_selected(leader)) {
+    return;
+  }
+  if (std::abs(delta.x) < 1e-9f && std::abs(delta.y) < 1e-9f && std::abs(delta.z) < 1e-9f) {
+    return;
+  }
+  for (EntityId id : selected_ids_) {
+    if (id == leader) {
+      continue;
+    }
+    if (WorkspaceEntry* e = find_mut(id)) {
+      e->pose.position.x += delta.x;
+      e->pose.position.y += delta.y;
+      e->pose.position.z += delta.z;
+    }
+  }
+}
+
+void Workspace::deselect(EntityId id) {
+  const auto it = std::remove(selected_ids_.begin(), selected_ids_.end(), id);
+  selected_ids_.erase(it, selected_ids_.end());
+  if (selected_id_ == id) {
+    selected_id_ = selected_ids_.empty() ? 0 : selected_ids_.back();
+  }
 }
 
 EntityId Workspace::add_object(const std::string& name, const std::string& relative_path) {
@@ -375,9 +424,7 @@ bool Workspace::collapse_box(EntityId box_id, std::string* err) {
   for (auto& e : entries_) {
     if (e.parent_box == box_id) {
       e.in_field = false;
-      if (selected_id_ == e.id) {
-        selected_id_ = 0;
-      }
+      deselect(e.id);
     }
   }
   box->expanded = false;
@@ -432,6 +479,14 @@ const WorkspaceEntry* Workspace::find(EntityId id) const {
 void Workspace::clear_snap() { snap_ = {}; }
 
 bool Workspace::update_snap(EntityId object_id, const Pose& pose, bool apply_pose) {
+  // Phase 0.8.1 demo: no box snap while multi-select dragging (cluster insert TBD).
+  if (is_selected(object_id) && selected_ids_.size() > 1) {
+    if (snap_.pending) {
+      clear_snap();
+    }
+    return snap_.pending;
+  }
+
   WorkspaceEntry* obj = find_mut(object_id);
   // Objects and Boxes may snap-insert into a different in-field Box.
   if (obj == nullptr || !obj->in_field ||
@@ -646,9 +701,7 @@ bool Workspace::commit_insert(std::string* err) {
   obj->in_field = false;
   obj->parent_box = box->id;
   box->child_count += 1;
-  if (selected_id_ == obj->id) {
-    selected_id_ = 0;
-  }
+  deselect(obj->id);
 
   // Multi cut-paste: queue FS write-through while a prior event awaits host ack.
   // Workspace parentage updates immediately; disk moves drain one-at-a-time on the host.

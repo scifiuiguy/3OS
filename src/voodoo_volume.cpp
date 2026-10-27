@@ -1,8 +1,14 @@
 #include "core/voodoo_volume.hpp"
 
 #include <algorithm>
+#include <cstdarg>
+#include <cstdio>
 #include <functional>
 #include <string>
+
+#if defined(__ANDROID__)
+#include <android/log.h>
+#endif
 
 namespace threeos {
 namespace {
@@ -21,6 +27,21 @@ float dist3(const Vec3& a, const Vec3& b) {
   const float dy = a.y - b.y;
   const float dz = a.z - b.z;
   return std::sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+void voodoo_trace_log(const char* fmt, ...) {
+#if defined(__ANDROID__)
+  va_list ap;
+  va_start(ap, fmt);
+  __android_log_vprint(ANDROID_LOG_INFO, "3OS_Voodoo", fmt, ap);
+  va_end(ap);
+#else
+  va_list ap;
+  va_start(ap, fmt);
+  std::vfprintf(stderr, fmt, ap);
+  std::fprintf(stderr, "\n");
+  va_end(ap);
+#endif
 }
 
 float length2_xz(const Vec3& v) {
@@ -629,6 +650,9 @@ void VoodooVolumeEngine::clear_hand_session(uint32_t hand) {
 }
 
 void VoodooVolumeEngine::cancel_drag(uint32_t hand) {
+  const EntityId snap = hands_[hand].session.snapped_centroid_id;
+  voodoo_trace_log("cancel_drag hand=%u snap=%llu hold=%.3f", hand,
+                   static_cast<unsigned long long>(snap), hands_[hand].drag_hold_s_);
   clear_hand_session(hand);
 }
 
@@ -690,6 +714,34 @@ uint32_t VoodooVolumeEngine::dismiss_all_portals() {
   return n;
 }
 
+uint32_t VoodooVolumeEngine::dismiss_portals_for_target(EntityId target_id,
+                                                        CentroidRegistry& centroids) {
+  if (target_id == 0) {
+    return 0;
+  }
+  std::vector<uint64_t> remove_ids;
+  std::vector<EntityId> temps;
+  for (const auto& p : portals_) {
+    if (p.singleton_target_id == target_id || p.persistent_centroid_id == target_id ||
+        p.far_bb.linked_centroid_id == target_id || p.near_bb.linked_centroid_id == target_id) {
+      remove_ids.push_back(p.id);
+      if (p.temporary_centroid_id != 0) {
+        temps.push_back(p.temporary_centroid_id);
+      }
+    }
+  }
+  uint32_t n = 0;
+  for (uint64_t pid : remove_ids) {
+    if (dismiss_portal(pid)) {
+      ++n;
+    }
+  }
+  for (EntityId temp : temps) {
+    centroids.clear_temporary(temp);
+  }
+  return n;
+}
+
 
 uint64_t VoodooVolumeEngine::cut_portal_id() const { return cut_.portal_id(); }
 bool VoodooVolumeEngine::cut_is_armed(uint64_t portal_id) const { return cut_.is_armed(portal_id); }
@@ -700,7 +752,7 @@ std::vector<EntityId> VoodooVolumeEngine::cut_entity_ids() const { return cut_.e
 
 bool VoodooVolumeEngine::place_items_at_pinch(VoodooPortal* home, const std::vector<PlaceItem>& items,
                                               const Vec3& pinch_world, Workspace& workspace,
-                                              bool cluster_open_air) {
+                                              bool cluster_open_air, bool cube_matrix) {
   if (items.empty()) {
     return false;
   }
@@ -806,6 +858,48 @@ bool VoodooVolumeEngine::place_items_at_pinch(VoodooPortal* home, const std::vec
     }
     // Settle: far BB expands to the real positions, then near BB rescales to fit.
     refit_far_bb_to_content_ghosts(*target, workspace, /*settle_bump=*/true);
+  } else if (cube_matrix && items.size() > 1) {
+    // Multi-summon: same cubic matrix as box expand (2³ / 3³ / …), billboarded at pinch.
+    const int n = static_cast<int>(items.size());
+    int side = 2;
+    if (n > 8) {
+      side = 3;
+      while (side * side * side < n) {
+        ++side;
+      }
+    }
+    const float spacing = workspace.field_spacing_m();
+    const float half = 0.5f * static_cast<float>(side - 1) * spacing;
+    const Quat dest_yaw = yaw_billboard_toward(pinch_world, last_head_, last_head_valid_);
+    float cluster_r = kGlyphHalfM;
+    for (int i = 0; i < n; ++i) {
+      const int ix = i % side;
+      const int iy = (i / side) % side;
+      const int iz = i / (side * side);
+      const Vec3 local{static_cast<float>(ix) * spacing - half,
+                       static_cast<float>(iy) * spacing - half,
+                       static_cast<float>(iz) * spacing - half};
+      const Vec3 world_off = quat_rotate_yaw(dest_yaw, local);
+      const float horiz = std::sqrt(local.x * local.x + local.z * local.z);
+      cluster_r = std::max(cluster_r, horiz + kGlyphHalfM);
+
+      const auto& it = items[static_cast<size_t>(i)];
+      Pose dest{};
+      dest.position = Vec3{pinch_world.x + world_off.x, pinch_world.y + world_off.y,
+                           pinch_world.z + world_off.z};
+      dest.orientation = it.far_pose.orientation;
+      strip_content_ghost_everywhere(it.id);
+      begin_pose_lerp(it.id, dest, workspace);
+      any = true;
+    }
+
+    VoodooPortal synth{};
+    synth.near_bb.open = true;
+    synth.near_bb.pose.position = pinch_world;
+    synth.near_bb.pose.orientation = dest_yaw;
+    const float ext = std::max(cluster_r * 2.f, near_extents_m().x);
+    synth.near_bb.extents = Vec3{ext, near_extents_m().y, ext};
+    bump_near_field_clutter(synth, workspace, last_head_, last_head_valid_, /*animate=*/true);
   } else if (!cluster_open_air) {
     // Summon open-air / single release: strip ghost and lerp real to pinch.
     for (const auto& it : items) {
@@ -983,6 +1077,48 @@ Pose VoodooVolumeEngine::near_rest_pose(const Pose& head, bool head_valid) const
   return p;
 }
 
+bool VoodooVolumeEngine::snap_drag_co_target_allowed(uint32_t hand, const Pose& hand_pose,
+                                                     const Pose& head, bool head_valid,
+                                                     const CentroidRegistry& centroids) const {
+  if (hand > 1u) {
+    return true;
+  }
+  const uint32_t sib = hand ^ 1u;
+  const auto& oh = hands_[sib];
+  if (!oh.session.open || oh.session.phase != VoodooSessionPhase::Dragging ||
+      oh.session.mode != VoodooMode::Snap || !oh.have_start_hand_) {
+    return true;
+  }
+  EntityId sib_target = oh.resolved_snap_centroid_id_;
+  if (sib_target == 0) {
+    sib_target = oh.session.snapped_centroid_id;
+  }
+  if (sib_target == 0) {
+    return true;
+  }
+  auto& mut = *const_cast<VoodooVolumeEngine*>(this);
+  auto& hr = mut.hands_[hand];
+  const bool had_start = hr.have_start_hand_;
+  const Pose saved_start = hr.start_hand_;
+  const Pose saved_rest = hr.rest_far_;
+  hr.rest_far_ = far_rest_pose(head, head_valid);
+  hr.start_hand_ = hand_pose;
+  hr.have_start_hand_ = true;
+  const Vec3 stick{};
+  const SnapPick primary = mut.snap_pick_best(hand, stick, 0, centroids);
+  const SnapPick alt =
+      (primary.centroid_id != 0 && primary.centroid_id == sib_target)
+          ? mut.snap_pick_best(hand, stick, sib_target, centroids)
+          : SnapPick{};
+  hr.have_start_hand_ = had_start;
+  hr.start_hand_ = saved_start;
+  hr.rest_far_ = saved_rest;
+  if (primary.centroid_id == 0 || primary.centroid_id != sib_target) {
+    return true;
+  }
+  return alt.centroid_id != 0;
+}
+
 void VoodooVolumeEngine::open_drag(uint32_t hand, VoodooMode mode, const Pose& hand_pose,
                                    const Pose& head, bool head_valid) {
   auto& hr = hands_[hand];
@@ -1013,6 +1149,9 @@ void VoodooVolumeEngine::open_drag(uint32_t hand, VoodooMode mode, const Pose& h
   hr.session.snap_nodes.clear();
   hr.session.snapped_centroid_id = 0;
   hr.drag_hold_s_ = 0.f;
+  hr.release_arm_s_ = 0.f;
+  hr.park_pinch_latched_ = false;
+  hr.parked_portal_id_ = 0;
   update_arrow(hand, hand_pose, head, head_valid, nullptr);
 }
 
@@ -1081,6 +1220,8 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
                               Workspace& workspace) {
   auto& hr = hands_[hand];
   if (!hr.session.open || hr.session.phase != VoodooSessionPhase::Dragging) {
+    voodoo_trace_log("park_skip hand=%u open=%d phase=%u", hand, hr.session.open ? 1 : 0,
+                     static_cast<unsigned>(hr.session.phase));
     return;
   }
   if (!creation_allowed()) {
@@ -1089,9 +1230,24 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
     return;
   }
 
+  EntityId singleton_target = hr.session.snapped_centroid_id;
+  if (singleton_target == 0) {
+    singleton_target = hr.session.far_bb.linked_centroid_id;
+  }
+  if (singleton_target != 0) {
+    (void)dismiss_portals_for_target(singleton_target, centroids);
+  }
+
   const Pose seed = near_rest_pose(head, head_valid);
-  const Pose near_target =
-      orbit_near_to_hand(seed, head, head_valid, hand_pose, hand_valid, hand);
+  // QA 346/352: after the first dual-hand park, the other hand often releases inside the
+  // sibling near BB — hand-coupled orbit stacks on the same group and bump_resolve rolls back.
+  Pose near_target{};
+  if (point_in_any_near_bb(hand_pose.position)) {
+    near_target = seed;
+    near_target.orientation = yaw_billboard_toward(near_target.position, head, head_valid);
+  } else {
+    near_target = orbit_near_to_hand(seed, head, head_valid, hand_pose, hand_valid, hand);
+  }
 
   VoodooBoundingBox probe{};
   probe.open = true;
@@ -1108,6 +1264,11 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
     other.pose.position = portals_[i].bump_t < 1.f ? portals_[i].bump_to
                                                    : portals_[i].near_bb.pose.position;
     if (!near_bbs_overlap_xz(probe, other, kNearClearGapM)) {
+      continue;
+    }
+    // Different snap targets (Demo vs Demo2): do not merge — independent orbit seats.
+    if (singleton_target != 0 && portals_[i].singleton_target_id != 0 &&
+        singleton_target != portals_[i].singleton_target_id) {
       continue;
     }
     const uint64_t gid = portals_[i].group_id;
@@ -1152,6 +1313,7 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
   apply_near_extents(portal.near_bb);
   portal.lock_scale = content_scale_for_portal(portal);
   portal.persistent_centroid_id = hr.session.snapped_centroid_id;
+  portal.singleton_target_id = singleton_target;
   portal.temporary_centroid_id =
       centroids.register_temporary("voodoo_temp", near_bb_bottom_center(portal.near_bb));
   portal.bump_from = near_target.position;
@@ -1160,6 +1322,9 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
 
   rebuild_ghosts(portal, centroids, workspace);
   portals_.push_back(std::move(portal));
+  voodoo_trace_log("park ok hand=%u snap=%llu portals=%zu gid=%llu", hand,
+                   static_cast<unsigned long long>(hr.session.snapped_centroid_id), portals_.size(),
+                   static_cast<unsigned long long>(gid));
   // Seat on the front↔behind ellipse, then bump/merge so solos that land close join.
   {
     const Vec3 body{head_valid ? head.position.x : 0.f, 0.f, head_valid ? head.position.z : 0.f};
@@ -1179,8 +1344,12 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
       centroids.set_temporary_position(p.temporary_centroid_id, near_bb_bottom_center(p.near_bb));
     }
   }
-  if (portals_.size() >= 2 && !bump_resolve(head, head_valid, portals_.size() - 1)) {
-    // Group cannot clear (arc filled toward a circle) — roll back.
+  const size_t pinned = portals_.size() - 1;
+  orbit_.yield_orbit_for_incoming_park(pinned, head, head_valid);
+  if (portals_.size() >= 2 && !bump_resolve(head, head_valid, pinned)) {
+    bump_siblings_min_clear(pinned);
+    if (!bump_resolve(head, head_valid, pinned)) {
+    // Orbit full or unresolved overlap — roll back this park (never leave stacked near BBs).
     const EntityId temp = portals_.back().temporary_centroid_id;
     portals_.pop_back();
     if (temp != 0) {
@@ -1188,6 +1357,7 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
     }
     clear_hand_session(hand);
     return;
+    }
   }
   // Final ghost + temp-centroid sync after bump (pinned portals skip tick lerp).
   for (auto& p : portals_) {
@@ -1208,10 +1378,131 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
   hr.deadzone_armed_ = false;
   hr.deadzone_left_once_ = false;
   hr.drag_hold_s_ = 0.f;
+  hr.release_arm_s_ = 0.f;
+  // Same continuous pinch/mode must not reopen a new drag (would reset the hold gate).
+  hr.park_pinch_latched_ = true;
+  hr.park_mode_latched_ = hr.session.mode;
   hr.parked_portal_id_ = portals_.back().id;
   hr.session.near_bb = portals_.back().near_bb;
   hr.session.far_bb = portals_.back().far_bb;
   hr.session.far_bb.linked_centroid_id = hr.session.snapped_centroid_id;
+}
+
+bool VoodooVolumeEngine::solo_resolve(EntityId id, const Workspace& workspace,
+                                      const CentroidRegistry& centroids, EntityId* out_drop_id,
+                                      Vec3* out_far_pos, Vec3* out_far_extents) const {
+  if (out_drop_id == nullptr || out_far_pos == nullptr || out_far_extents == nullptr || id == 0) {
+    return false;
+  }
+  *out_drop_id = 0;
+  *out_far_pos = {};
+  *out_far_extents = {};
+
+  auto apply_members = [&](EntityId cid, const Vec3& fallback) {
+    *out_drop_id = cid;
+    Vec3 mn{};
+    Vec3 mx{};
+    if (centroids.members_aabb(workspace, cid, &mn, &mx)) {
+      *out_far_pos =
+          Vec3{0.5f * (mn.x + mx.x), 0.5f * (mn.y + mx.y), 0.5f * (mn.z + mx.z)};
+      *out_far_extents = fit_extents_for_aabb(mn, mx);
+    } else {
+      *out_far_pos = fallback;
+      *out_far_extents = near_extents_m();
+    }
+  };
+
+  if (const CentroidState* c = centroids.find(id); c != nullptr && c->id != 0) {
+    if (c->kind == CentroidKind::FocusAnchor) {
+      *out_drop_id = id;
+      *out_far_pos = c->position;
+      *out_far_extents = near_extents_m();
+      return true;
+    }
+    if (c->kind == CentroidKind::MindPalace || c->kind == CentroidKind::Box) {
+      apply_members(id, c->position);
+      return true;
+    }
+  }
+
+  const WorkspaceEntry* e = workspace.find(id);
+  if (e == nullptr || !e->in_field) {
+    return false;
+  }
+
+  const EntityId cid = centroids.accessible_centroid_id(workspace, id);
+  if (cid != 0) {
+    if (const CentroidState* c = centroids.find(cid); c != nullptr) {
+      const float dx = e->pose.position.x - c->position.x;
+      const float dy = e->pose.position.y - c->position.y;
+      const float dz = e->pose.position.z - c->position.z;
+      const float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+      if (dist <= kSoloClusterLockM) {
+        apply_members(cid, c->position);
+        return true;
+      }
+    }
+  }
+
+  *out_drop_id = id;
+  *out_far_pos = e->pose.position;
+  *out_far_extents = near_extents_m();
+  return true;
+}
+
+bool VoodooVolumeEngine::solo_drop_open(uint32_t hand, EntityId entity_id,
+                                        const Pose& hand_pose, bool hand_valid, const Pose& head,
+                                        bool head_valid, CentroidRegistry& centroids,
+                                        Workspace& workspace) {
+  if (hand >= 2u || !hand_valid || !creation_allowed() ||
+      point_in_any_near_bb(hand_pose.position)) {
+    return false;
+  }
+
+  EntityId drop_id = 0;
+  Vec3 far_pos{};
+  Vec3 far_ext{};
+  if (!solo_resolve(entity_id, workspace, centroids, &drop_id, &far_pos, &far_ext)) {
+    return false;
+  }
+
+  // NPC FocusAnchor: agent Multi-Choice (no empty near BB). Demo-manual for 0.8.1.
+  if (const CentroidState* c = centroids.find(drop_id);
+      c != nullptr && c->kind == CentroidKind::FocusAnchor) {
+    pending_agent_.pending = true;
+    pending_agent_.hand = hand;
+    pending_agent_.focus_id = drop_id;
+    return true;
+  }
+
+  EntityId snap_centroid = 0;
+  VoodooMode mode = VoodooMode::FreeRange;
+  if (const CentroidState* c = centroids.find(drop_id);
+      c != nullptr && (c->kind == CentroidKind::MindPalace || c->kind == CentroidKind::Box)) {
+    snap_centroid = drop_id;
+    mode = VoodooMode::Snap;
+  }
+
+  last_head_ = head;
+  last_head_valid_ = head_valid;
+
+  auto& hr = hands_[hand];
+  hr = HandRuntime{};
+  hr.session.hand = hand;
+  hr.session.mode = mode;
+  hr.session.open = true;
+  hr.session.phase = VoodooSessionPhase::Dragging;
+  hr.session.snapped_centroid_id = snap_centroid;
+  hr.session.far_bb.open = true;
+  hr.session.far_bb.pose.position = far_pos;
+  hr.session.far_bb.pose.orientation = yaw_billboard_toward(far_pos, head, head_valid);
+  hr.session.far_bb.linked_centroid_id = drop_id;
+  hr.session.far_bb.extents = far_ext;
+  hr.session.far_bb.aspect_x = params_.near_bb_voxels_x;
+  hr.session.far_bb.aspect_y = params_.near_bb_voxels_y;
+  hr.session.far_bb.aspect_z = params_.near_bb_voxels_z;
+  park(hand, hand_pose, hand_valid, head, head_valid, centroids, workspace);
+  return hr.session.phase == VoodooSessionPhase::Parked;
 }
 
 void VoodooVolumeEngine::rebuild_snap_nodes(uint32_t hand, const CentroidRegistry& centroids) {
@@ -1256,6 +1547,100 @@ void VoodooVolumeEngine::rebuild_snap_nodes(uint32_t hand, const CentroidRegistr
   }
 }
 
+float VoodooVolumeEngine::snap_lateral_preference_score(uint32_t hand, float hand_offset_x) {
+  // Stick-space X: left hand should own left-side centroids (negative offset), right hand positive.
+  return hand == 0u ? -hand_offset_x : hand_offset_x;
+}
+
+VoodooVolumeEngine::SnapPick VoodooVolumeEngine::snap_pick_best(uint32_t hand, const Vec3& stick,
+                                                                EntityId exclude_centroid,
+                                                                const CentroidRegistry& centroids) {
+  SnapPick out{};
+  auto& hr = hands_[hand];
+  if (!hr.session.far_bb.open || !hr.have_start_hand_) {
+    return out;
+  }
+  rebuild_snap_nodes(hand, centroids);
+  const float pull_r = kSnapNodeRadiusM * kSnapPullMul;
+  for (const auto& n : hr.session.snap_nodes) {
+    if (exclude_centroid != 0 && n.centroid_id == exclude_centroid) {
+      continue;
+    }
+    const float d = dist3(stick, n.hand_offset);
+    if (d >= pull_r || d >= out.best_d) {
+      continue;
+    }
+    out.best_d = d;
+    out.centroid_id = n.centroid_id;
+    out.hand_offset_x = n.hand_offset.x;
+  }
+  return out;
+}
+
+void VoodooVolumeEngine::refresh_dual_snap_claims(const Pose hand_pose[2], const bool hand_ok[2],
+                                                  const Pose& head, bool head_valid,
+                                                  const CentroidRegistry& centroids) {
+  (void)head;
+  (void)head_valid;
+  hands_[0].resolved_snap_centroid_id_ = 0;
+  hands_[1].resolved_snap_centroid_id_ = 0;
+
+  auto dragging_snap = [&](uint32_t h) -> bool {
+    const auto& s = hands_[h].session;
+    return hand_ok[h] && s.open && s.phase == VoodooSessionPhase::Dragging &&
+           s.mode == VoodooMode::Snap && s.far_bb.open && hands_[h].have_start_hand_;
+  };
+
+  const bool d0 = dragging_snap(0);
+  const bool d1 = dragging_snap(1);
+  if (!d0 && !d1) {
+    return;
+  }
+
+  auto stick_for = [&](uint32_t h) -> Vec3 {
+    const auto& hr = hands_[h];
+    return Vec3{hand_pose[h].position.x - hr.start_hand_.position.x,
+                hand_pose[h].position.y - hr.start_hand_.position.y,
+                hand_pose[h].position.z - hr.start_hand_.position.z};
+  };
+
+  SnapPick p0{};
+  SnapPick p1{};
+  if (d0) {
+    p0 = snap_pick_best(0, stick_for(0), 0, centroids);
+  }
+  if (d1) {
+    p1 = snap_pick_best(1, stick_for(1), 0, centroids);
+  }
+
+  if (p0.centroid_id != 0 && p0.centroid_id == p1.centroid_id) {
+    const float lat0 = snap_lateral_preference_score(0, p0.hand_offset_x);
+    const float lat1 = snap_lateral_preference_score(1, p1.hand_offset_x);
+    if (lat0 >= lat1) {
+      hands_[0].resolved_snap_centroid_id_ = p0.centroid_id;
+      p1 = snap_pick_best(1, stick_for(1), p0.centroid_id, centroids);
+      hands_[1].resolved_snap_centroid_id_ = p1.centroid_id;
+      voodoo_trace_log("snap_claim shared c=%llu L=%.3f R=%.3f -> L owns",
+                       static_cast<unsigned long long>(p0.centroid_id), lat0, lat1);
+    } else {
+      hands_[1].resolved_snap_centroid_id_ = p1.centroid_id;
+      p0 = snap_pick_best(0, stick_for(0), p1.centroid_id, centroids);
+      hands_[0].resolved_snap_centroid_id_ = p0.centroid_id;
+      voodoo_trace_log("snap_claim shared c=%llu L=%.3f R=%.3f -> R owns",
+                       static_cast<unsigned long long>(p1.centroid_id), lat0, lat1);
+    }
+  } else {
+    hands_[0].resolved_snap_centroid_id_ = p0.centroid_id;
+    hands_[1].resolved_snap_centroid_id_ = p1.centroid_id;
+  }
+
+  // Product rule: while both snap-drag, the right hand never shares the left hand's centroid.
+  if (d0 && d1 && hands_[0].resolved_snap_centroid_id_ != 0) {
+    p1 = snap_pick_best(1, stick_for(1), hands_[0].resolved_snap_centroid_id_, centroids);
+    hands_[1].resolved_snap_centroid_id_ = p1.centroid_id;
+  }
+}
+
 void VoodooVolumeEngine::update_far_while_dragging(uint32_t hand, const Pose& hand_pose,
                                                    const Pose& head, bool head_valid,
                                                    float dt_seconds,
@@ -1289,28 +1674,50 @@ void VoodooVolumeEngine::update_far_while_dragging(uint32_t hand, const Pose& ha
                               origin.z + n.hand_offset.z};
     }
 
-    float best_d = 1e9f;
-    int best_i = -1;
-    for (int i = 0; i < static_cast<int>(hr.session.snap_nodes.size()); ++i) {
-      const float d = dist3(stick, hr.session.snap_nodes[static_cast<size_t>(i)].hand_offset);
-      if (d < best_d) {
-        best_d = d;
-        best_i = i;
+    const float pull_r = kSnapNodeRadiusM * kSnapPullMul;
+    EntityId snap_pick = hr.resolved_snap_centroid_id_;
+    if (hr.session.mode == VoodooMode::FreeRange) {
+      snap_pick = 0;
+      float best_d = 1e9f;
+      int best_i = -1;
+      for (int i = 0; i < static_cast<int>(hr.session.snap_nodes.size()); ++i) {
+        const float d = dist3(stick, hr.session.snap_nodes[static_cast<size_t>(i)].hand_offset);
+        if (d < best_d) {
+          best_d = d;
+          best_i = i;
+        }
+      }
+      if (best_i >= 0 && best_d < pull_r) {
+        snap_pick = hr.session.snap_nodes[static_cast<size_t>(best_i)].centroid_id;
       }
     }
-    const float pull_r = kSnapNodeRadiusM * kSnapPullMul;
-    if (best_i >= 0 && best_d < pull_r) {
-      auto& n = hr.session.snap_nodes[static_cast<size_t>(best_i)];
-      if (best_d <= kSnapNodeRadiusM) {
-        stick = n.hand_offset;
-        snapped = n.centroid_id;
-        n.snapped = true;
-      } else {
-        const float t = 1.f - (best_d - kSnapNodeRadiusM) / (pull_r - kSnapNodeRadiusM);
-        const float u = clampf(t * t, 0.f, 1.f);
-        stick.x += (n.hand_offset.x - stick.x) * u;
-        stick.y += (n.hand_offset.y - stick.y) * u;
-        stick.z += (n.hand_offset.z - stick.z) * u;
+    if (snap_pick != 0) {
+      int pick_i = -1;
+      float pick_d = 1e9f;
+      for (int i = 0; i < static_cast<int>(hr.session.snap_nodes.size()); ++i) {
+        const auto& n = hr.session.snap_nodes[static_cast<size_t>(i)];
+        if (n.centroid_id != snap_pick) {
+          continue;
+        }
+        const float d = dist3(stick, n.hand_offset);
+        if (d < pick_d) {
+          pick_d = d;
+          pick_i = i;
+        }
+      }
+      if (pick_i >= 0 && pick_d < pull_r) {
+        auto& n = hr.session.snap_nodes[static_cast<size_t>(pick_i)];
+        if (pick_d <= kSnapNodeRadiusM) {
+          stick = n.hand_offset;
+          snapped = n.centroid_id;
+          n.snapped = true;
+        } else {
+          const float t = 1.f - (pick_d - kSnapNodeRadiusM) / (pull_r - kSnapNodeRadiusM);
+          const float u = clampf(t * t, 0.f, 1.f);
+          stick.x += (n.hand_offset.x - stick.x) * u;
+          stick.y += (n.hand_offset.y - stick.y) * u;
+          stick.z += (n.hand_offset.z - stick.z) * u;
+        }
       }
     }
   } else {
@@ -1422,6 +1829,15 @@ void VoodooVolumeEngine::update_arrow(uint32_t hand, const Pose& hand_pose, cons
   }
 }
 
+bool VoodooVolumeEngine::dragging_mature(uint32_t hand) const {
+  if (hand >= 2u) {
+    return false;
+  }
+  const auto& hr = hands_[hand];
+  return hr.session.open && hr.session.phase == VoodooSessionPhase::Dragging &&
+         hr.drag_hold_s_ >= kMinHoldToParkS;
+}
+
 void VoodooVolumeEngine::tick_hand(uint32_t hand, const InteractionIntents& intents,
                                    const Pose& hand_pose, bool hand_valid, const Pose& head,
                                    bool head_valid, float dt_seconds,
@@ -1437,16 +1853,31 @@ void VoodooVolumeEngine::tick_hand(uint32_t hand, const InteractionIntents& inte
   const bool want_any = want_snap || want_free;
 
   if (hr.session.phase == VoodooSessionPhase::Parked) {
-    if (want_any && hand_valid) {
-      // Keep portals; start a new drag on this hand (refused if inside a near BB).
-      clear_hand_session(hand);
-      const VoodooMode mode = want_snap ? VoodooMode::Snap : VoodooMode::FreeRange;
-      open_drag(hand, mode, hand_pose, head, head_valid);
-      if (hr.session.open) {
-        hr.drag_hold_s_ += std::max(0.f, dt_seconds);
-        update_far_while_dragging(hand, hand_pose, head, head_valid, dt_seconds, centroids,
-                                  workspace);
-      }
+    if (!want_any) {
+      // Pinch fully released after park — next press may open a new drag.
+      hr.park_pinch_latched_ = false;
+      return;
+    }
+    if (!hand_valid) {
+      return;
+    }
+    const VoodooMode mode = want_snap ? VoodooMode::Snap : VoodooMode::FreeRange;
+    if (hr.park_pinch_latched_ && mode == hr.park_mode_latched_) {
+      // Still holding the same-mode pinch that parked — do not reopen.
+      return;
+    }
+    hr.park_pinch_latched_ = false;
+    // Keep portals; start a new drag on this hand (refused if inside a near BB).
+    clear_hand_session(hand);
+    if (mode == VoodooMode::Snap &&
+        !snap_drag_co_target_allowed(hand, hand_pose, head, head_valid, centroids)) {
+      return;
+    }
+    open_drag(hand, mode, hand_pose, head, head_valid);
+    if (hr.session.open) {
+      hr.drag_hold_s_ += std::max(0.f, dt_seconds);
+      update_far_while_dragging(hand, hand_pose, head, head_valid, dt_seconds, centroids,
+                                workspace);
     }
     return;
   }
@@ -1456,6 +1887,10 @@ void VoodooVolumeEngine::tick_hand(uint32_t hand, const InteractionIntents& inte
       return;
     }
     const VoodooMode mode = want_snap ? VoodooMode::Snap : VoodooMode::FreeRange;
+    if (mode == VoodooMode::Snap &&
+        !snap_drag_co_target_allowed(hand, hand_pose, head, head_valid, centroids)) {
+      return;
+    }
     open_drag(hand, mode, hand_pose, head, head_valid);
     if (hr.session.open) {
       hr.drag_hold_s_ += std::max(0.f, dt_seconds);
@@ -1474,10 +1909,32 @@ void VoodooVolumeEngine::tick_hand(uint32_t hand, const InteractionIntents& inte
       (hr.session.mode == VoodooMode::Snap && want_snap) ||
       (hr.session.mode == VoodooMode::FreeRange && want_free);
   if (!hold_ok) {
+    // Quest dual-hand tracking often drops primary for a frame while the other hand
+    // moves between snap nodes. Debounce only when the sibling is still actively holding
+    // (release_arm_s_ == 0). If both release together, skip debounce so parks stay snappy.
+    const auto& other = hands_[hand ^ 1u];
+    const bool sibling_still_holding =
+        other.session.open && other.session.phase == VoodooSessionPhase::Dragging &&
+        other.release_arm_s_ <= 0.f;
+    if (sibling_still_holding) {
+      hr.release_arm_s_ += std::max(0.f, dt_seconds);
+      if (hr.release_arm_s_ < kReleaseDebounceS) {
+        update_far_while_dragging(hand, hand_pose, head, head_valid, dt_seconds, centroids,
+                                  workspace);
+        return;
+      }
+    } else {
+      hr.release_arm_s_ = kReleaseDebounceS;  // armed — park/cancel this frame
+    }
     // Accidental taps: hold < 0.25 s cancels far+near for this gesture.
     if (hr.drag_hold_s_ < kMinHoldToParkS) {
+      voodoo_trace_log("release_cancel hand=%u hold=%.3f deb=%.3f sib=%d", hand, hr.drag_hold_s_,
+                       hr.release_arm_s_, sibling_still_holding ? 1 : 0);
       cancel_drag(hand);
     } else {
+      voodoo_trace_log("release_park hand=%u snap=%llu hold=%.3f deb=%.3f", hand,
+                       static_cast<unsigned long long>(hr.session.snapped_centroid_id),
+                       hr.drag_hold_s_, hr.release_arm_s_);
       // Focus-anchor snap → agent Multi-Choice (no portal). Task 7.3.
       const EntityId snap_id = hr.session.snapped_centroid_id;
       if (snap_id != 0) {
@@ -1495,6 +1952,7 @@ void VoodooVolumeEngine::tick_hand(uint32_t hand, const InteractionIntents& inte
     return;
   }
 
+  hr.release_arm_s_ = 0.f;
   hr.drag_hold_s_ += std::max(0.f, dt_seconds);
   update_far_while_dragging(hand, hand_pose, head, head_valid, dt_seconds, centroids, workspace);
 }
@@ -1928,39 +2386,82 @@ bool VoodooVolumeEngine::summon_selected(EntityId entity_id, const Vec3& pinch_w
     return false;
   }
 
+  // Multi-select: summon the whole selection set when the tapped id is a member.
+  // Multi open-air uses the box-contents cubic matrix + near-field bump.
+  std::vector<EntityId> ids;
+  if (workspace.is_selected(entity_id) && workspace.selection_ids().size() > 1) {
+    ids = workspace.selection_ids();
+  } else {
+    ids.push_back(entity_id);
+  }
+
   VoodooPortal* home = nullptr;
-  VoodooGhost* ghost = nullptr;
-  const bool has_ghost =
-      find_ghost_mut(entity_id, &home, &ghost) && home != nullptr && ghost != nullptr;
+  VoodooGhost* primary_ghost = nullptr;
+  const bool primary_has_ghost =
+      find_ghost_mut(entity_id, &home, &primary_ghost) && home != nullptr &&
+      primary_ghost != nullptr;
   const uint64_t pinch_portal = portal_at_near_point(pinch_world);
 
-  // Insert: selected near-field real + pinch inside a near BB → lerp real to mapped far.
-  // Open-air: entity already without a ghost (left far BB / pruned) → lerp real to pinch.
-  if (!has_ghost) {
+  // Insert: selected near-field real(s) + pinch inside a near BB → lerp to mapped far.
+  if (!primary_has_ghost) {
     if (pinch_portal == 0) {
-      const WorkspaceEntry* e = workspace.find(entity_id);
-      if (e == nullptr || !e->in_field) {
+      std::vector<PlaceItem> items;
+      items.reserve(ids.size());
+      for (EntityId id : ids) {
+        const WorkspaceEntry* e = workspace.find(id);
+        if (e == nullptr || !e->in_field) {
+          continue;
+        }
+        items.push_back(PlaceItem{id, e->pose, e->pose});
+      }
+      if (items.empty()) {
         return false;
       }
-      PlaceItem item{entity_id, e->pose, e->pose};
-      return place_items_at_pinch(nullptr, {item}, pinch_world, workspace,
-                                  /*cluster_open_air=*/false);
+      const bool multi = items.size() > 1;
+      return place_items_at_pinch(nullptr, items, pinch_world, workspace,
+                                  /*cluster_open_air=*/false, /*cube_matrix=*/multi);
     }
     VoodooPortal* target = portal_mut(pinch_portal);
-    if (target == nullptr || !ensure_ghost_in_portal(*target, entity_id, workspace)) {
+    if (target == nullptr) {
       return false;
     }
-    Pose near_pose{};
-    near_pose.position = pinch_world;
-    near_pose.orientation = target->near_bb.pose.orientation;
-    return move_ghost_to_portal(entity_id, *target, near_pose, &workspace);
+    bool any = false;
+    for (EntityId id : ids) {
+      if (!ensure_ghost_in_portal(*target, id, workspace)) {
+        continue;
+      }
+      Pose near_pose{};
+      near_pose.position = pinch_world;
+      near_pose.orientation = target->near_bb.pose.orientation;
+      any = move_ghost_to_portal(id, *target, near_pose, &workspace) || any;
+    }
+    return any;
   }
 
-  PlaceItem item{entity_id, ghost->far_pose, ghost->near_pose};
-  if (const WorkspaceEntry* e = workspace.find(entity_id)) {
-    item.far_pose.orientation = e->pose.orientation;
+  std::vector<PlaceItem> items;
+  items.reserve(ids.size());
+  for (EntityId id : ids) {
+    VoodooPortal* p = nullptr;
+    VoodooGhost* g = nullptr;
+    if (!find_ghost_mut(id, &p, &g) || g == nullptr) {
+      continue;
+    }
+    // Same home portal only — cross-portal multi-summon is 0.8.2.
+    if (home != nullptr && p != home) {
+      continue;
+    }
+    PlaceItem item{id, g->far_pose, g->near_pose};
+    if (const WorkspaceEntry* e = workspace.find(id)) {
+      item.far_pose.orientation = e->pose.orientation;
+    }
+    items.push_back(item);
   }
-  return place_items_at_pinch(home, {item}, pinch_world, workspace, /*cluster_open_air=*/false);
+  if (items.empty()) {
+    return false;
+  }
+  const bool multi = items.size() > 1;
+  return place_items_at_pinch(home, items, pinch_world, workspace, /*cluster_open_air=*/false,
+                              /*cube_matrix=*/multi);
 }
 
 

@@ -489,13 +489,13 @@ Far and near BBs share the same start size (`near_bb_voxels × voxel_size_m`). F
   - [ ] Harness: membership toggling on enter / exit; orientation locked at start heading.
 - [ ] **Task 8.1.2: Solo Voodoo Drop (gaze + "Use The Force")**
   - [ ] **Target candidate (criterion 1, gaze):** the gaze vector must be within a **fairly tight dot-product threshold** of the object's position. If several pass, pick the **highest gaze dot product**.
-  - [ ] **Eligible objects:** any object **without an accessible centroid** (e.g. a file carried into MR from a folder whose centroid does not exist there). Objects with an accessible centroid use the normal focus-anchor path. **Far field only:** all voodoo drops target far-field objects only. Near-field items (inside a near BB) are already in reach and are never drop targets.
+  - [ ] **Eligible objects:** any far-field object (and FocusAnchor / MindPalace candidates). **Cluster lock:** if the gazed object still has an accessible centroid within `kSoloClusterLockM` (~2 m), remount the armed/dropped far BB onto that centroid and size it with `members_aabb` + `fit_extents_for_aabb` (same as snap voodoo) so the whole cluster is in the BB — not only the front-most object. Objects dragged far from their centroid stay single-object free-range. Nearby-neighbor temp centroids (no shared real centroid) → parking lot.
   - [ ] **Occlusion rule:** ignore any candidate that is occluded by another object (needs a **clean raycast hit** between head pose and the object pose). This is the only raycast in 3OS, per README.
-  - [ ] **Arming (criterion 2, palm):** **either hand**; the hand's **palm normal** must be within a **very general dot-product threshold** of the direction to the target. Arming should take only the slightest effort to turn the palm vaguely toward the object. The palm does **not** need to point at the object's pinpoint.
-  - [ ] **Armed state:** the far BB becomes **visible but not active**, like other voodoo drops. This drop has **no drag**, and the volume does **not move**. It snaps to the target as a single object (no focus anchor needed).
-  - [ ] **Dismiss:** if either criterion is lost while armed, the voodoo is dismissed. A single **pinch release by the same hand whose palm armed it** while armed **drops** the voodoo and generates the near BB.
-  - [ ] Harness: threshold edges for both criteria, occluded-target rejection, and dismiss on criterion loss.
-- **Quest gate (0.8.1):** Drag-select a cluster in the far field and see live toggling plus the light-gray box. Solo-drop a non-anchored far object using gaze + open palm, then pinch to open its near BB. Losing gaze or palm cancels the drop.
+  - [ ] **Arming (criterion 2, palm):** **either hand**; the hand's **palm normal** must be within a **very general dot-product threshold** of the direction to the gazed pin. Arming should take only the slightest effort to turn the palm vaguely toward the object.
+  - [ ] **Armed state:** the far BB becomes **visible but not active**. No drag; volume does not move. Extents follow cluster fit when locked.
+  - [ ] **Dismiss / Drop:** lose gaze or both palms → dismiss. Short pinch release while armed → Drop. **FocusAnchor (NPC):** Drop opens the agent Multi-Choice widget (no empty near BB); generalize object→widget attributes later (parking lot).
+  - [ ] Harness: threshold edges for both criteria, occluded-target rejection, dismiss on criterion loss, `sizeof` SoloDropState (48).
+- **Quest gate (0.8.1):** Drag-select a cluster in the far field and see live toggling plus the light-gray box. Solo-drop a far object (or MindPalace cluster / NPC head) using gaze + open palm, then pinch. Losing gaze or palm cancels the drop.
 
 ---
 
@@ -671,7 +671,11 @@ Capture design notes and UX instincts that are not ready for checklist tasks. No
   - **Shared proximity anchors:** when several single objects sit close together, give them one shared proximity anchor instead of one node each, so the user doesn't fight a high density of snap nodes.
   - **Auto-generated temporary centroids:** objects that don't already share a centroid but happen to be clustered get a shared temporary centroid, recalculated whenever their positions update after input.
   - Open design points: the proximity thresholds, and how temporary centroids interact with real anchors and the Solo Voodoo Drop (0.8.1).
+- [ ] **Parking lot — Solo Drop nearby-neighbor temp centroid (post-0.8.1 demo):** When several far objects sit close together but do **not** share an accessible centroid, invent a temporary shared centroid for Solo Voodoo Drop only, and lock the armed/dropped far BB onto that neighbor cluster (instead of the front-most object). Distinct from MindPalace/Box cluster lock (which already remaps when the gazed object is still within range of its real centroid). Thresholds + lifetime + interaction with Main Voodoo Drop snap nodes TBD.
+- [ ] **Parking lot — object-type → near-BB vs custom widget (post-0.8.1 demo):** Voodoo park / Solo Drop should read per-object (or per-kind) attributes that choose **default near BB** vs a **custom host widget** (NPC agent Multi-Choice today is hard-wired to FocusAnchor). Generalize beyond the demo-manual FocusAnchor path so arbitrary content can declare its near-side UI.
 - [ ] **Parking lot — near-BB box → far-BB parent transition (post-0.7):** Double-pinch a box inside a near BB to **transition the current far BB** onto that box as the new parent (bottom of far BB), resizing the far BB to encapsulate its child contents. 0.7 ships a simpler interim: expand grows/refits the active portal far BB (+ lock-scaled near BB) in place without re-parenting the portal.
+- [x] **Parking lot — multi-select summon collision (pulled into 0.8.1):** Multi-summon lays out the selection as a box-contents cubic matrix (2³ / 3³ / …) at the pinch, then bump-lerps near-field occupants. Cross-portal multi-summon remains **0.8.2**.
+- [ ] **Parking lot — multi-select cluster telekinesis drag-and-drop (post-0.8.1 demo):** While `selection_ids().size() > 1`, the **0.8.1 demo** disables per-object box snap-insert so a dragged cluster is not vacuumed into every nearby folder. Later: rigid group drag with explicit cluster insert rules (which box wins, multi-object FS ack, ghost vs far identity). Related: **0.8.2** cross-volume multi-select.
 
 ---
 

@@ -2,6 +2,8 @@
 
 #include "core/centroid_registry.hpp"
 #include "core/mind_palace_layout.hpp"
+#include "core/multi_select_drag.hpp"
+#include "core/solo_voodoo_drop.hpp"
 #include "core/hand_interaction.hpp"
 #include "core/interaction_facade.hpp"
 #include "core/kinematics.hpp"
@@ -19,6 +21,10 @@
 #include <optional>
 #include <string>
 #include <vector>
+
+#if defined(__ANDROID__)
+#include <android/log.h>
+#endif
 
 namespace {
 
@@ -38,6 +44,9 @@ threeos::Workspace g_workspace;
 threeos::HandInteractionEngine g_hands;
 threeos::VoodooVolumeEngine g_voodoo;
 threeos::CentroidRegistry g_centroids;
+threeos::MultiSelectDrag g_multiselect;
+threeos::SoloVoodooDrop g_solo_drop;
+uint32_t g_solo_last_event = 0;
 threeos::MultiChoiceEngine g_multichoice;
 bool g_hands_pushed_this_frame = false;
 uint64_t g_tick_count = 0;
@@ -249,6 +258,15 @@ void tick_possess_snap_pipeline(const ThreeOS_InteropInputFrame* frame, const Dr
   const bool head_valid = (frame->tracking_flags & THREEOS_TRACK_HEAD) != 0;
   const bool was_snapped = g_workspace.snap().pending;
   const threeos::Pose prior_hold = g_workspace.snap().hold_pose;
+  const threeos::EntityId leader_before = g_kinematics.state().entity_id;
+  threeos::Pose leader_pose_before{};
+  const bool group_drag = leader_before != 0 && g_workspace.is_selected(leader_before) &&
+                          g_workspace.selection_ids().size() > 1;
+  if (group_drag) {
+    if (const threeos::WorkspaceEntry* we = g_workspace.find(leader_before)) {
+      leader_pose_before = we->pose;
+    }
+  }
   bool kin_moved = g_kinematics.tick(drive.pose, from_c(frame->head), head_valid,
                                      frame->time_seconds, drive.valid);
   const float floor_contact_y =
@@ -315,6 +333,13 @@ void tick_possess_snap_pipeline(const ThreeOS_InteropInputFrame* frame, const Dr
        g_kinematics.state().phase == threeos::KineticPhase::Coasting || kin_moved)) {
     if (auto* we = g_workspace.find_mut(g_kinematics.state().entity_id)) {
       we->pose = force_display ? display_pose : g_kinematics.state().pose;
+      if (group_drag && g_kinematics.state().entity_id == leader_before) {
+        const threeos::Pose& after = we->pose;
+        const threeos::Vec3 delta{after.position.x - leader_pose_before.position.x,
+                                  after.position.y - leader_pose_before.position.y,
+                                  after.position.z - leader_pose_before.position.z};
+        g_workspace.translate_selected_followers(leader_before, delta);
+      }
     }
   }
 
@@ -458,10 +483,35 @@ float tick_voodoo_frame(const ThreeOS_InteropInputFrame* frame) {
   // README dismiss gesture before new drag opens this frame.
   tick_voodoo_dismiss_gestures(frame->time_seconds);
 
+  if (g_solo_drop.blocks_voodoo_snap(static_cast<float>(frame->time_seconds))) {
+    for (uint32_t vh = 0; vh < 2u; ++vh) {
+      g_hands.clear_voodoo_intents(vh);
+      const auto& vs = g_voodoo.session(vh);
+      if (vs.open && vs.phase == threeos::VoodooSessionPhase::Dragging) {
+        g_voodoo.cancel_open_session(vh);
+      }
+    }
+  }
+
+  threeos::Pose vhand_pose[2]{};
+  bool vhand_ok[2]{false, false};
   for (uint32_t vh = 0; vh < 2u; ++vh) {
-    bool hand_ok = false;
-    const threeos::Pose vhand = resolve_voodoo_hand_pose(frame, vh, left, right, &hand_ok);
+    vhand_pose[vh] = resolve_voodoo_hand_pose(frame, vh, left, right, &vhand_ok[vh]);
+  }
+  g_voodoo.refresh_dual_snap_claims(vhand_pose, vhand_ok, head_pose, head_valid, g_centroids);
+
+  for (uint32_t vh = 0; vh < 2u; ++vh) {
+    if (vh == 1u) {
+      g_voodoo.refresh_dual_snap_claims(vhand_pose, vhand_ok, head_pose, head_valid, g_centroids);
+    }
+    const threeos::Pose vhand = vhand_pose[vh];
+    const bool hand_ok = vhand_ok[vh];
     threeos::InteractionIntents vintents = g_hands.pending_intents(vh);
+    // Mature dual-hand yellow volumes must not be stolen by a false ghost-drag begin
+    // (common when both far BBs briefly share a Demo centroid and hands overlap).
+    if (g_voodoo.ghost_drag_active(vh) && g_voodoo.dragging_mature(vh)) {
+      g_voodoo.ghost_drag_end(vh, /*release_inside_near_bb=*/false, g_workspace);
+    }
     const bool hand_busy = g_voodoo.ghost_drag_active(vh) ||
                            (kin_possessed && g_kin_hand_latch == static_cast<int>(vh));
     if (hand_busy) {
@@ -502,7 +552,26 @@ void tick_ghost_drags_frame(const ThreeOS_InteropInputFrame* frame, float dt,
     }
     bool hand_ok = false;
     const threeos::Pose ghand = resolve_voodoo_hand_pose(frame, gh, left, right, &hand_ok);
+    const threeos::EntityId ghost_leader = g_voodoo.ghost_drag_entity(gh);
+    threeos::Pose ghost_leader_before{};
+    const bool ghost_group =
+        ghost_leader != 0 && g_workspace.is_selected(ghost_leader) &&
+        g_workspace.selection_ids().size() > 1;
+    if (ghost_group) {
+      if (const threeos::WorkspaceEntry* we = g_workspace.find(ghost_leader)) {
+        ghost_leader_before = we->pose;
+      }
+    }
     g_voodoo.ghost_drag_tick(gh, ghand, hand_ok, head_pose, head_valid, dt, g_workspace);
+    if (ghost_group && ghost_leader != 0) {
+      if (const threeos::WorkspaceEntry* we = g_workspace.find(ghost_leader)) {
+        const threeos::Pose& after = we->pose;
+        const threeos::Vec3 delta{after.position.x - ghost_leader_before.position.x,
+                                  after.position.y - ghost_leader_before.position.y,
+                                  after.position.z - ghost_leader_before.position.z};
+        g_workspace.translate_selected_followers(ghost_leader, delta);
+      }
+    }
     if (g_voodoo.ghost_drag_active(gh)) {
       g_voodoo.refresh_ghost_drag_arrows(gh, ghand, head_pose, head_valid);
     }
@@ -566,8 +635,14 @@ static_assert(sizeof(ThreeOS_VoodooSession) == 176, "VoodooSession size");
 static_assert(sizeof(ThreeOS_VoodooDragArrow) == 64, "VoodooDragArrow size");
 static_assert(sizeof(ThreeOS_Centroid) == 64, "Centroid size");
 
+static const char k_kernel_build_stamp[] = __DATE__ " " __TIME__;
+
 extern "C" THREEOS_API uint32_t threeos_version(void) {
   return (kMajor << 16) | (kMinor << 8) | kPatch;
+}
+
+extern "C" THREEOS_API const char* threeos_kernel_build_stamp(void) {
+  return k_kernel_build_stamp;
 }
 
 extern "C" THREEOS_API uint32_t threeos_abi_version(void) { return kAbiVersion; }
@@ -622,6 +697,9 @@ extern "C" THREEOS_API int32_t threeos_init(void) {
   g_pending_portal_entity = 0;
   g_hands.reset();
   g_voodoo.reset();
+  g_multiselect = threeos::MultiSelectDrag{};
+  g_solo_drop.reset();
+  g_solo_last_event = 0;
   g_centroids.clear();
   g_multichoice.reset();
   g_hands_pushed_this_frame = false;
@@ -629,6 +707,9 @@ extern "C" THREEOS_API int32_t threeos_init(void) {
   g_voodoo_dismiss_pulse_time[0] = -1e9;
   g_voodoo_dismiss_pulse_time[1] = -1e9;
   set_error("");
+#if defined(__ANDROID__)
+  __android_log_print(ANDROID_LOG_INFO, "3OS_Kernel", "build_stamp=%s", k_kernel_build_stamp);
+#endif
   return 0;
 }
 
@@ -663,6 +744,11 @@ extern "C" THREEOS_API int32_t threeos_tick(const ThreeOS_InteropInputFrame* fra
   const bool head_valid = (frame->tracking_flags & THREEOS_TRACK_HEAD) != 0;
   g_hands.tick(from_c(frame->head), head_valid, frame->time_seconds);
   g_hands_pushed_this_frame = false;
+  if (g_solo_drop.blocks_voodoo_snap(static_cast<float>(frame->time_seconds))) {
+    for (uint32_t vh = 0; vh < 2u; ++vh) {
+      g_hands.clear_voodoo_intents(vh);
+    }
+  }
 
   const DriveHand drive = resolve_drive_hand(frame);
   tick_possess_snap_pipeline(frame, drive, out_delta);
@@ -1199,6 +1285,8 @@ extern "C" THREEOS_API void threeos_storage_clear(void) {
   g_workspace.clear();
   g_workspace.set_glyph_registry(&g_glyphs);
   g_voodoo.reset();  // portals + temp centroids tied to workspace
+  g_multiselect = threeos::MultiSelectDrag{};
+  g_solo_drop.reset();
   g_centroids.clear();
   g_centroids.rebuild(g_workspace);
 }
@@ -1535,6 +1623,191 @@ extern "C" THREEOS_API void threeos_selection_clear(void) {
   }
   g_workspace.clear_selection();
   set_error("");
+}
+
+extern "C" THREEOS_API uint32_t threeos_selection_count(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  return static_cast<uint32_t>(g_workspace.selection_ids().size());
+}
+
+extern "C" THREEOS_API uint32_t threeos_selection_get_ids(uint64_t* out_ids, uint32_t cap) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return 0;
+  }
+  const auto& ids = g_workspace.selection_ids();
+  if (out_ids != nullptr) {
+    for (uint32_t i = 0; i < cap && i < ids.size(); ++i) {
+      out_ids[i] = ids[i];
+    }
+  }
+  return static_cast<uint32_t>(ids.size());
+}
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_multiselect_box(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_MultiSelectBox));
+}
+
+extern "C" THREEOS_API int32_t threeos_multiselect_begin(const ThreeOS_Vec3* start,
+                                                         const ThreeOS_Pose* head,
+                                                         uint32_t cumulative) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (start == nullptr || head == nullptr) {
+    set_error("null argument");
+    return -2;
+  }
+  if (!g_multiselect.begin(from_c(*start), from_c(*head), /*head_valid=*/true, cumulative != 0u,
+                           g_voodoo, g_workspace)) {
+    set_error("multiselect already active");
+    return -5;
+  }
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_multiselect_update(const ThreeOS_Vec3* hand,
+                                                          uint32_t cumulative) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (hand == nullptr) {
+    set_error("null hand");
+    return -2;
+  }
+  if (!g_multiselect.box().active) {
+    set_error("multiselect not active");
+    return -5;
+  }
+  g_multiselect.update(from_c(*hand), cumulative != 0u, g_voodoo, g_workspace);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API void threeos_multiselect_end(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  g_multiselect.end();
+}
+
+extern "C" THREEOS_API void threeos_multiselect_cancel(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    return;
+  }
+  g_multiselect.cancel(g_workspace);
+}
+
+extern "C" THREEOS_API int32_t threeos_multiselect_get_box(ThreeOS_MultiSelectBox* out_box) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (out_box == nullptr) {
+    return -2;
+  }
+  const auto& b = g_multiselect.box();
+  *out_box = ThreeOS_MultiSelectBox{};
+  out_box->active = b.active ? 1u : 0u;
+  out_box->cumulative = b.cumulative ? 1u : 0u;
+  out_box->portal_id = b.portal_id;
+  out_box->pose = to_c(b.pose);
+  out_box->extents = to_c(b.extents);
+  return 0;
+}
+
+extern "C" THREEOS_API uint32_t threeos_sizeof_solo_drop_state(void) {
+  return static_cast<uint32_t>(sizeof(ThreeOS_SoloDropState));
+}
+
+extern "C" THREEOS_API uint32_t threeos_solo_drop_candidates(const ThreeOS_Pose* head,
+                                                             uint64_t* out_ids, uint32_t cap) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized || head == nullptr || out_ids == nullptr) {
+    return 0;
+  }
+  const auto ids =
+      g_solo_drop.candidates(from_c(*head), true, g_workspace, g_centroids, g_voodoo);
+  uint32_t n = 0;
+  for (; n < cap && n < ids.size(); ++n) {
+    out_ids[n] = ids[n];
+  }
+  return n;
+}
+
+extern "C" THREEOS_API void threeos_solo_drop_begin_frame(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  g_solo_drop.begin_frame();
+}
+
+extern "C" THREEOS_API uint32_t threeos_solo_blocks_voodoo_snap(float now_seconds) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  return g_solo_drop.blocks_voodoo_snap(now_seconds) ? 1u : 0u;
+}
+
+extern "C" THREEOS_API uint32_t threeos_solo_drop_tick(uint32_t hand, uint64_t clear_target_id,
+                                                       const ThreeOS_Vec3* palm_normal,
+                                                       uint32_t pinch_pressed,
+                                                       const ThreeOS_Pose* head,
+                                                       const ThreeOS_Vec3* hand_pos,
+                                                       float now_seconds) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized || hand > 1u || palm_normal == nullptr || head == nullptr ||
+      hand_pos == nullptr) {
+    return THREEOS_SOLO_NONE;
+  }
+  const threeos::Pose head_pose = from_c(*head);
+  const auto ev =
+      g_solo_drop.tick(hand, clear_target_id, from_c(*palm_normal), pinch_pressed != 0u, head_pose,
+                       true, from_c(*hand_pos), now_seconds, g_workspace, g_centroids, g_voodoo);
+  g_solo_last_event = static_cast<uint32_t>(ev);
+  if (ev == threeos::SoloVoodooDrop::Event::Drop) {
+    threeos::Pose hp{};
+    hp.position = from_c(*hand_pos);
+    const threeos::EntityId dropped = g_solo_drop.dropped_target();
+    if (g_voodoo.solo_drop_open(hand, dropped, hp, true, head_pose, true, g_centroids,
+                                g_workspace)) {
+      g_centroids.rebuild(g_workspace);
+      // FocusAnchor solo → agent Multi-Choice (same path as snap release).
+      const auto pa = g_voodoo.consume_pending_agent_open();
+      if (pa.pending) {
+        const threeos::Pose center = g_voodoo.near_rest_pose(head_pose, true);
+        g_multichoice.open_agent(pa.hand, center);
+      } else if (g_workspace.find(dropped) != nullptr) {
+        (void)g_workspace.set_selection(dropped);
+      }
+      set_error("");
+    } else {
+      set_error("solo drop refused");
+    }
+  }
+  return g_solo_last_event;
+}
+
+extern "C" THREEOS_API int32_t threeos_solo_drop_get_state(ThreeOS_SoloDropState* out_state) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (out_state == nullptr) {
+    return -2;
+  }
+  const auto& s = g_solo_drop.state();
+  *out_state = ThreeOS_SoloDropState{};
+  out_state->armed = s.armed ? 1u : 0u;
+  out_state->hand = s.hand;
+  // After Drop, state is cleared — surface dropped_target so the host can select/rim.
+  out_state->target_id = s.armed ? s.target : g_solo_drop.dropped_target();
+  out_state->far_position = to_c(s.far_position);
+  out_state->last_event = g_solo_last_event;
+  out_state->far_extents = to_c(s.far_extents);
+  return 0;
+}
+
+extern "C" THREEOS_API void threeos_solo_drop_cancel(void) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  g_solo_drop.reset();
 }
 
 namespace {

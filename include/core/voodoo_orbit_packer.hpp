@@ -21,6 +21,8 @@ class VoodooOrbitPacker {
   explicit VoodooOrbitPacker(VoodooVolumeEngine& engine) : engine_(engine) {}
 
   bool bump_resolve(const Pose& head, bool head_valid, size_t pinned_index);
+  /// Older near BBs in the bumper's group yield on the orbit before bump_resolve.
+  void yield_orbit_for_incoming_park(size_t bumper_index, const Pose& head, bool head_valid);
   void bump_siblings_min_clear(size_t pinned_index);
   void bump_near_field_clutter(const VoodooPortal& portal, Workspace& workspace, const Pose& head,
                                bool head_valid, bool animate);

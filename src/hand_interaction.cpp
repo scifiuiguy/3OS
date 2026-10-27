@@ -41,6 +41,16 @@ void HandInteractionEngine::reset() {
   mode_toggle_right_thumb_closed_ = false;
 }
 
+void HandInteractionEngine::clear_voodoo_intents(uint32_t hand) {
+  if (hand >= 2u) {
+    return;
+  }
+  using F = InteractionIntentFlags;
+  const uint32_t mask = static_cast<uint32_t>(F::VoodooSnap) | static_cast<uint32_t>(F::VoodooFree);
+  auto& p = hands_[hand].pending_intents;
+  p.flags = static_cast<F>(static_cast<uint32_t>(p.flags) & ~mask);
+}
+
 void HandInteractionEngine::set_hands(const HandSample& left, const HandSample& right) {
   hands_[0].sample = left;
   hands_[1].sample = right;

@@ -1430,13 +1430,17 @@ int main() {
     }
 
     // Release parks far + opens near (does not dismiss).
+    // Two ticks: dual-hand release debounce parks the first hand on tick 1 and the
+    // sibling on tick 2 (Quest primary dropouts while the other hand still holds).
     R.primary_pressed = 0;
     R.secondary_pressed = 0;
     L.primary_pressed = 0;
-    threeos_interaction_set_hands(&L, &R);
-    vf.frame_index++;
-    vf.time_seconds += 0.016;
-    threeos_tick(&vf, &vd);
+    for (int i = 0; i < 2; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 0.016;
+      threeos_tick(&vf, &vd);
+    }
     threeos_voodoo_get_session(1, &sessR);
     threeos_voodoo_get_session(0, &sessL);
     if (sessR.open == 0 || sessR.far_bb.open == 0 || sessR.near_bb.open == 0) {
@@ -2091,6 +2095,222 @@ int main() {
     }
     ok = expect_eq("portal.orbit_no_overlap", any_overlap ? 0u : 1u, 1u) && ok;
     std::printf("OK   portals ghosts orbit tint dismiss hold-gate capacity\n");
+  }
+
+  // --- Dual-hand snap: both lock DemoA, then R → DemoB; sequential release must park 2 ---
+  {
+    threeos_storage_clear();
+    threeos_mind_palace_clear();
+    threeos_selection_clear();
+    while (threeos_voodoo_portal_count() > 0) {
+      ThreeOS_VoodooPortal p{};
+      threeos_voodoo_get_portal(0, &p);
+      threeos_voodoo_dismiss_portal(p.id);
+    }
+
+    ThreeOS_Pose anchor{};
+    anchor.orientation = {0.f, 0.f, 0.f, 1.f};
+    uint64_t mpA = 0;
+    uint64_t mpB = 0;
+    threeos_mind_palace_register("DualA", &anchor, &mpA);
+    threeos_mind_palace_register("DualB", &anchor, &mpB);
+    uint64_t o1 = 0;
+    uint64_t o2 = 0;
+    uint64_t o3 = 0;
+    threeos_storage_add_object("da.glb", "da.glb", &o1);
+    threeos_storage_add_object("db.glb", "db.glb", &o2);
+    threeos_storage_add_object("dc.glb", "dc.glb", &o3);
+    threeos_storage_set_mind_palace(o1, mpA);
+    threeos_storage_set_mind_palace(o2, mpA);
+    threeos_storage_set_mind_palace(o3, mpB);
+    ThreeOS_Pose layA = identity_pose_at(-0.6f, 1.4f, 2.0f);
+    ThreeOS_Pose layB = identity_pose_at(0.9f, 1.5f, 2.4f);
+    threeos_storage_layout_mind_palace(mpA, &layA);
+    threeos_storage_layout_mind_palace(mpB, &layB);
+
+    auto fill_hand = [](ThreeOS_HandSample* h, float x, float y, float z, int primary) {
+      *h = ThreeOS_HandSample{};
+      h->tracked = 1;
+      h->tip_flags = 0x1Fu;
+      h->thumb_tip = {x, y, z};
+      h->index_tip = {x + 0.02f, y, z};
+      h->index_proximal = {x, y, z};
+      h->palm_mode = THREEOS_PALM_DOWN;
+      h->palm_mode_valid = 1;
+      h->primary_pressed = primary ? 1u : 0u;
+      h->primary_value = primary ? 1.f : 0.f;
+    };
+
+    auto field_of = [](uint32_t hand, uint64_t centroid_id, ThreeOS_Vec3* out) -> bool {
+      for (uint32_t i = 0; i < threeos_voodoo_snap_node_count(hand); ++i) {
+        ThreeOS_VoodooSnapNode n{};
+        threeos_voodoo_get_snap_node(hand, i, &n);
+        if (n.centroid_id == centroid_id) {
+          *out = n.field_position;
+          return true;
+        }
+      }
+      return false;
+    };
+
+    ThreeOS_HandSample L{};
+    ThreeOS_HandSample R{};
+    const float lx0 = -0.2f, ly0 = 1.2f, lz0 = -0.3f;
+    const float rx0 = 0.2f, ry0 = 1.2f, rz0 = -0.3f;
+    fill_hand(&L, lx0, ly0, lz0, 1);
+    fill_hand(&R, rx0, ry0, rz0, 1);
+
+    ThreeOS_InteropInputFrame vf{};
+    vf.frame_index = 9700;
+    vf.time_seconds = 90.0;
+    vf.tracking_flags =
+        THREEOS_TRACK_HEAD | THREEOS_TRACK_LEFT_AIM | THREEOS_TRACK_RIGHT_AIM;
+    vf.head = identity_pose_at(0.f, 1.6f, 0.f);
+    vf.head.orientation = {0.f, 0.f, 0.f, 1.f};
+    vf.left_aim = identity_pose_at(lx0, ly0, lz0);
+    vf.right_aim = identity_pose_at(rx0, ry0, rz0);
+    ThreeOS_InteropTransformDelta vd{};
+    threeos_interaction_set_hands(&L, &R);
+    threeos_tick(&vf, &vd);
+
+    ThreeOS_VoodooSession sL0{};
+    ThreeOS_VoodooSession sR0{};
+    threeos_voodoo_get_session(0, &sL0);
+    threeos_voodoo_get_session(1, &sR0);
+    ThreeOS_VoodooFieldParams fp{};
+    threeos_voodoo_get_field_params(&fp);
+    const float gain_h = fp.field_radius_m / fp.arm_reach_m;
+    const float gain_v = fp.field_height_m / fp.arm_reach_m;
+
+    ThreeOS_Vec3 fieldA{};
+    ThreeOS_Vec3 fieldB{};
+    ok = expect_eq("dual.snap_A", field_of(0, mpA, &fieldA) ? 1u : 0u, 1u) && ok;
+    ok = expect_eq("dual.snap_B", field_of(1, mpB, &fieldB) ? 1u : 0u, 1u) && ok;
+
+    const float ax = (fieldA.x - sL0.far_bb.pose.position.x) / gain_h;
+    const float ay = (fieldA.y - sL0.far_bb.pose.position.y) / gain_v;
+    const float az = (fieldA.z - sL0.far_bb.pose.position.z) / gain_h;
+    const float rax = (fieldA.x - sR0.far_bb.pose.position.x) / gain_h;
+    const float ray = (fieldA.y - sR0.far_bb.pose.position.y) / gain_v;
+    const float raz = (fieldA.z - sR0.far_bb.pose.position.z) / gain_h;
+    const float rbx = (fieldB.x - sR0.far_bb.pose.position.x) / gain_h;
+    const float rby = (fieldB.y - sR0.far_bb.pose.position.y) / gain_v;
+    const float rbz = (fieldB.z - sR0.far_bb.pose.position.z) / gain_h;
+
+    // Both hands lock onto DemoA (shared centroid — QA 346 repro setup).
+    fill_hand(&L, lx0 + ax, ly0 + ay, lz0 + az, 1);
+    fill_hand(&R, rx0 + rax, ry0 + ray, rz0 + raz, 1);
+    vf.left_aim = identity_pose_at(lx0 + ax, ly0 + ay, lz0 + az);
+    vf.right_aim = identity_pose_at(rx0 + rax, ry0 + ray, rz0 + raz);
+    for (int i = 0; i < 24; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    {
+      ThreeOS_VoodooSession sL{};
+      ThreeOS_VoodooSession sR{};
+      threeos_voodoo_get_session(0, &sL);
+      threeos_voodoo_get_session(1, &sR);
+      ok = expect_eq("dual.both_on_A",
+                     (sL.far_bb.linked_centroid_id == mpA && sR.far_bb.linked_centroid_id == mpA)
+                         ? 1u
+                         : 0u,
+                     1u) &&
+           ok;
+    }
+
+    // Move R → DemoB while L stays on A. Mid-move: 1-frame L primary dropout (Quest jitter).
+    fill_hand(&R, rx0 + rbx, ry0 + rby, rz0 + rbz, 1);
+    vf.right_aim = identity_pose_at(rx0 + rbx, ry0 + rby, rz0 + rbz);
+    for (int i = 0; i < 12; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    fill_hand(&L, lx0 + ax, ly0 + ay, lz0 + az, 0);  // blip
+    threeos_interaction_set_hands(&L, &R);
+    vf.frame_index++;
+    vf.time_seconds += 1.0 / 72.0;
+    threeos_tick(&vf, &vd);
+    fill_hand(&L, lx0 + ax, ly0 + ay, lz0 + az, 1);  // restore before debounce fires
+    for (int i = 0; i < 12; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    {
+      ThreeOS_VoodooSession sL{};
+      ThreeOS_VoodooSession sR{};
+      threeos_voodoo_get_session(0, &sL);
+      threeos_voodoo_get_session(1, &sR);
+      ok = expect_eq("dual.L_still_A", sL.far_bb.linked_centroid_id == mpA ? 1u : 0u, 1u) && ok;
+      ok = expect_eq("dual.R_now_B", sR.far_bb.linked_centroid_id == mpB ? 1u : 0u, 1u) && ok;
+      ok = expect_eq("dual.L_still_open", sL.open, 1u) && ok;
+      ok = expect_eq("dual.R_still_open", sR.open, 1u) && ok;
+      ok = expect_eq("dual.blip_no_early_portal", threeos_voodoo_portal_count(), 0u) && ok;
+    }
+
+    // Release R then L — both must park (QA 346). Debounce needs ~0.08s of released primary.
+    auto hold_released = [&](ThreeOS_HandSample* h, float x, float y, float z, int frames) {
+      fill_hand(h, x, y, z, 0);
+      for (int i = 0; i < frames; ++i) {
+        threeos_interaction_set_hands(&L, &R);
+        vf.frame_index++;
+        vf.time_seconds += 1.0 / 72.0;
+        if (h == &L) {
+          vf.left_aim = identity_pose_at(x, y, z);
+        } else {
+          vf.right_aim = identity_pose_at(x, y, z);
+        }
+        threeos_tick(&vf, &vd);
+      }
+    };
+    hold_released(&R, rx0 + rbx, ry0 + rby, rz0 + rbz, 10);
+    const uint32_t after_r = threeos_voodoo_portal_count();
+    ok = expect_eq("dual.after_R_release", after_r, 1u) && ok;
+
+    // Device repro: after R parks, L hand often sits inside the new near BB.
+    ThreeOS_VoodooPortal parkedR{};
+    threeos_voodoo_get_portal(0, &parkedR);
+    const float nix = parkedR.near_bb.pose.position.x;
+    const float niy = parkedR.near_bb.pose.position.y;
+    const float niz = parkedR.near_bb.pose.position.z;
+    fill_hand(&L, nix, niy, niz, 1);
+    vf.left_aim = identity_pose_at(nix, niy, niz);
+    for (int i = 0; i < 6; ++i) {
+      threeos_interaction_set_hands(&L, &R);
+      vf.frame_index++;
+      vf.time_seconds += 1.0 / 72.0;
+      threeos_tick(&vf, &vd);
+    }
+    {
+      ThreeOS_VoodooSession sL{};
+      threeos_voodoo_get_session(0, &sL);
+      ok = expect_eq("dual.L_open_inside_near", sL.open, 1u) && ok;
+      ok = expect_eq("dual.L_in_near", threeos_voodoo_point_in_near_bb(nix, niy, niz), 1u) && ok;
+    }
+
+    hold_released(&L, nix, niy, niz, 10);
+    {
+      ThreeOS_VoodooSession sL{};
+      threeos_voodoo_get_session(0, &sL);
+      const uint32_t n = threeos_voodoo_portal_count();
+      if (n != 2u) {
+        std::fprintf(stderr,
+                     "FAIL dual.after_L_release portals=%u L.open=%u L.far_link=%llu in_near=%u "
+                     "err=%s\n",
+                     n, sL.open, (unsigned long long)sL.far_bb.linked_centroid_id,
+                     threeos_voodoo_point_in_near_bb(nix, niy, niz), threeos_last_error());
+      }
+      ok = expect_eq("dual.after_L_release", n, 2u) && ok;
+    }
+    if (after_r == 1u && threeos_voodoo_portal_count() == 2u) {
+      std::printf("OK   dual-hand same-centroid then diverge parks both\n");
+    }
   }
 
   // --- Phase 0.6 Task 6.5: ghost drag, summon, temp BB unchanged ---
@@ -2891,6 +3111,379 @@ int main() {
     }
 
     std::printf("OK   multichoice octant pagination favorite mindpalace bump\n");
+  }
+
+  // --- Task 8.1.1: drag multi-selection ---
+  {
+    threeos_storage_clear();
+    ok = expect_eq("ms.sizeof_box", threeos_sizeof_multiselect_box(), 64) && ok;
+    uint64_t ids[8]{};
+    for (int i = 0; i < 8; ++i) {
+      char nm[16];
+      std::snprintf(nm, sizeof(nm), "ms%d.glb", i);
+      threeos_storage_add_object(nm, nm, &ids[i]);
+    }
+    const ThreeOS_Pose mhead = identity_pose_at(0.f, 1.6f, 0.f);
+    threeos_storage_layout_demo(&mhead);
+    ThreeOS_Vec3 mn{1e9f, 1e9f, 1e9f};
+    ThreeOS_Vec3 mx{-1e9f, -1e9f, -1e9f};
+    std::vector<ThreeOS_Vec3> pos(8);
+    for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+      ThreeOS_WorkspaceItem it{};
+      threeos_storage_get_item(i, &it);
+      for (int k = 0; k < 8; ++k) {
+        if (it.entity_id == ids[k]) {
+          pos[k] = it.pose.position;
+        }
+      }
+      mn = {std::min(mn.x, it.pose.position.x), std::min(mn.y, it.pose.position.y),
+            std::min(mn.z, it.pose.position.z)};
+      mx = {std::max(mx.x, it.pose.position.x), std::max(mx.y, it.pose.position.y),
+            std::max(mx.z, it.pose.position.z)};
+    }
+    const ThreeOS_Vec3 lo{mn.x - 0.05f, mn.y - 0.05f, mn.z - 0.05f};
+    const ThreeOS_Vec3 hi{mx.x + 0.05f, mx.y + 0.05f, mx.z + 0.05f};
+
+    ok = expect_eq("ms.begin", threeos_multiselect_begin(&lo, &mhead, 0) == 0 ? 1u : 0u, 1u) && ok;
+    ok = expect_eq("ms.begin_twice", threeos_multiselect_begin(&lo, &mhead, 0) != 0 ? 1u : 0u,
+                   1u) &&
+         ok;
+    ok = expect_eq("ms.empty_at_start", threeos_selection_count(), 0u) && ok;
+    threeos_multiselect_update(&hi, 0);
+    ok = expect_eq("ms.all_inside", threeos_selection_count(), 8u) && ok;
+
+    // Shrink the box on x to the midpoint: only items whose center stays inside remain.
+    const float mid_x = 0.5f * (mn.x + mx.x);
+    const ThreeOS_Vec3 half{mid_x, hi.y, hi.z};
+    threeos_multiselect_update(&half, 0);
+    uint32_t expect_half = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (pos[k].x <= mid_x) {
+        ++expect_half;
+      }
+    }
+    ok = expect_eq("ms.live_deselect_on_exit", threeos_selection_count(), expect_half) && ok;
+    ThreeOS_MultiSelectBox mbox{};
+    threeos_multiselect_get_box(&mbox);
+    ok = expect_eq("ms.box_active_far", mbox.active == 1u && mbox.portal_id == 0 ? 1u : 0u, 1u) &&
+         ok;
+    threeos_multiselect_update(&hi, 0);
+    ok = expect_eq("ms.live_reselect", threeos_selection_count(), 8u) && ok;
+    threeos_multiselect_end();
+    ok = expect_eq("ms.end_keeps", threeos_selection_count(), 8u) && ok;
+
+    // Replace by default; cancel restores the prior selection.
+    threeos_selection_set(ids[0]);
+    const ThreeOS_Vec3 nowhere{mx.x + 5.f, mx.y + 5.f, mx.z + 5.f};
+    threeos_multiselect_begin(&nowhere, &mhead, 0);
+    ok = expect_eq("ms.replace_clears", threeos_selection_count(), 0u) && ok;
+    threeos_multiselect_cancel();
+    ok = expect_eq("ms.cancel_restores", threeos_selection_count(), 1u) && ok;
+    // Ternary held: cumulative keeps the prior selection.
+    threeos_multiselect_begin(&nowhere, &mhead, 1);
+    ok = expect_eq("ms.cumulative_keeps", threeos_selection_count(), 1u) && ok;
+    threeos_multiselect_update(&nowhere, 0);
+    ok = expect_eq("ms.cumulative_released_replaces", threeos_selection_count(), 0u) && ok;
+    threeos_multiselect_cancel();
+
+    // Yaw locks to the heading at begin and does not follow later input.
+    ThreeOS_Pose turned = mhead;
+    turned.orientation = {0.f, 0.70710678f, 0.f, 0.70710678f};  // +90 deg yaw
+    threeos_multiselect_begin(&lo, &turned, 0);
+    threeos_multiselect_update(&hi, 0);
+    threeos_multiselect_get_box(&mbox);
+    ok = expect_near("ms.yaw_locked", mbox.pose.orientation.y, 0.70710678f, 1e-3f) && ok;
+    threeos_multiselect_cancel();
+    threeos_selection_clear();
+
+    // Batch C: rigid group telekinesis — all selected ids move with the possessed leader.
+    threeos_selection_clear();
+    ok = expect_eq("ms.begin", threeos_multiselect_begin(&lo, &mhead, 0) == 0 ? 1u : 0u, 1u) && ok;
+    threeos_multiselect_update(&hi, 0);
+    ok = expect_eq("ms.group_sel", threeos_selection_count(), 8u) && ok;
+    ThreeOS_WorkspaceItem w0{};
+    ThreeOS_WorkspaceItem w1{};
+    for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+      ThreeOS_WorkspaceItem it{};
+      threeos_storage_get_item(i, &it);
+      if (it.entity_id == ids[0]) {
+        w0 = it;
+      }
+      if (it.entity_id == ids[1]) {
+        w1 = it;
+      }
+    }
+    threeos_multiselect_end();
+    if (threeos_kinematics_set_params(10.f, 0.015f, 4.f, 0.f) != 0) {
+      std::fprintf(stderr, "FAIL ms.group kin params\n");
+      ok = false;
+    }
+    if (threeos_kinematics_possess(ids[0], &w0.pose) != 0) {
+      std::fprintf(stderr, "FAIL ms.group possess\n");
+      ok = false;
+    }
+    const float y0 = w0.pose.position.y;
+    const float z0 = w0.pose.position.z;
+    const float y1 = w1.pose.position.y;
+    const float z1 = w1.pose.position.z;
+    const float x1_before = w1.pose.position.x;
+    ThreeOS_InteropInputFrame kf{};
+    kf.tracking_flags = THREEOS_TRACK_RIGHT_AIM | THREEOS_TRACK_HEAD;
+    kf.head = mhead;
+    kf.right_aim = identity_pose_at(0.f, 1.6f, -0.5f);
+    kf.time_seconds = 0.0;
+    threeos_tick(&kf, &delta);
+    for (int i = 0; i < 16; ++i) {
+      kf.frame_index++;
+      kf.time_seconds += 1.0 / 72.0;
+      kf.right_aim = identity_pose_at(0.10f, 1.6f, -0.5f);
+      threeos_tick(&kf, &delta);
+    }
+    ThreeOS_WorkspaceItem w0_after{};
+    ThreeOS_WorkspaceItem w1_after{};
+    for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+      ThreeOS_WorkspaceItem it{};
+      threeos_storage_get_item(i, &it);
+      if (it.entity_id == ids[0]) {
+        w0_after = it;
+      }
+      if (it.entity_id == ids[1]) {
+        w1_after = it;
+      }
+    }
+    const float dx0 = w0_after.pose.position.x - w0.pose.position.x;
+    const float dx1 = w1_after.pose.position.x - w1.pose.position.x;
+    ok = expect_near("ms.group_leader_dx", dx0, dx1, 1e-3f) && ok;
+    ok = expect_near("ms.group_y_locked", w0_after.pose.position.y, y0, 1e-4f) && ok;
+    ok = expect_near("ms.group_follower_y", w1_after.pose.position.y, y1, 1e-4f) && ok;
+    ok = expect_near("ms.group_z_locked", w0_after.pose.position.z, z0, 1e-4f) && ok;
+    ok = expect_near("ms.group_follower_z", w1_after.pose.position.z, z1, 1e-4f) && ok;
+    ok = expect_eq("ms.group_follower_moved", x1_before != w1_after.pose.position.x ? 1u : 0u, 1u) &&
+         ok;
+    threeos_kinematics_release();
+    threeos_selection_clear();
+  }
+
+  // --- Task 8.1.2: Solo Voodoo Drop, and near-BB multi-select resolving to far ids ---
+  {
+    threeos_storage_clear();
+    uint64_t solo_id = 0;
+    uint64_t other_id = 0;
+    threeos_storage_add_object("solo.glb", "solo.glb", &solo_id);
+    threeos_storage_add_object("other.glb", "other.glb", &other_id);
+    const ThreeOS_Pose lay = identity_pose_at(0.f, 1.6f, 0.f);
+    threeos_storage_layout_demo(&lay);
+    ThreeOS_Vec3 solo_pos{};
+    ThreeOS_Vec3 other_pos{};
+    for (uint32_t i = 0; i < threeos_storage_item_count(); ++i) {
+      ThreeOS_WorkspaceItem it{};
+      threeos_storage_get_item(i, &it);
+      if (it.entity_id == solo_id) {
+        solo_pos = it.pose.position;
+      }
+      if (it.entity_id == other_id) {
+        other_pos = it.pose.position;
+      }
+    }
+    ok = expect_eq("solo.sizeof_state", threeos_sizeof_solo_drop_state(), 48) && ok;
+
+    // Gaze straight at `solo`; `other` sits off the gaze line.
+    const ThreeOS_Pose gaze = identity_pose_at(solo_pos.x, solo_pos.y, solo_pos.z - 1.5f);
+    const ThreeOS_Vec3 hand_at{solo_pos.x + 0.2f, solo_pos.y - 0.4f, solo_pos.z - 1.2f};
+    // Palm normal must face (object − palm), not head→object (kPalmDotMin≈0.707 ≈ 45°).
+    const float pdx = solo_pos.x - hand_at.x;
+    const float pdy = solo_pos.y - hand_at.y;
+    const float pdz = solo_pos.z - hand_at.z;
+    const float plen = std::sqrt(pdx * pdx + pdy * pdy + pdz * pdz);
+    const ThreeOS_Vec3 palm_toward{pdx / plen, pdy / plen, pdz / plen};
+    const ThreeOS_Vec3 palm_away{-palm_toward.x, -palm_toward.y, -palm_toward.z};
+    const ThreeOS_Vec3 palm_down{0.f, -1.f, 0.f};
+    // Orthogonal to (object−palm) — must NOT arm (finger-forward false positive).
+    const ThreeOS_Vec3 palm_ortho{-palm_toward.y, palm_toward.x, 0.f};
+    uint64_t cand[8]{};
+    uint32_t n = threeos_solo_drop_candidates(&gaze, cand, 8);
+    ok = expect_eq("solo.candidate_found", n >= 1u && cand[0] == solo_id ? 1u : 0u, 1u) && ok;
+    const float off_dx = other_pos.x - solo_pos.x;
+    const float off_dz = other_pos.z - (solo_pos.z - 1.5f);
+    const float off_dot = std::fabs(off_dz) /
+                          std::sqrt(off_dx * off_dx + (other_pos.y - solo_pos.y) *
+                                                          (other_pos.y - solo_pos.y) +
+                                    off_dz * off_dz);
+    ok = expect_eq("solo.gaze_threshold_rejects_other",
+                   off_dot < 0.9925f ? (n == 1u ? 1u : 0u) : 1u, 1u) &&
+         ok;
+
+    // Occluded (host reports no clear target): never arms.
+    ok = expect_eq("solo.occluded_no_arm",
+                   threeos_solo_drop_tick(0, 0, &palm_toward, 0, &gaze, &hand_at, 0.f),
+                   (uint32_t)THREEOS_SOLO_NONE) &&
+         ok;
+    // Palm facing away: gaze alone does not arm.
+    ok = expect_eq("solo.palm_away_no_arm",
+                   threeos_solo_drop_tick(0, solo_id, &palm_away, 0, &gaze, &hand_at, 0.f),
+                   (uint32_t)THREEOS_SOLO_NONE) &&
+         ok;
+    // Palm-down / finger-forward while not facing the object must not arm.
+    ok = expect_eq("solo.palm_down_no_arm",
+                   threeos_solo_drop_tick(0, solo_id, &palm_down, 0, &gaze, &hand_at, 0.f),
+                   (uint32_t)THREEOS_SOLO_NONE) &&
+         ok;
+    ok = expect_eq("solo.ortho_palm_no_arm",
+                   threeos_solo_drop_tick(0, solo_id, &palm_ortho, 0, &gaze, &hand_at, 0.f),
+                   (uint32_t)THREEOS_SOLO_NONE) &&
+         ok;
+    // Selected far objects may still arm (Use The Force alongside telekinesis).
+    threeos_selection_set(solo_id);
+    ok = expect_eq("solo.selected_still_arms",
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 0.f),
+                   (uint32_t)THREEOS_SOLO_ARMED) &&
+         ok;
+    threeos_solo_drop_cancel();
+    threeos_selection_clear();
+    ok = expect_eq("solo.arm",
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 0.f),
+                   (uint32_t)THREEOS_SOLO_ARMED) &&
+         ok;
+    ThreeOS_SoloDropState ss{};
+    threeos_solo_drop_get_state(&ss);
+    ok = expect_eq("solo.armed_state", ss.armed == 1u && ss.target_id == solo_id ? 1u : 0u, 1u) &&
+         ok;
+    // Sole hand losing palm dismisses (gaze alone is not enough).
+    ok = expect_eq("solo.dismiss_on_palm_loss",
+                   threeos_solo_drop_tick(0, solo_id, &palm_away, 0, &gaze, &hand_at, 0.f),
+                   (uint32_t)THREEOS_SOLO_DISMISSED) &&
+         ok;
+    // Losing the gaze criterion dismisses.
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 0.1f);
+    const ThreeOS_Pose looking_away = identity_pose_at(solo_pos.x, solo_pos.y, solo_pos.z + 1.5f);
+    ok = expect_eq("solo.dismiss_on_gaze_loss",
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &looking_away, &hand_at, 0.1f),
+                   (uint32_t)THREEOS_SOLO_DISMISSED) &&
+         ok;
+
+    // Hold longer than tap window (0.22s) while armed → drag: no Drop, arm stays (gaze+palm).
+    threeos_solo_drop_begin_frame();
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 1.f);
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 1, &gaze, &hand_at, 1.f);
+    ok = expect_eq("solo.hold_drag_no_dismiss",
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 1, &gaze, &hand_at, 1.25f),
+                   (uint32_t)THREEOS_SOLO_NONE) &&
+         ok;
+    threeos_solo_drop_get_state(&ss);
+    ok = expect_eq("solo.still_armed_during_drag", ss.armed, 1u) && ok;
+    ok = expect_eq("solo.drag_release_no_drop",
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 1.26f),
+                   (uint32_t)THREEOS_SOLO_NONE) &&
+         ok;
+    threeos_solo_drop_get_state(&ss);
+    ok = expect_eq("solo.still_armed_after_drag", ss.armed, 1u) && ok;
+    ok = expect_eq("solo.hold_no_portal", threeos_voodoo_portal_count(), 0u) && ok;
+    threeos_solo_drop_cancel();
+
+    // Either hand: first to arm, then second joins — second can still tap-drop.
+    // Pinch often breaks palm cone; eligibility is latched at press.
+    threeos_solo_drop_begin_frame();
+    ok = expect_eq("solo.arm_h0",
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 2.f),
+                   (uint32_t)THREEOS_SOLO_ARMED) &&
+         ok;
+    threeos_solo_drop_begin_frame();
+    ok = expect_eq("solo.arm_h1_also",
+                   threeos_solo_drop_tick(1, solo_id, &palm_toward, 0, &gaze, &hand_at, 2.01f),
+                   (uint32_t)THREEOS_SOLO_NONE) &&
+         ok;
+    threeos_solo_drop_get_state(&ss);
+    ok = expect_eq("solo.still_armed_both_palms", ss.armed, 1u) && ok;
+    // Hand without palm at press cannot drop.
+    threeos_solo_drop_tick(0, solo_id, &palm_away, 0, &gaze, &hand_at, 2.02f);
+    ok = expect_eq("solo.no_palm_no_drop",
+                   threeos_solo_drop_tick(0, solo_id, &palm_away, 1, &gaze, &hand_at, 2.02f),
+                   (uint32_t)THREEOS_SOLO_NONE) &&
+         ok;
+    ok = expect_eq(
+        "solo.no_palm_release_no_drop",
+        threeos_solo_drop_tick(0, solo_id, &palm_away, 0, &gaze, &hand_at, 2.05f),
+        (uint32_t)THREEOS_SOLO_NONE) &&
+        ok;
+    // Second hand: press with palm, release with palm broken (typical pinch) → still Drop.
+    threeos_solo_drop_begin_frame();
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 2.1f);
+    threeos_solo_drop_tick(1, solo_id, &palm_toward, 0, &gaze, &hand_at, 2.1f);
+    threeos_solo_drop_tick(1, solo_id, &palm_toward, 1, &gaze, &hand_at, 2.1f);
+    ok = expect_eq("solo.drop_h1_palm_broke",
+                   threeos_solo_drop_tick(1, solo_id, &palm_away, 0, &gaze, &hand_at, 2.15f),
+                   (uint32_t)THREEOS_SOLO_DROPPED) &&
+         ok;
+    ok = expect_eq("solo.either_hand_portal", threeos_voodoo_portal_count(), 1u) && ok;
+    {
+      ThreeOS_VoodooPortal ep{};
+      threeos_voodoo_get_portal(0, &ep);
+      ok = (threeos_voodoo_dismiss_portal(ep.id) == 0) && ok;
+    }
+    threeos_selection_clear();
+    threeos_solo_drop_cancel();
+
+    // Quick pinch release within tap window → drop.
+    threeos_solo_drop_begin_frame();
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 3.f);
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 1, &gaze, &hand_at, 3.f);
+    ok = expect_eq("solo.pinch_alone_no_drop", threeos_voodoo_portal_count(), 0u) && ok;
+    ok = expect_eq("solo.drop_event",
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 3.05f),
+                   (uint32_t)THREEOS_SOLO_DROPPED) &&
+         ok;
+    ok = expect_eq("solo.portal_created", threeos_voodoo_portal_count(), 1u) && ok;
+    uint64_t sel_after = 0;
+    threeos_selection_get(&sel_after);
+    ok = expect_eq("solo.drop_selects", sel_after == solo_id ? 1u : 0u, 1u) && ok;
+    ThreeOS_VoodooPortal sp{};
+    threeos_voodoo_get_portal(0, &sp);
+    ok = expect_eq("solo.ghost_owned",
+                   threeos_voodoo_portal_for_ghost(solo_id) == sp.id ? 1u : 0u, 1u) &&
+         ok;
+    ok = expect_eq("solo.other_not_ghosted", threeos_voodoo_portal_for_ghost(other_id), 0u) && ok;
+    // Already dropped: no longer a solo candidate.
+    n = threeos_solo_drop_candidates(&gaze, cand, 8);
+    ok = expect_eq("solo.no_redrop_candidate", n == 0u || cand[0] != solo_id ? 1u : 0u, 1u) && ok;
+
+    // Near-BB drag selects the ghost's FAR entity; the far field box never reaches ghosts.
+    ThreeOS_VoodooGhost sg{};
+    for (uint32_t gi = 0; gi < sp.ghost_count; ++gi) {
+      ThreeOS_VoodooGhost g{};
+      threeos_voodoo_get_portal_ghost(sp.id, gi, &g);
+      if (g.is_parent_box == 0 && g.entity_id == solo_id) {
+        sg = g;
+      }
+    }
+    const ThreeOS_Vec3 ns{sg.near_pose.position.x - 0.05f, sg.near_pose.position.y - 0.05f,
+                          sg.near_pose.position.z - 0.05f};
+    const ThreeOS_Vec3 ne{sg.near_pose.position.x + 0.05f, sg.near_pose.position.y + 0.05f,
+                          sg.near_pose.position.z + 0.05f};
+    threeos_selection_clear();
+    ok = expect_eq("ms.near_begin", threeos_multiselect_begin(&ns, &gaze, 0) == 0 ? 1u : 0u,
+                   1u) &&
+         ok;
+    threeos_multiselect_update(&ne, 0);
+    ThreeOS_MultiSelectBox nb{};
+    threeos_multiselect_get_box(&nb);
+    ok = expect_eq("ms.near_scope_portal", nb.portal_id == sp.id ? 1u : 0u, 1u) && ok;
+    uint64_t sel[4]{};
+    const uint32_t sc = threeos_selection_get_ids(sel, 4);
+    ok = expect_eq("ms.near_selects_far_id", sc == 1u && sel[0] == solo_id ? 1u : 0u, 1u) && ok;
+    threeos_multiselect_end();
+    threeos_selection_clear();
+
+    // Far-field box over the near ghost's position never selects it (and not the far item).
+    const ThreeOS_Vec3 fs{sg.near_pose.position.x - 0.8f, sg.near_pose.position.y - 0.3f,
+                          sg.near_pose.position.z - 0.8f};
+    ok = expect_eq("ms.far_begin", threeos_multiselect_begin(&fs, &gaze, 0) == 0 ? 1u : 0u, 1u) &&
+         ok;
+    threeos_multiselect_update(&ne, 0);
+    threeos_multiselect_get_box(&nb);
+    ok = expect_eq("ms.far_scope_zero", nb.portal_id, 0u) && ok;
+    ok = expect_eq("ms.far_ignores_ghost", threeos_selection_count(), 0u) && ok;
+    threeos_multiselect_cancel();
+    std::printf("OK   0.8.1 drag multi-select + solo voodoo drop\n");
   }
 
   threeos_shutdown();

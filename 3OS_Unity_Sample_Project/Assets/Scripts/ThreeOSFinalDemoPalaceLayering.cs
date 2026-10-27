@@ -98,6 +98,8 @@ public sealed class ThreeOSFinalDemoPalaceLayering : MonoBehaviour
                 System.StringComparison.Ordinal);
             var isVoodooChrome =
                 n.StartsWith("3OS_Voodoo", System.StringComparison.Ordinal) ||
+                n.StartsWith("3OS_SoloDrop", System.StringComparison.Ordinal) ||
+                n.StartsWith("3OS_MultiSelect", System.StringComparison.Ordinal) ||
                 n.StartsWith("3OS_InsertArrow", System.StringComparison.Ordinal) ||
                 n.StartsWith("3OS_VoodooDragArrow", System.StringComparison.Ordinal) ||
                 n.StartsWith("3OS_GhostDragArrow", System.StringComparison.Ordinal) ||

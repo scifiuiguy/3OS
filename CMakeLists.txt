@@ -23,6 +23,8 @@ add_library(3os_kernel SHARED
   src/voodoo_orbit_packer.cpp
   src/voodoo_ghost_drag.cpp
   src/voodoo_cut_paste.cpp
+  src/multi_select_drag.cpp
+  src/solo_voodoo_drop.cpp
   src/centroid_registry.cpp
 )
 

@@ -138,17 +138,28 @@ class Workspace {
   /// Temporarily show box open glyph during host anim (cosmetic).
   void set_box_visual_open(EntityId box_id, bool open);
 
-  /// Global single selection (`0` = none).
+  /// Primary selection (`0` = none): the last-selected id of the selection set.
   EntityId selection() const { return selected_id_; }
-  void clear_selection() { selected_id_ = 0; }
-  /// Returns false if `id` is nonzero and not a known workspace entry.
+  void clear_selection();
+  /// Replace the set with `id` alone. Returns false if `id` is nonzero and unknown.
   bool set_selection(EntityId id);
+
+  /// Selection is always keyed by the far entity id; ghosts only render it.
+  const std::vector<EntityId>& selection_ids() const { return selected_ids_; }
+  bool is_selected(EntityId id) const;
+  /// Replace the set (unknown / duplicate ids dropped); primary = last id.
+  void set_selection_ids(const std::vector<EntityId>& ids);
+
+  /// Rigid group telekinesis: translate every other selected id by `delta` (Batch C).
+  void translate_selected_followers(EntityId leader, const Vec3& delta);
 
  private:
   void promote_next_event();
+  void deselect(EntityId id);
 
   EntityId next_id_ = 2000;
   EntityId selected_id_ = 0;
+  std::vector<EntityId> selected_ids_;
   float field_spacing_m_ = kDefaultFieldSpacingM;
   std::vector<WorkspaceEntry> entries_;
   GlyphRegistry* registry_ = nullptr;

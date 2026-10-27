@@ -107,6 +107,8 @@ class HandInteractionEngine {
   const InteractionIntents& pending_intents(uint32_t hand) const {
     return hand < 2 ? hands_[hand].pending_intents : hands_[0].pending_intents;
   }
+  /// Strip snap/free voodoo intents for one hand (solo-drop mutual exclusion).
+  void clear_voodoo_intents(uint32_t hand);
 
   float pinch_thresh_m() const { return pinch_thresh_m_; }
   void set_pinch_thresh_m(float m) { pinch_thresh_m_ = m > 1e-4f ? m : kDefaultPinchThreshM; }

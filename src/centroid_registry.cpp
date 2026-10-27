@@ -190,6 +190,35 @@ bool CentroidRegistry::members_aabb(const Workspace& workspace, EntityId centroi
   return true;
 }
 
+EntityId CentroidRegistry::accessible_centroid_id(const Workspace& workspace,
+                                                  EntityId entity_id) const {
+  const WorkspaceEntry* e = workspace.find(entity_id);
+  if (e == nullptr) {
+    return 0;
+  }
+  if (e->kind == StorageKind::Box && e->expanded && find(e->id) != nullptr) {
+    return e->id;
+  }
+  if (e->parent_box != 0) {
+    const WorkspaceEntry* parent = workspace.find(e->parent_box);
+    if (parent != nullptr && parent->in_field && parent->expanded && find(parent->id) != nullptr) {
+      return parent->id;
+    }
+  }
+  if (e->mind_palace_id != 0) {
+    const CentroidState* c = find(e->mind_palace_id);
+    if (c != nullptr && c->kind == CentroidKind::MindPalace) {
+      return e->mind_palace_id;
+    }
+  }
+  return 0;
+}
+
+bool CentroidRegistry::has_accessible_centroid(const Workspace& workspace,
+                                               EntityId entity_id) const {
+  return accessible_centroid_id(workspace, entity_id) != 0;
+}
+
 void CentroidRegistry::rebuild(const Workspace& workspace) {
   centroids_.clear();
   // Preserve temporary near-portal centroids + world focus anchors.

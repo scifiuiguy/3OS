@@ -459,13 +459,6 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
   const Vec3 body{body_x, 0.f, body_z};
   const Vec3 fwd = VoodooVolumeEngine::flat_forward(head, head_valid);
   const Vec3 right = Vec3{fwd.z, 0.f, -fwd.x};
-  // Use the largest near-BB footprint in the active group (near can grow with far).
-  float foot = near_footprint_radius_m();
-  for (const auto& p : engine_.portals_) {
-    foot = std::max(foot, portal_near_footprint_radius(p.near_bb));
-  }
-  // Slight pad so post-resolve footprint tests don't flicker on float edges.
-  const float need_center = 2.f * foot + 0.015f;
 
   // Snapshot pre-resolve state for full rollback on failure (including in-flight bumps).
   struct Snapshot {
@@ -501,6 +494,15 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
     active = engine_.next_group_id_++;
     engine_.portals_[pinned_index].group_id = active;
   }
+
+  auto portals_overlap_at = [](const VoodooPortal& a, const Vec3& pos_a, const VoodooPortal& b,
+                               const Vec3& pos_b) {
+    VoodooBoundingBox ba = a.near_bb;
+    ba.pose.position = pos_a;
+    VoodooBoundingBox bb = b.near_bb;
+    bb.pose.position = pos_b;
+    return near_bbs_overlap_xz(ba, bb, VoodooVolumeEngine::kNearClearGapM);
+  };
 
   struct Slot {
     size_t idx = 0;
@@ -538,6 +540,14 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
     }
   };
 
+  auto slot_world_pos = [&](const Slot& s) -> Vec3 {
+    if (s.pinned) {
+      // Bumper stays at release pose (may be inside a sibling near BB, off the ellipse).
+      return effective_portal_pos(engine_.portals_[s.idx]);
+    }
+    return pos_on_orbit_ellipse(body, fwd, right, s.az, s.y);
+  };
+
   auto resolve_slots = [&](std::vector<Slot>& slots) {
     // Euclidean separation on the ellipse (angular chord math is wrong on ovals).
     constexpr float kStep = 0.025f;
@@ -550,23 +560,20 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
           if (a.pinned && b.pinned) {
             continue;
           }
-          const Vec3 pa = pos_on_orbit_ellipse(body, fwd, right, a.az, a.y);
-          const Vec3 pb = pos_on_orbit_ellipse(body, fwd, right, b.az, b.y);
-          const float dx = pb.x - pa.x;
-          const float dz = pb.z - pa.z;
-          const float dist = std::sqrt(dx * dx + dz * dz);
-          if (dist + 1e-4f >= need_center) {
+          const auto& pa_portal = engine_.portals_[a.idx];
+          const auto& pb_portal = engine_.portals_[b.idx];
+          Vec3 pa = slot_world_pos(a);
+          Vec3 pb = slot_world_pos(b);
+          if (!portals_overlap_at(pa_portal, pa, pb_portal, pb)) {
             continue;
           }
           const float daz = VoodooVolumeEngine::shortest_daz(a.az, b.az);
           const float sign = daz >= 0.f ? 1.f : -1.f;
-          // Walk apart along the short arc until clear or step budget.
-          for (int step = 0; step < 64; ++step) {
-            const Vec3 qa = pos_on_orbit_ellipse(body, fwd, right, a.az, a.y);
-            const Vec3 qb = pos_on_orbit_ellipse(body, fwd, right, b.az, b.y);
-            const float ddx = qb.x - qa.x;
-            const float ddz = qb.z - qa.z;
-            if (std::sqrt(ddx * ddx + ddz * ddz) + 1e-4f >= need_center) {
+          // Walk apart along the short arc until OBB-clear or step budget.
+          for (int step = 0; step < 96; ++step) {
+            pa = slot_world_pos(a);
+            pb = slot_world_pos(b);
+            if (!portals_overlap_at(pa_portal, pa, pb_portal, pb)) {
               break;
             }
             if (a.pinned) {
@@ -623,6 +630,56 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
       resolve_slots(slots);
     }
     if (!near_targets_clear_indices(active_idxs)) {
+      // Pinned bumper fixed: walk unpinned siblings on the orbit until globally clear.
+      bool nudged = false;
+      const Vec3 pin_pos = effective_portal_pos(engine_.portals_[pinned_index]);
+      for (size_t idx : active_idxs) {
+        if (idx == pinned_index) {
+          continue;
+        }
+        auto& other = engine_.portals_[idx];
+        if (!portals_overlap_at(engine_.portals_[pinned_index], pin_pos, other,
+                                effective_portal_pos(other))) {
+          continue;
+        }
+        const Vec3 oc = effective_portal_pos(other);
+        const float az0 = azimuth_on_orbit(body, fwd, right, oc);
+        Vec3 target = oc;
+        if (walk_orbit(
+                body, fwd, right, az0, oc.y,
+                [&](const Vec3& cand) {
+                  if (portals_overlap_at(engine_.portals_[pinned_index], pin_pos, other, cand)) {
+                    return false;
+                  }
+                  for (size_t k = 0; k < engine_.portals_.size(); ++k) {
+                    if (k == idx || !engine_.portals_[k].near_bb.open) {
+                      continue;
+                    }
+                    const Vec3 kp = (k == static_cast<size_t>(pinned_index))
+                                        ? pin_pos
+                                        : effective_portal_pos(engine_.portals_[k]);
+                    if (portals_overlap_at(other, cand, engine_.portals_[k], kp)) {
+                      return false;
+                    }
+                  }
+                  return true;
+                },
+                &target)) {
+          set_portal_orbit_target(other, target, head, head_valid);
+          other.bump_t = 1.f;
+          other.near_bb.pose.position = target;
+          engine_.refresh_ghost_near_poses(other);
+          nudged = true;
+        }
+      }
+      if (nudged && near_targets_clear()) {
+        for (auto& portal : engine_.portals_) {
+          if (portal.group_id == active) {
+            engine_.refresh_ghost_near_poses(portal);
+          }
+        }
+        return true;
+      }
       restore_all();
       return false;
     }
@@ -848,6 +905,75 @@ void VoodooOrbitPacker::bump_near_field_clutter(const VoodooPortal& portal,
   }
 }
 
+
+void VoodooOrbitPacker::yield_orbit_for_incoming_park(size_t bumper_index, const Pose& head,
+                                                      bool head_valid) {
+  if (bumper_index >= engine_.portals_.size()) {
+    return;
+  }
+  const auto& bumper = engine_.portals_[bumper_index];
+  if (!bumper.near_bb.open) {
+    return;
+  }
+  const Vec3 bpos = effective_portal_pos(bumper);
+  VoodooBoundingBox bprobe = bumper.near_bb;
+  bprobe.pose.position = bpos;
+
+  const float body_x = head_valid ? head.position.x : 0.f;
+  const float body_z = head_valid ? head.position.z : 0.f;
+  const Vec3 body{body_x, 0.f, body_z};
+  const Vec3 fwd = VoodooVolumeEngine::flat_forward(head, head_valid);
+  const Vec3 right{fwd.z, 0.f, -fwd.x};
+  const uint64_t gid = bumper.group_id;
+
+  auto clear_of_bumper = [&](const VoodooPortal& other, const Vec3& cand) {
+    VoodooBoundingBox tb = other.near_bb;
+    tb.pose.position = cand;
+    if (near_bbs_overlap_xz(bprobe, tb, VoodooVolumeEngine::kNearClearGapM)) {
+      return false;
+    }
+    for (size_t k = 0; k < engine_.portals_.size(); ++k) {
+      if (k == bumper_index || !engine_.portals_[k].near_bb.open) {
+        continue;
+      }
+      const Vec3 kp = effective_portal_pos(engine_.portals_[k]);
+      VoodooBoundingBox kb = engine_.portals_[k].near_bb;
+      kb.pose.position = kp;
+      if (near_bbs_overlap_xz(tb, kb, VoodooVolumeEngine::kNearClearGapM)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  for (size_t i = 0; i < engine_.portals_.size(); ++i) {
+    if (i == bumper_index || !engine_.portals_[i].near_bb.open) {
+      continue;
+    }
+    if (gid != 0 && engine_.portals_[i].group_id != gid) {
+      continue;
+    }
+    auto& other = engine_.portals_[i];
+    const Vec3 opos = effective_portal_pos(other);
+    VoodooBoundingBox ob = other.near_bb;
+    ob.pose.position = opos;
+    if (!near_bbs_overlap_xz(bprobe, ob, VoodooVolumeEngine::kNearClearGapM)) {
+      continue;
+    }
+    const float az0 = azimuth_on_orbit(body, fwd, right, opos);
+    Vec3 target = opos;
+    if (!walk_orbit(body, fwd, right, az0, opos.y,
+                    [&](const Vec3& cand) { return clear_of_bumper(other, cand); }, &target)) {
+      continue;
+    }
+    set_portal_orbit_target(other, target, head, head_valid);
+    other.bump_t = 1.f;
+    other.near_bb.pose.position = target;
+    other.near_bb.pose.orientation =
+        VoodooVolumeEngine::yaw_billboard_toward(target, head, head_valid);
+    engine_.refresh_ghost_near_poses(other);
+  }
+}
 
 void VoodooOrbitPacker::bump_siblings_min_clear(size_t pinned_index) {
   if (pinned_index >= engine_.portals_.size() || engine_.portals_.size() < 2) {

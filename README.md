@@ -26,10 +26,10 @@ Welcome to **3OS**! It's an enterprise-grade volumetric XR operating system inte
 <blockquote>
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<b>Hands-First Interaction Model Obsessed with Speed and Best-in-Class Ergonomics</b>
+<b>Hands-First Interaction Model Built for Best-in-Class Speed and Ergonomics</b>
 </summary>
 
-Using a unique volumetric isotropic hand tracking technique, 3OS eliminates "gorilla arm" potential by relying on small, localized gestures and a proprioceptive merging of the near field and far field via a careful amalgam of ideas derived from a treasure trove of classic HCI studies going all the way back to 1994. This interaction technique formula was inspired by a dozen overlooked SIGCHI gems. (see Prior Art)
+Using a unique volumetric isotropic hand tracking technique, 3OS aims to be the fastest 3D UI ever built, <i>AND</i> it eliminates "gorilla arm" potential by relying on small, localized gestures and a proprioceptive merging of the near field and far field via a careful amalgam of ideas derived from a treasure trove of classic HCI studies going all the way back to 1994. (see Prior Art).
 
 </details>
 </blockquote>
@@ -40,9 +40,9 @@ Using a unique volumetric isotropic hand tracking technique, 3OS eliminates "gor
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Author Background (former Technicolor XR Tech Lead & Magic Leap Prototyping Engineer)</span></span>
 </summary>
 
-I was deeply frustrated with state-of-the-art XR UI/UX design failing to compete with desktop speed while working as a Lead Product Prototyping Engineer at Magic Leap in 2019 when I decided there must be <i>SOMEONE</i> in Academia who solved the myriad of problems slowing down our XR UI/UX. That's when I discovered SIGCHI. I had no idea of the rich history of UI research in Academia before that, and I became obsessed with mining for the gold that would unlock speed in 3D UI. This led me to the treasure trove of Prior Art (mostly '90s research studies) that birthed 3OS.
+I was deeply frustrated by our failure to compete with desktop speed in state-of-the-art XR UI/UX while working as a Lead Product Prototyping Engineer at Magic Leap in 2019. I decided there must be <i>SOMEONE</i> in Academia who had solved the myriad of problems slowing us down. That's when I discovered SIGCHI. I had no idea of the rich history of UI research in Academia before that. I began mining for the gold that would unlock higher throughput. I uncovered a forgotten treasure trove of 1990s Prior Art, the inspiration for 3OS.
 
-I also gravitated toward perf-op studies involving Fitts' Law variations (few of which test isotropic techniques apples-to-apples against raycast techniques). Ergonomic studies battling "gorilla arm" also fascinated me because I was deeply familiar with the problematic muscle groups in the shoulders (especially the coracobrachialis) since I targeted those same muscle groups with relaxation techniques in college while teaching one-on-one drum lessons to hundreds of students.
+In later studies, I gravitated primarily toward perf-op papers involving Fitts' Law variations. I noticed some odd patterns that 3OS now exploits. Ergonomic studies battling "gorilla arm" also fascinated me because I was deeply familiar with the problematic muscle groups in the shoulders (especially the coracobrachialis) since I targeted those same muscle groups with relaxation techniques in college while teaching one-on-one drum lessons to hundreds of students.
 
 </details>
 </blockquote>
@@ -57,7 +57,9 @@ Current OS design habits kill our ability to prove XR is faster than desktop PCs
 
 Raycast models and floating 2D windows waste most of XR’s adjacency/multitasking space and encourage slow, single-handed interaction. 3OS offers a <b>volumetric isotropic OS model</b> instead. Isotropic techniques are <i>THE</i> solution to the many speed bottlenecks preventing 3D UI adoption in enterprise by integrating snap-twitch voxel-based actions, not surface-based actions.
 
-<b><i>isotropic interaction:</i></b> The cursor or driven object moves either 1-to-1 or 1-to-N driven by 3D hand motion on all axes uniformly, as opposed to raycast (perspective projection) where X/Y hand motion yields scaling cursor motion as Z scales.
+<b><i>isotropic interaction:</i></b> The cursor or driven object moves either 1-to-1 or 1-to-N driven by 3D hand motion on all axes uniformly, as opposed to raycast (perspective projection) where X/Y hand motion yields scaling cursor motion as Z scales. 
+
+Most HCI research counterintuitively measures isotropic models in flawed ways if at all, which has led to false assumptions that raycasting is easier/better/faster for nearly every UI in XR 1.0. Fixing this will be a defining characteristic of XR 2.0 (the new 2030s XR hype cycle).
 
 </details>
 </blockquote>
@@ -76,10 +78,10 @@ Built explicitly for the modern near-future work environment, 3OS integrates fid
 <blockquote>
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">High-Performance Native Architecture</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">High-Performance Edge-Ready Architecture</span></span>
 </summary>
 
-  The heart of the 3OS Pre-Alpha Demo is a native C++ kernel with C ABI marshalled into Unity for rapid prototyping today, but it is prepped to eventually run on vWS VMs to OpenXR to CloudXR in an enterprise context. On an enterprise server (e.g. AMD EPYC 9004 + Pro 6000 Blackwell), each team member will get a streamed headset plus a rolling standing desk that clicks into a dual-monitor wall console or detaches to reposition anywhere in the room for collab work, sporting optional virtual monitors and anchorable virtual 2D and 3D widgets. All legacy 2D software will be supported. 3OS will target SDK partnerships with 3D editing software titans for early adoption. Apps like Solidworks, Maya, Unreal, etc. will render into workspace containers (volume managers) rather than talking to HMDs directly. Colocated teams will run multiple MR apps x multiple workspaces via thin HMD streaming clients, flying solo and/or multiplayer as needed while the VDI edge stack offloads processing.
+  The heart of the 3OS Pre-Alpha Demo is a native C++ kernel with C ABI marshalled into Unity for rapid prototyping today, but it is prepped to eventually run on vWS VMs to OpenXR to CloudXR in an enterprise context. It seeks to adhere to the emerging spatial container features of the OpenXR spec for edge-driven app multitasking. From an on-prem server stream (e.g. AMD EPYC 9004 + Pro 6000 Blackwell), each team member will power a workstation with a streamed headset plus a battery-powered rolling standing desk that clicks into a dual-monitor wall console or detaches to reposition anywhere in the room for collab work, sporting optional virtual monitors and anchorable virtual 2D and 3D widgets. All legacy 2D software will be supported. 3OS will target SDK partnerships with 3D editing software titans for early adoption. Apps like Solidworks, Maya, Unreal, etc. will render into workspace containers (volume managers) rather than talking to HMDs directly. Colocated teams will run multiple MR apps x multiple workspaces via thin HMD streaming clients, flying solo and/or multiplayer as needed while the VDI edge stack offloads processing.
 
 </details>
 </blockquote>
@@ -87,7 +89,7 @@ Built explicitly for the modern near-future work environment, 3OS integrates fid
 ### 🗺️ Anatomy of the Demo
 * **Demo Video First:** I encourage you to watch the 3-minute tutorial before launching the Pre-Alpha Demo, which contains a near-future mockup of an enterprise dev room running 3OS Server that supports 2-12 team members.
 * **Most Demo Features Are Mockups:** Agentic avatar integration and app multitasking are narrative scaffolding so far, because 3OS is less than two months old.
-* **Operational Features:** UI and controls described in the Basic Controls section below are mostly operational and in sync with the Quest Documents directory for the demo. These features are still very much in pre-alpha condition with lots of refinement coming. They will be much more snappy when processing is offloaded to an EPYC 9004 to free up the Snapdragon XR2 to focus solely on rendering and input.
+* **Operational Features:** UI and controls described in the Control Basics section below are mostly operational and in sync with the Quest Documents directory for the demo. These features are still very much in pre-alpha condition with lots of refinement coming. They will be much more snappy when processing is offloaded to an EPYC 9004 to free up the Snapdragon XR2 to focus solely on rendering and input.
 
 I hope you enjoy the demo!
 
@@ -436,10 +438,10 @@ The early ABC vocabulary of every drum student is a set of patterns called Rudim
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Consumers Drive Automatic... Professional Drive Stick</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Consumers Drive Automatic... Professionals Drive Stick</span></span>
 </summary>
 
-Nearly every music student starts with no bimanual coordination whatsoever, a lot like most HCI research study participants, plus all of them exhibit Beginner-Stiff-Arm on Day 1. Yet suddenly, after a few good words of advice, relaxation and bimanual talent come out of the woodwork. Consumers may be less willing to jump into a stick-shift car that requires ANY practice, but CAD engineers, computer programmers, game devs, and VFX artists are the racecar drivers in this analogy. They'll want paddle-shifters for their Ferraris if their colleagues next door are using them to produce faster work. Isotropic models are the racecar: they provide rapid access to manual controls. Raycast is the ecoomy car with automatic transmission... fine for a layperson's commute, not for competition.
+Nearly every music student starts with no bimanual coordination whatsoever, a lot like most HCI research study participants, plus all of them exhibit Beginner-Stiff-Arm on Day 1. Yet suddenly, after a few good words of advice, relaxation and bimanual talent come out of the woodwork. Consumers may be less willing to jump into a stick-shift car that requires ANY practice, but CAD engineers, computer programmers, game devs, and VFX artists are the racecar drivers in this analogy. They'll want paddle-shifters for their Ferraris if their colleagues next door are using them to produce faster work. Isotropic models are the racecar: they provide rapid access to manual controls. Raycast is the economy car with automatic transmission... fine for a layperson's commute, not for competition.
 
 </details>
 
@@ -509,9 +511,7 @@ XR has millions of interaction zones in each frustum which would enable adjacenc
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">2) WIMP is Insufficient:</span></span>
 </summary>
 
-The crutch of WIMP denies the use of the depth vector in concert with common 2D table layouts (i.e. WIMP makes 3D matrix and cluster layouts impossible), which occludes the vast potential utility of the XR field almost entirely, which in turn masks the throughput jank of the default raycasting interaction model. Raycasting successfully hides how terribly slow it is by forcing us to drive our Ferrari at 5mph as though that's how fast all racecars drive. A model that can enable hands or cursors to hover in any subdivision of the field with equivalent effort must replace the legacy model. 
-
-Raycast has won the XR OS implementation battle so far by putting up HCI speed test numbers that double volumetric isotropic competitors only because the tests in research studies are never done apples-to-apples according to real-world applications. In the real world, users only use raycast with one hand, not two, and apples-to-apples interfaces built to take full advantage of adjacency have rarely been tested in HCI studies at all. The author of 3OS can build apples-to-apples tests that prove raycast actually has slower throughput in the real world than volumetric isotropic techniques under fair criteria, and that's before accounting for the value of volumetric isotropic models having access to every depth layer of the far field simultaneously.
+The crutch of WIMP denies us the utility of the depth vector (i.e. WIMP makes 3D matrix and cluster layouts impossible), which occludes the vast potential of any XR field almost entirely. A model that can enable hands or cursors to hover in any subdivision of the field with equivalent effort (A.K.A. an isotropic model) must replace the legacy model.
 
 </details>
 
@@ -520,13 +520,15 @@ Raycast has won the XR OS implementation battle so far by putting up HCI speed t
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">3) Perspective Projection vs. Isotropic Proprioception:</span></span>
 </summary>
 
-We see in perspective, but perspective can warp our mind's eye of Euclidean space. Our short arms define the near field where perspective causes almost unnoticeable size warping, thus our mind's eye for hand coordination is formed isotropically. We think of 3D space the way it actually is... true width, depth, and height have an equal relationship, not a scalar one. We know the object moving away is not actually shrinking, but if we need to use a magical interface to reach out and touch that object, we should not expect our hands to easily convert to angular space where farther objects require scaled hand motions. To access the far field with equivalent efficacy to the near field, we need to use a volumetric isotropic interaction model, one that treats hand motion in the near field identically to the far field and unlocks our proprioceptive instincts.
+We see in perspective, but perspective can warp our mind's eye of Euclidean space. Our short arms define the near field where perspective causes no noticeable size warping compared to the far field, thus our mind's eye for hand coordination is formed isotropically. We think of 3D space the way it actually is... true width, depth, and height have an equal relationship, not a scalar one. We know the object moving away is not actually shrinking, but our eyes tell us it is. With raycasting, our hands wrongly try to tell us the same. That's why raycast is slow. We should not expect our hands to easily convert to this warped version of space where farther objects require hand motion to progressively shrink with depth, and diagonal moves can never happen in straight lines. 
+
+Imagine the equivalent in 2D. It's mind-boggling to consider if our predecessors had built 2D GUIs this way. Picture it: the only way to move an icon on your 2D desktop is to anchor it to the corner of the screen and orbit it around that corner, allowing it only to move in curves. As ridiculous as that sounds, that's raycasting. To access the far field with the same efficacy as the near field, a volumetric isotropic interaction model is the only way.
 
 </details>
 
 ### Long story short - 
 
-An XR OS interface that works at rapid speed for enterprise MUST use <b>a volumetric isotropic model</b>, NOT a raycast model. It must be volume-based, not surface-based. Raycast has no chance of achieving speeds competitive to 2D desktops. Volumetric isotropic models can beat desktop speeds if they're built to take full advantage of bimanual techniques that have never been tested in Academia. Solve this problem, and enterprise adoption of XR can begin as soon as we have sunglasses-form-factor HMDs capable of MR and ergo-safe hand tracking (e.g. the hand tracking FOV of Quest is sufficient... anything less is DOA).
+An XR OS interface that works at rapid speed for enterprise MUST use <b>an isotropic model with voxel-based content</b>, NOT a raycast model with WIMP-based content. It must be volume-based, not surface-based. Raycast has no chance of achieving speeds competitive to 2D desktops. Volumetric isotropic models can beat desktop speeds if they're built to take full advantage of bimanual power-user techniques. Solve this problem, and enterprise adoption of XR can begin as soon as we have sunglasses-form-factor HMDs capable of MR and ergo-safe hand tracking (e.g. the hand tracking FOV of Quest is sufficient).
 
 </details>
 </blockquote>
@@ -1722,7 +1724,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <blockquote>
 <p><b>Citation:</b> Al-Sadoun, A., et al. (2025). "Reality Proxy: Fluid Interactions with Real-World Objects in MR." <i>Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)</i>.</p>
-<p><b>Significance to 3OS:</b> Evaluated and validated that using spatial computer vision and semantic machine intelligence are crucial for streamlining the associations between world mesh geo and virtual content that fully utilizes the context of that geo.</p>
+<p><b>Significance to 3OS:</b> Evaluated and validated that spatial computer vision and semantic machine intelligence are crucial for streamlining the associations between world mesh geo and virtual content that fully utilizes the context of that geo. This paper's findings have not yet been heavily utilized in the 3OS Pre-Alpha Prototype, but in the full Phase 2.0 Enterprise Stack, this paper's data will be valuable in anchoring virtual objects to the MR workspace as a deep learning model semantically identifies desks, people, and devices relevant to the network. Such systems are already in play on HMDs for 6DOF head and hand pose, but 3OS will aim to implement edge-powered versions of those algorithms if they are not accessible via API.</p>
 </blockquote>
 
 </details>
@@ -1736,7 +1738,7 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 
 <blockquote>
 <p><b>Citation:</b> Amini, M., Stuerzlinger, W., Teather, R. J., & Batmaz, A. U. (2025). "A Systematic Review of Fitts' Law in 3D Extended Reality." <i>Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems (CHI '25)</i>.</p>
-<p><b>Significance to 3OS:</b> Identified that only 36% of XR HCI studies of the past several decades (44 total) that focused on throughput performance targeted virtual hand (point cursor) interaction models, whereas more than 50% targeted raycast techniques. The other 14% were eye tracking studies. Many of the 36% either intentionally or unintentionally eliminated evaluation of the depth vector by arranging UI elements in a flat plane configuration. Such tests were classified as technically volumetric and isotropic since the plane was not raycast-able, yet such studies show very little salient data pertaining to the competitive efficacy of volumetric isotropic techniques. To establish truly competitive volumetric isometry in hand tracking, each of the three axes must be treated uniformly. It's clear that volumetric isotropic methods have been under-explored not just by industry, but by Academia as well for the entire history of HCI. It's as though we all had an innate instinct to chase Steve Jobs and Jony Ive down the wrong rabbit hole looking for the next next big thing.</p>
+<p><b>Significance to 3OS:</b> Identified that only 36% of XR HCI studies of the past several decades on throughput performance targeted virtual hand (isotropic control) interaction models (44 total), whereas more than 50% targeted raycast techniques (over 70 total). The other 14% were eye tracking studies. Most of the 36% analyzed raycast primarily and isotropic virtual hands secondarily. Those that did focus as much attention on isotropic techniques often either intentionally or unintentionally eliminated evaluation of the depth vector by arranging UI elements in a flat plane configuration. Such tests were classified as technically volumetric and isotropic since the implied plane was not raycast-able, yet such studies show very little salient data pertaining to the competitive efficacy of isotropic techniques in practice because the bulk of their value lies in compositing the depth vector, which was missing. To establish truly competitive isotropic performance in hand tracking, each of the three axes must be treated uniformly. It's clear that isotropic methods have been deeply under-explored not just by industry, but by Academia for the entire history of HCI. It's as though we all had an innate instinct to chase Steve Jobs and Jony Ive down the wrong rabbit hole on a quest for the next next big thing. That plane barely landed safely with consumers, but it won't land with enterprise.</p>
 </blockquote>
 
 </details>
@@ -1748,8 +1750,8 @@ By grounding **3OS** in this seminal research, we bridge the historic gap betwee
 </summary>
 
 <blockquote>
-<p><b>Citation:</b> Wu, Y., et al. (2026). <i>Reimagining wearable AR gesture design: physical therapy reasoning in everyday contexts. Proceedings of the ACM SIGCHI Conference on Human Factors in Computing Systems (CHI '26)</i>, Article 719.</p>
-<p><b>Significance to 3OS:</b> Validates the architectural rejection of "naturalness" in first-exposure spatial interfaces in favor of long-term sustainable mastery. Like the Osu paper, it shows that XR HCI studies involving index-of-difficulty and throughput should not be conducted on a single day per each participant. By tracking licensed physical therapists mapping multi-round gesture optimization, this study details how unguided day-one users naturally default to highly fragile, distal-dominant muscle patterns that demand high static load, i.e. first-time users always flex way too much unless you train them to relax or they take several weeks to figure it out on their own. This paper establishes the "Golden Ergonomic Canvas": an elbow-anchored workspace bounded by a ±30° horizontal rotation cone, which keeps all spatial computing operations inside a low-fatigue cubic dashboard zone in front of the upper torso to eliminate shoulder abduction and prevent "gorilla arm" syndrome. This paper fascinated the 3OS author because he has drawn "ergo-safe" volume bounding boxes in his own documentation in the past that look nearly identical to the "golden ergonomic canvas" diagram. In fact, the Golden Ergonomic Canvas is almost verbatim the same dimensions as 3OS's default voodoo volume bounding box, which was established before the 3OS author discovered this paper. It's heartening to see that the anecdotal instincts of a former drum teacher align with the conclusions of actual physical therapists.</p>
+<p><b>Citation:</b> Wei Wu, Binyan Xu, Soonhyeon Kweon, Yujie Wang, Leanne Chukoskie, & Casper Harteveld (2026). <i>Reimagining wearable AR gesture design: physical therapy reasoning in everyday contexts. Proceedings of the ACM SIGCHI Conference on Human Factors in Computing Systems (CHI '26)</i>, Article 719.</p>
+<p><b>Significance to 3OS:</b> Validates the architectural rejection of "naturalness" in first-exposure spatial interfaces in favor of long-term sustainable mastery. Like the Osu paper, it shows that XR HCI studies involving index-of-difficulty and throughput should not be conducted on a single day per participant. By tracking licensed physical therapists mapping multi-round gesture optimization, this study details how unguided day-one users naturally default to highly fragile, distal-dominant muscle patterns that demand high static load, i.e. first-time users always flex way too much unless you train them to relax or they take several weeks to figure it out on their own. This paper establishes the "Golden Ergonomic Canvas": an elbow-anchored workspace bounded by a ±30° horizontal rotation cone, which keeps all spatial computing operations inside a low-fatigue cubic dashboard zone in front of the upper torso to eliminate shoulder abduction and prevent "gorilla arm" syndrome. This paper fascinated the 3OS author because he has drawn "ergo-safe" volume bounding boxes in his own documentation in the past that look nearly identical to the "golden ergonomic canvas" diagram. In fact, the Golden Ergonomic Canvas is almost verbatim the same dimensions as 3OS's default voodoo volume bounding box, which was established before the 3OS author discovered this paper. It's heartening to see that the anecdotal instincts of a former drum teacher align with the conclusions of actual physical therapists.</p>
 </blockquote>
 
 </details>
@@ -1806,22 +1808,22 @@ etc.
 
 ### "Use The Force" Gesture
 
-**Hand Tracking:** Point the palm in the vicinity of the same target as gaze and splay all fingers.
+* **Hand Tracking:** Point the palm in the vicinity of the same target as gaze and splay all fingers.
 
-**6DOD Controller:** Point the palm in the vicinity of the same target as gaze while still holding the controller.
+* **6DOF Controller:** Point the palm in the vicinity of the same target as gaze while still holding the controller.
 
 
 ### "Open Book" Gesture
 
-**Hand Tracking:** Point both palms toward your own face, fingers bladed (opposite of splayed) but thumbs pointed outwarded away from each other to the left and right.
+* **Hand Tracking:** Point both palms toward your own face, fingers bladed (opposite of splayed) but thumbs pointed outward away from each other to the left and right.
 
-**6DOF Controller:** Point both palms toward your own face while still holding both controllers and make sure thumbs are not touching X or A.
+* **6DOF Controller:** Point both palms toward your own face while still holding both controllers and make sure thumbs are not touching X or A.
 
 ### "Open Book" Trigger
 
-**Hand Tracking:** From Open Book position, close thumbs toward the bladed hands until they touch, then open again.
+* **Hand Tracking:** From Open Book position, close thumbs toward the bladed hands until they touch, then open again.
 
-**6DOF Controller:** From Open Book position, press X and A simultaneously.
+* **6DOF Controller:** From Open Book position, press X and A simultaneously.
 
 The 3OS interface layer reserves all primary event triggers and secondary-palm-down for selection, voodoo control, and other OS actions everywhere in the field outside the bounding box of a 3rd party app and a voodoo volume accessing a 3rd party app. 3rd party devs are encouraged to implement these features similarly within their app bounds via the 3OS SDK.
 
@@ -1855,6 +1857,17 @@ Buttons in 3OS are 3D and volumetric by default, meaning point cursors hover INT
 Drag-selection is also volumetric. The objects encapsulated by the cubic volume drawn from corner-to-corner with a <b>primary-pinch-drag</b> action will all be flagged as selected simultaneously.
 </blockquote>
 
+</details>
+<br clear="all">
+
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<table align="right" border="0"><tr><td><i>Opposite Secondary-Pinch + Primary-Pinch/Drag</i></td></tr></table><b>Non-contiguous Multi-Selection</b>
+</summary>
+
+<blockquote>
+Highlight multiple single and/or multi-selection blocks at once by holding <b>secondary pinch</b> in one hand and selecting multiple sequential objects or volumes in the other hand with <b>primary-pinch</b> or <b>primary-drag</b>.
+</blockquote>
 
 </details>
 <br clear="all">
@@ -1906,7 +1919,7 @@ If the object is out of reach or the cursor is outside the object but still sele
 </summary>
 
 <blockquote>
-<b>Palm-down + secondary-pinch-hold</b> begins voodoo volume selection without any focus anchor targets. This allows a user to target an empty region of the far field that may be nearby focus anchors which were pulling at the voodoo with unwanted snap gravity. Other than the lack of snap targets, th Free-Range Voodoo Drop is identical to the Main Voodoo Drop.
+<b>Palm-down + secondary-pinch-hold</b> begins voodoo volume selection without any focus anchor targets. This allows a user to target an empty region of the far field that may be nearby focus anchors which were pulling at the voodoo with unwanted snap gravity. Other than the lack of snap targets, the Free-Range Voodoo Drop is identical to the Main Voodoo Drop.
 </blockquote>
 
 
@@ -1924,6 +1937,8 @@ This is not the recommended way to drop voodoo volumes in most situations, since
 If the object does not have a focus anchor, then the main voodoo drop will gravitate toward other nearby anchors, or if no anchors are nearby, it will fall back to fully manual control like the Free-Range Voodoo Drop, which can be slow, tedious, and error-prone when targeting objects further than ~15-20' away.
 
 If the object is solo, and there are no other objects occluding it, the user can use Gaze + "Use The Force" to select it. "Use The Force" is open palm toward the object with splayed fingers. This gesture will snap a voodoo volume onto the object immediately if it senses both gaze and "Use The Force" are targeting it simultaneously. From there, Primary Pinch will drop the voodoo officially. The user can simply cease the gesture without pinch to cancel the voodoo.
+
+When the gazed object still belongs to an accessible cluster (MindPalace / expanded Box) and has not been dragged far from that centroid, Solo Drop locks onto the centroid and sizes the far BB to all of its contents — same fit path as snap voodoo — so a dense folder field does not open a one-object volume. Focus anchors (e.g. the demo NPC head) open their custom near-side widget instead of an empty bounding box.
 </blockquote>
 
 

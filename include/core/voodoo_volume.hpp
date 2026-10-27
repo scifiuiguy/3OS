@@ -98,6 +98,8 @@ struct VoodooPortal {
   VoodooBoundingBox far_bb{};
   VoodooBoundingBox near_bb{};
   EntityId persistent_centroid_id = 0;
+  /// One near BB per drop target (mind palace / box / solo object id); 0 = no singleton key.
+  EntityId singleton_target_id = 0;
   EntityId temporary_centroid_id = 0;
   /// Collision cohort: non-overlapping parks start alone; bumps merge groups.
   uint64_t group_id = 0;
@@ -185,10 +187,13 @@ class VoodooVolumeEngine {
   static constexpr float kStickVizForwardOffsetM = StickViz::kForwardOffsetM;
   static constexpr float kStickVizUpOffsetM = StickViz::kUpOffsetM;
   static constexpr float kSnapNodeRadiusM = 0.035f;
-  static constexpr float kSnapPullMul = 2.2f;
+  /// Soft-pull radius = node × mul. Raised ~20% (2.2 → 2.64) for dual-hand Demo+Demo2 reliability.
+  static constexpr float kSnapPullMul = 2.64f;
   static constexpr float kExtentsLerpPerSec = 4.f;
   static constexpr uint32_t kMaxNearPortals = 12u;
   static constexpr float kMinHoldToParkS = 0.25f;
+  /// Ignore sub-frame primary/palm dropouts so dual-hand snap does not park/cancel early.
+  static constexpr float kReleaseDebounceS = 0.08f;
   static constexpr float kBumpDurationS = 0.22f;
   static constexpr float kNearClearGapM = 0.04f;
   static constexpr float kGlyphHalfM = 0.05f;  // encapsulation pad (~GlyphSizeM/2)
@@ -214,6 +219,8 @@ class VoodooVolumeEngine {
   uint64_t dismiss_latest_for_hand(uint32_t hand);
   /// Dismiss every open portal. Returns how many were removed.
   uint32_t dismiss_all_portals();
+  /// Remove parked portals for this drop target (snap / solo / free-range singleton rule).
+  uint32_t dismiss_portals_for_target(EntityId target_id, CentroidRegistry& centroids);
 
   /// Task 6.6: voodoo-level cut (content ghosts only; parent Box excluded).
   /// Multiple portals may be armed (dual-hand cut); disk I/O is paste-only.
@@ -261,6 +268,7 @@ class VoodooVolumeEngine {
   GhostDragKind ghost_drag_kind(uint32_t hand) const;
 
   /// Selected ghost → open-air / cross-portal; selected near-real → insert into near BB.
+  /// If `entity_id` is in a multi-selection, summons the whole same-portal set (clustered).
   /// Destination real pose fast-lerps; does not grow far BB via temp on open-air summon.
   bool summon_selected(EntityId entity_id, const Vec3& pinch_world, Workspace& workspace);
 
@@ -321,16 +329,41 @@ class VoodooVolumeEngine {
   };
   PendingAgentOpen consume_pending_agent_open();
 
+  /// Dual-hand snap gravity: at most one hand per centroid; L/R arbitration when both pull the
+  /// same node. Call once per frame before tick_hand (both hand poses required).
+  void refresh_dual_snap_claims(const Pose hand_pose[2], const bool hand_ok[2], const Pose& head,
+                                bool head_valid, const CentroidRegistry& centroids);
+
   /// Drive one hand. Pass live centroids + workspace for snap / park ghosts.
   void tick_hand(uint32_t hand, const InteractionIntents& intents, const Pose& hand_pose,
                  bool hand_valid, const Pose& head, bool head_valid, float dt_seconds,
                  CentroidRegistry& centroids, Workspace& workspace);
+
+  /// Solo Voodoo Drop: park a free-range or snap portal for `entity_id`, or open the agent
+  /// widget when the target is a FocusAnchor (NPC). Cluster lock: if the gazed object still
+  /// sits near its accessible centroid, Snap-mode parks around that centroid's members AABB
+  /// (same fit path as main snap voodoo). Refused if the cap is hit, the hand is inside a
+  /// near BB, or the id is unknown.
+  bool solo_drop_open(uint32_t hand, EntityId entity_id, const Pose& hand_pose, bool hand_valid,
+                      const Pose& head, bool head_valid, CentroidRegistry& centroids,
+                      Workspace& workspace);
+
+  /// Resolve gaze/drop id → drop target + far BB center/extents (full W×H×D).
+  /// Cluster-locks to an accessible centroid within kSoloClusterLockM of the object.
+  bool solo_resolve(EntityId id, const Workspace& workspace, const CentroidRegistry& centroids,
+                    EntityId* out_drop_id, Vec3* out_far_pos, Vec3* out_far_extents) const;
+
+  /// Max distance (m) from object to its accessible centroid for Solo cluster lock.
+  static constexpr float kSoloClusterLockM = 2.0f;
 
   /// Advance bump-lerps for all portals (call once per tick after hands).
   void tick_portals(float dt_seconds, const Pose& head, bool head_valid);
 
   /// Abort an in-flight far/near create without parking (e.g. object drag took the hand).
   void cancel_open_session(uint32_t hand);
+
+  /// True while this hand's yellow volume has been held long enough to park on release.
+  bool dragging_mature(uint32_t hand) const;
 
   /// After a workspace insert/put-away: drop ghosts/lerps for `entity_id` and dismiss
   /// any portal whose snap root was that entity. Returns temporary centroid ids to clear.
@@ -348,10 +381,30 @@ class VoodooVolumeEngine {
     bool deadzone_armed_ = false;
     bool deadzone_left_once_ = false;
     float drag_hold_s_ = 0.f;
+    /// Seconds of continuous !hold_ok while Dragging (debounce before park/cancel).
+    float release_arm_s_ = 0.f;
+    /// After park, ignore the *same* mode want_any until the pinch fully releases
+    /// (prevents hold-timer reset). A different mode (snap↔free) may reopen immediately.
+    bool park_pinch_latched_ = false;
+    VoodooMode park_mode_latched_ = VoodooMode::Snap;
     /// Portal created by the last park on this hand (0 = none). Session near/far
     /// snapshots sync from this portal so they do not go stale after bump-lerp.
     uint64_t parked_portal_id_ = 0;
+    /// This frame's snap gravity target after dual-hand arbitration (Snap mode only).
+    EntityId resolved_snap_centroid_id_ = 0;
   };
+
+  struct SnapPick {
+    EntityId centroid_id = 0;
+    float best_d = 1e9f;
+    float hand_offset_x = 0.f;
+  };
+  SnapPick snap_pick_best(uint32_t hand, const Vec3& stick, EntityId exclude_centroid,
+                          const CentroidRegistry& centroids);
+  static float snap_lateral_preference_score(uint32_t hand, float hand_offset_x);
+  /// False when sibling snap-drag already owns this hand's only snap target.
+  bool snap_drag_co_target_allowed(uint32_t hand, const Pose& hand_pose, const Pose& head,
+                                   bool head_valid, const CentroidRegistry& centroids) const;
 
   void open_drag(uint32_t hand, VoodooMode mode, const Pose& hand_pose, const Pose& head,
                  bool head_valid);
@@ -400,9 +453,11 @@ class VoodooVolumeEngine {
   };
   /// Shared cut-paste / summon placement: cross-portal cluster or open-air release.
   /// `home` may be null for summon of a near-field real with no ghost.
-  /// `cluster_open_air`: cut paste orbits/bumps a multi-glyph footprint; summon uses pinch as-is.
+  /// `cluster_open_air`: cut paste preserves relative offsets + orbit/bump.
+  /// `cube_matrix`: multi-summon lays out like box contents (2³ / 3³ / …) then bump-lerps.
   bool place_items_at_pinch(VoodooPortal* home, const std::vector<PlaceItem>& items,
-                            const Vec3& pinch_world, Workspace& workspace, bool cluster_open_air);
+                            const Vec3& pinch_world, Workspace& workspace, bool cluster_open_air,
+                            bool cube_matrix = false);
   void update_ghost_drag_arrow(uint32_t hand, const Pose& hand_pose, const Pose& head,
                                bool head_valid, const Vec3& stick);
   bool ensure_ghost_in_portal(VoodooPortal& portal, EntityId entity_id, const Workspace& workspace);
