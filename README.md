@@ -29,7 +29,7 @@ Welcome to **3OS**! It's an enterprise-grade volumetric XR operating system inte
 <b>Hands-First Interaction Model Built for Best-in-Class Speed and Ergonomics</b>
 </summary>
 
-Using a unique volumetric isotropic hand tracking technique, 3OS aims to be the fastest 3D UI ever built, <i>AND</i> it eliminates "gorilla arm" potential by relying on small, localized gestures and a proprioceptive merging of the near field and far field via a careful amalgam of ideas derived from a treasure trove of classic HCI studies going all the way back to 1994. (see Prior Art).
+Using a unique volumetric isotropic hand tracking technique, 3OS aims to be <b><i>the fastest 3D UI ever</i></b>, and it <b><i>eliminates "gorilla arm"</i></b> by relying on small, localized gestures and a proprioceptive merging of the near field and far field via a careful amalgam of ideas derived from a treasure trove of classic HCI studies going all the way back to 1994. (see Prior Art). 3OS also uses point cursors and widgets to extend the near field and <b><i>minimize eye strain</i></b> by avoiding vergence-accommodation conflicts via peripheral remote controls.
 
 </details>
 </blockquote>
@@ -37,12 +37,12 @@ Using a unique volumetric isotropic hand tracking technique, 3OS aims to be the 
 <blockquote>
 <details>
 <summary style="font-size: 1.15em; display: list-item;">
-<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Author Background (former Technicolor XR Tech Lead & Magic Leap Prototyping Engineer)</span></span>
+<span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Author Background (former Technicolor & Magic Leap)</span></span>
 </summary>
 
-I was deeply frustrated by our failure to compete with desktop speed in state-of-the-art XR UI/UX while working as a Lead Product Prototyping Engineer at Magic Leap in 2019. I decided there must be <i>SOMEONE</i> in Academia who had solved the myriad of problems slowing us down. That's when I discovered SIGCHI. I had no idea of the rich history of UI research in Academia before that. I began mining for the gold that would unlock higher throughput. I uncovered a forgotten treasure trove of 1990s Prior Art, the inspiration for 3OS.
+I was deeply frustrated by our failure to compete with desktop speed in state-of-the-art XR UI/UX while working as a <b><i>Lead Product Prototyping Engineer at Magic Leap</i></b> in 2019. I decided there must be <i>SOMEONE</i> in Academia who had solved the myriad of problems slowing us down. That's when I discovered SIGCHI. I had no idea of the rich history of UI research in Academia before that. I began mining for the gold that would unlock higher throughput. I <b><i>uncovered a forgotten treasure trove of 1990s HCI Prior Art</i></b>, the inspiration for 3OS.
 
-In later studies, I gravitated primarily toward perf-op papers involving Fitts' Law variations. I noticed some odd patterns that 3OS now exploits. Ergonomic studies battling "gorilla arm" also fascinated me because I was deeply familiar with the problematic muscle groups in the shoulders (especially the coracobrachialis) since I targeted those same muscle groups with relaxation techniques in college while teaching one-on-one drum lessons to hundreds of students.
+In later studies, I gravitated primarily toward <b><i>perf-op papers involving Fitts' Law variations</i></b>. I noticed some odd patterns that 3OS now exploits. Ergonomic <b><i>studies battling "gorilla arm"</i></b> also fascinated me because I was deeply familiar with the problematic muscle groups in the shoulders (especially the coracobrachialis) since I targeted those same muscle groups with relaxation techniques in college while <b><i>teaching one-on-one drum lessons to hundreds of students</i></b>.
 
 </details>
 </blockquote>
@@ -55,11 +55,11 @@ In later studies, I gravitated primarily toward perf-op papers involving Fitts' 
 
 Current OS design habits kill our ability to prove XR is faster than desktop PCs.
 
-Raycast models and floating 2D windows waste most of XR’s adjacency/multitasking space and encourage slow, single-handed interaction. 3OS offers a <b>volumetric isotropic OS model</b> instead. Isotropic techniques are <i>THE</i> solution to the many speed bottlenecks preventing 3D UI adoption in enterprise by integrating snap-twitch voxel-based actions, not surface-based actions.
+Raycast models and floating 2D windows waste most of XR’s adjacency/multitasking space and encourage slow, single-handed interaction. 3OS offers a <b><i>volumetric isotropic OS model</i></b> instead. Isotropic techniques are <b><i>THE</i></b> solution to the many speed bottlenecks preventing 3D UI adoption in enterprise by integrating snap-twitch voxel-based actions, not surface-based actions.
 
 <b><i>isotropic interaction:</i></b> The cursor or driven object moves either 1-to-1 or 1-to-N driven by 3D hand motion on all axes uniformly, as opposed to raycast (perspective projection) where X/Y hand motion yields scaling cursor motion as Z scales. 
 
-Most HCI research counterintuitively measures isotropic models in flawed ways if at all, which has led to false assumptions that raycasting is easier/better/faster for nearly every UI in XR 1.0. Fixing this will be a defining characteristic of XR 2.0 (the new 2030s XR hype cycle).
+Most HCI research counterintuitively measures isotropic models in flawed ways (or not at all), which has led to <b><i>false assumptions that raycasting is easier/better/faster</i></b> for nearly every UI in XR 1.0. Fixing this will be a <b><i>defining characteristic of XR 2.0</i></b> (the new 2030s XR hype cycle).
 
 </details>
 </blockquote>
@@ -70,7 +70,7 @@ Most HCI research counterintuitively measures isotropic models in flawed ways if
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Unchaining the Desk to Access the Whole Room</span></span>
 </summary>
 
-Built explicitly for the modern near-future work environment, 3OS integrates fiducially-tracked rolling standing desk consoles that detach from dual wall monitors to allow seamless transitions between seated and standing configurations in any position in a dedicated XR room where MR content may encompass part of a desk, part of the room, shared space with multiple MR apps, the whole room, or even a whole VR field. 3OS gives each task the exact amount of space it needs for ASAP completion with rapid context switching e.g. carrying files across MR/VR transitions, enabling high throughput for tasks that only achieve speed boosts when utilizing the whole field, yet never requiring users to reach or cross the room.
+Built explicitly for the modern near-future work environment, 3OS integrates <b><i>fiducially-tracked rolling standing desk consoles that detach from dual wall monitors</i></b> to allow seamless transitions between seated and standing configurations in any position in a dedicated XR room where MR content may encompass part of a desk, part of the room, shared space with multiple MR apps, the whole room, or even a whole VR field. 3OS gives each task the exact amount of space it needs for ASAP completion with <b><i>rapid context switching e.g. carrying files across MR/VR transitions</i></b>, enabling high throughput for tasks that only achieve speed boosts when utilizing the whole field, yet never requiring users to reach or cross the room.
 
 </details>
 </blockquote>
@@ -81,7 +81,7 @@ Built explicitly for the modern near-future work environment, 3OS integrates fid
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">High-Performance Edge-Ready Architecture</span></span>
 </summary>
 
-  The heart of the 3OS Pre-Alpha Demo is a native C++ kernel with C ABI marshalled into Unity for rapid prototyping today, but it is prepped to eventually run on vWS VMs to OpenXR to CloudXR in an enterprise context. It seeks to adhere to the emerging spatial container features of the OpenXR spec for edge-driven app multitasking. From an on-prem server stream (e.g. AMD EPYC 9004 + Pro 6000 Blackwell), each team member will power a workstation with a streamed headset plus a battery-powered rolling standing desk that clicks into a dual-monitor wall console or detaches to reposition anywhere in the room for collab work, sporting optional virtual monitors and anchorable virtual 2D and 3D widgets. All legacy 2D software will be supported. 3OS will target SDK partnerships with 3D editing software titans for early adoption. Apps like Solidworks, Maya, Unreal, etc. will render into workspace containers (volume managers) rather than talking to HMDs directly. Colocated teams will run multiple MR apps x multiple workspaces via thin HMD streaming clients, flying solo and/or multiplayer as needed while the VDI edge stack offloads processing.
+  The heart of the <b><i>3OS Pre-Alpha Demo</i></b> is a native <b><i>C++ kernel with C ABI marshalled into Unity for rapid prototyping</i></b> today, but it is prepped to eventually run on <b><i>vWS VMs to OpenXR to CloudXR</i></b> in an enterprise context. It seeks to adhere to the emerging <b><i>spatial container features of the OpenXR spec for edge-driven app multitasking</i></b>. From an on-prem server stream (e.g. AMD EPYC 9004 + Pro 6000 Blackwell), each team member will power a workstation with a <b><i>streamed headset</i></b> plus a battery-powered rolling standing desk that clicks into a dual-monitor wall console or detaches to reposition anywhere in the room for <b><i>collab work</i></b>, sporting optional <b><i>virtual monitors and anchorable virtual 2D and 3D widgets</i></b>. All legacy 2D software will be supported. 3OS will target SDK partnerships with 3D editing software titans for early adoption. Apps like Solidworks, Maya, Unreal, etc. will render into <b><i>workspace containers (volume managers)</i></b> rather than talking to HMDs directly. Colocated teams will run <b><i>multiple MR apps x multiple workspaces via thin HMD streaming clients</i></b>, flying solo and/or multiplayer as needed while the VDI edge stack offloads processing.
 
 </details>
 </blockquote>
@@ -110,7 +110,7 @@ I hope you enjoy the demo!
 
 3OS (pronounced **"three-oh-ess"**) is inspired by cult classic sci-fi flicks like Johnny Mnemonic, The Matrix, Minority Report, Iron Man, and The Expanse, but it also grounds its efficacy in our rich history of HCI research.
 
-3OS is a voxel-first operating system interface that attempts to take us back to our optimistic roots by drawing upon nearly-forgotten 90s HCI studies (see the Prior Art section). It aims to be the first 3D interface that's faster than desktop PCs for enterprise teams using the HCI road less traveled (A.K.A. volumetric isotropic interaction, NOT raycast cursors), but it also supports hybrid integration of all legacy 2D apps with virtual and physical monitors in a collaborative development room.
+3OS is <b><i>a voxel-first operating system interface</i></b> that attempts to take us back to our optimistic roots by drawing upon nearly-forgotten 90s HCI studies (see the Prior Art section). It aims to be the first 3D interface that's <b><i>faster than desktop PCs for enterprise teams</i></b> using the HCI road less traveled (A.K.A. <b><i>volumetric isotropic interaction</i></b>, NOT raycast cursors), but it also supports hybrid integration of all legacy 2D apps with virtual and physical monitors in a <b><i>collaborative development room</i></b>.
 
 ### Target hardware: 
   * XR HMDs
@@ -254,7 +254,7 @@ Most of us recognize that agents place human programmers yet another layer away 
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">The New Stack Layer Must Be Visual</span></span>
 </summary>
 
-Every layer of the abstraction stack has been <b><i>visual</i></b> for a reason. Our eyes are the highest-throughput way to put data into our brains by a long shot. Agents do not currently give us a new <b><i>visual</i></b> representation of the stack. They reply in a chat thread, but that chat thread is not the program. They can show us the code they changed, but that layer of the stack was already here long before they arrived. That's not the new layer either. There is no <i>NEW</i> layer of the stack to look at. <i>YET</i>.
+Every layer of the abstraction stack has been <b><i>visual</i></b> for a reason. Our eyes are the highest-throughput way to put data into our brains by a long shot. Agents do not currently give us a new <b><i>visual</i></b> representation of the stack. Via XR APIs (e.g., the Agent AI API in OpenXR), agents will be able to join us in 3D in real time as avatars. Currently, they just reply in a chat thread, but that chat thread is not the program. They can show us the code they changed, but that layer of the stack was already here long before they arrived, and if the agent is embodied in 3D, why not embody the code in 3D as well so that the agent can show us the changes in 3D in real time?
 
 </details>
 
@@ -309,7 +309,7 @@ These new languages will be nothing more than visual wrappers on top of high-lev
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Agents Are Too Fast For Us Without 3D VPLs</span></span>
 </summary>
 
-3D VPLs are the only way to keep up with agents as they make sweeping changes to our code in real time. It takes hours to review the code they write line-by-line. 3D VPLs are simply real-time visualizers of the CPU as it runs your program. They are the only way to ensure code stays clean mid-development without falling behind your competitors. Line-by-line code review is the new low-level perf op. It must be done for safety prior to release, but we can't do it for every changelist anymore. There's no time. Full code review will be a low-level task for advanced human programmers. It will occur approaching a release candidate. 3D node-based debugging will replace full code review in the early-to-mid dev cycle.
+3D VPLs are the only way to keep up with agents as they make sweeping changes to our code in real time. It takes hours to review the code they write line-by-line. 3D VPLs are simply real-time visualizers of the CPU as it runs your program. They are the only way to ensure code stays clean mid-development without falling behind your competitors. Line-by-line code review is the new low-level perf-op. It must be done for safety prior to release, but we can't do it for every changelist anymore. There's no time. Full code review will be a low-level task for advanced human programmers. It will occur approaching a release candidate. 3D node-based debugging will replace full code review in the early-to-mid dev cycle.
 
 </details>
 
@@ -460,7 +460,7 @@ Aside from feeling wrong with two hands, raycast squashes the field to a plane, 
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">We Took The Path The Research Told Us to Take</span></span>
 </summary>
 
-The author of 3OS doesn't blame anyone on the design teams at Meta or Apple or Steam or Microsoft. If the path to becoming Iron Man or Tom Cruise were easy to see, thousands of us would have built it and no one would care, because it was just too easy. The collective consciousness of humanity couldn't crack this nut in less than 30 years, so our best UI scientists led us in the footsteps of Steve Jobs and Jony Ive with their best efforts AND mountains of seemingly-valid scientific data, which all implied "this XR platform will NEVER do the things your desktop PC can do."
+The author of 3OS doesn't blame anyone on the design teams at Meta or Apple or Steam or Microsoft, or any of the great HCI teams who have worked hard to publish paper after paper on XR UI perf-op. It's possible the right path was only revealed by taking the wrong one first. If the path to becoming Iron Man or Tom Cruise were easy to see, thousands of us would have built it and no one would care, because it was just too easy. The collective consciousness of humanity couldn't crack this nut in less than 30 years, so our best UI scientists led us in the footsteps of Steve Jobs and Jony Ive with their best efforts AND mountains of seemingly-valid scientific data, which all implied "this XR platform will NEVER do the things your desktop PC can do."
 
 </details>
 
@@ -469,7 +469,9 @@ The author of 3OS doesn't blame anyone on the design teams at Meta or Apple or S
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Enterprise Software Teams Are Rightfully Jaded, If Still Employed in XR</span></span>
 </summary>
 
-Which enterprise company would consider porting their desktop features into XR in the 2020s under this state of play? They tried in the 20-teens, but they all used raycast cursors because the OS interface suggested, "this is what apps look like in XR." My favorite attempts were Unity EditorXR and Unreal VR Mode. These VR ports all hit a zero-user wall, not because XR is DOA for enterprise, but because they never got over the "slower than PC" hurdle, the app multitasking hurdle, the hybrid 2D+3D integration hurdle, or the heavy HMD hurdle. Today, these companies don't even employ many of the folks who built those awesome-yet-now-dusty VR port codebases. Their CEOs believe XR is not viable for enterprise because the boot interface was their template, and that template yielded apps that crashed and burned.
+Which enterprise company would consider porting their desktop features into XR in the 2020s under this state of play? They tried in the 20-teens, but they all used raycast cursors because the OS interface suggested, "this is what an XR app looks like." 
+
+My favorite attempts were Unity EditorXR and Unreal VR Mode, but several enterprise apps tried ports. They all hit a zero-user wall, not because XR is DOA for enterprise, but because they never got over the "slower than PC" hurdle, the app multitasking hurdle, the hybrid 2D+3D integration hurdle, or the heavy HMD hurdle. Today, these companies don't even employ many of the folks who built those awesome-yet-now-dusty VR port codebases. The raycast-to-WIMP-panel techniques in the boot interface were their template, and that template yielded apps that crashed and burned.
 
 </details>
 
@@ -478,7 +480,7 @@ Which enterprise company would consider porting their desktop features into XR i
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Hope Is Not Lost</span></span>
 </summary>
 
-XR has always had greater enterprise potential than desktop computers. Those VR ports will be resurrected with new MR life. This will be obvious as soon as the right OS interface enables the medium to shine with all of its advantages. AI interfaces are part of that story, but we can't always speak our work to an agent, and agents shouldn't always show their work in just speech or text. Sometimes, work needs to be more private and/or more visual. We can't adopt XR in the office if the interaction model slows us to a crawl in quiet moments or in moments where the agent is presenting mountains of changes in graphically visualized form. Thus, the XR industry must present an interface that is faster than desktop interfaces WITH OR WITHOUT an AI assistant acting as intermediary to the direct manual controls. Only then can we put the interface on steroids with agentic integration.
+XR has always had greater enterprise potential than desktop computers. Those VR ports will be resurrected with new MR life. This will be obvious as soon as the right OS interface enables the medium to shine with all of its advantages. AI interfaces are part of that story, but we can't always speak our work to an agent, and agents shouldn't always show their work in just speech or text. Via XR APIs (e.g., the Agent AI API in OpenXR), they can inhabit 3D space with us for more natural communication. Sometimes, work needs to be more visual. If an agent speaks its changes aloud, that can be slower than reading walls of text. They may opt to show a visualization of the changes, e.g. with a 3D visual programming language (VPL). At other times, communication must be more private. We can't adopt XR in the office if the interaction model slows us to a crawl in quiet moments or in moments where the agent is presenting mountains of changes in graphic form. Thus, the XR industry must present an interface that is faster than desktop interfaces WITH OR WITHOUT an AI assistant acting as intermediary to the direct manual controls. Only then can we put the interface on steroids with agentic integration.
 
 </details>
 
@@ -931,7 +933,9 @@ When these ghostly 3OS objects enter into the near field, the user does not put 
 
 
 <blockquote>
-3OS UIs are usually contextual widgets for far-field objects, meaning they operate as remote controls meant to utilize <b>peripheral vision</b>, which is only possible via proprioception (i.e. you know where your hand is without looking). Hands with good neutral elbow position are slightly too low for good peripheral cues if they're sharing the same space with these widgets, which means you'd have to move the widgets too low for periphery to get good ergo, or make the user hold their hands too high to get good peripheral cues. The solution is separation of the hands from the widgets with a slight offset via point cursors. Pseudo-near field widgets driven by point cursors are the best-of-both-worlds: comfort and efficiency in one interface.
+3OS UIs are usually contextual widgets for far-field objects, meaning they operate as remote controls meant to utilize <b>peripheral vision</b>, which is only possible via proprioception (i.e. you know where your hand is without looking). Hands with good neutral elbow position are slightly too low for good peripheral cues if they're sharing the same space with these widgets, which means you'd have to move the widgets too low for periphery to get good ergo, or make the user hold their hands too high to get good peripheral cues. By default, good ergo = bad periphery and good periphery = bad ergo. 
+
+The solution is separation of the hands from the widgets with a slight offset via point cursors. Pseudo-near field widgets driven by point cursors are the best-of-both-worlds: comfort and efficiency in one interface. As a byproduct, this also solves most vergence-accommodation concerns of modern fixed-focal displays, since conflicts are much more pronounced in the near field. Through heavy use of proprioceptive periphery, 3OS encourages gaze to remain in the far field for a majority of any experience, yielding less eye strain.
 </blockquote>
 
 </details>
@@ -1223,7 +1227,7 @@ These are the invisible backbone enabling voodoo snapping to work so rapidly. At
 </summary>
 
 <blockquote>
-In 3OS, applications exist within 3D volumes rather than within 2D windows. Unmaximized volumes default to the 2x2x3 (WxDxH) aspect ratio of the default 3OS voodoo volume. 3rd party developers can use the 3OS SDK to configure their app manifest to launch minimized or maximized. Unlike 2D windows that have three states (minimized, default, and maximized), 3OS app volumes have four states: minimized, default, max_MR, and max_VR. This is because an app maximized in MR is assumed to take priority over all available space in the room, yet still must respect the boundaries of the room as its bounding box, whereas in VR the app's volume can expand to encapsulate infinite space. 3OS can be toggled from MR to VR with a gesture, and applications can be launched in either mode, so the maximize button dynamically fills the available space in either MR or VR. Maximizing one app minimizes all other open apps, sending them each a message that their render pipelines and tick loops can sleep, and they can await a re-focus message in standby. Minimized apps retain memory allocation, but minimize and re-focus callbacks can be used to perform appropriate memory management for perf op.
+In 3OS, applications exist within 3D volumes rather than within 2D windows. Unmaximized volumes default to the 2x2x3 (WxDxH) aspect ratio of the default 3OS voodoo volume. 3rd party developers can use the 3OS SDK to configure their app manifest to launch minimized or maximized. Unlike 2D windows that have three states (minimized, default, and maximized), 3OS app volumes have four states: minimized, default, max_MR, and max_VR. This is because an app maximized in MR is assumed to take priority over all available space in the room, yet still must respect the boundaries of the room as its bounding box, whereas in VR the app's volume can expand to encapsulate infinite space. 3OS can be toggled from MR to VR with a gesture, and applications can be launched in either mode, so the maximize button dynamically fills the available space in either MR or VR. Maximizing one app minimizes all other open apps, sending them each a message that their render pipelines and tick loops can sleep, and they can await a re-focus message in standby. Minimized apps retain memory allocation, but minimize and re-focus callbacks can be used to perform appropriate memory management for perf-op.
 </blockquote>
 
 </details>
