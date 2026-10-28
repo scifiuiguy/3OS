@@ -124,10 +124,24 @@ std::vector<EntityId> SoloVoodooDrop::candidates(const Pose& head, bool head_val
   return out;
 }
 
+namespace {
+
+EntityId solo_select_entity(EntityId clear_target, EntityId drop_id, const Workspace& workspace) {
+  if (clear_target != 0 && workspace.find(clear_target) != nullptr) {
+    return clear_target;
+  }
+  if (drop_id != 0 && workspace.find(drop_id) != nullptr) {
+    return drop_id;
+  }
+  return clear_target != 0 ? clear_target : drop_id;
+}
+
+}  // namespace
+
 SoloVoodooDrop::Event SoloVoodooDrop::tick(uint32_t hand, EntityId clear_target,
-                                           const Vec3& palm_normal, bool pinch_pressed,
-                                           const Pose& head, bool head_valid,
-                                           const Vec3& hand_pos, float now_s,
+                                           const Vec3& palm_normal, bool primary_pinch_pressed,
+                                           bool secondary_pinch_pressed, const Pose& head,
+                                           bool head_valid, const Vec3& hand_pos, float now_s,
                                            const Workspace& workspace,
                                            const CentroidRegistry& centroids,
                                            const VoodooVolumeEngine& voodoo) {
@@ -173,7 +187,7 @@ SoloVoodooDrop::Event SoloVoodooDrop::tick(uint32_t hand, EntityId clear_target,
     palm_ok_[hand] = false;
   }
   if (palm_rose) {
-    if (pinch_pressed) {
+    if (primary_pinch_pressed) {
       pinch_down_[hand] = true;
       pinch_t0_[hand] = now_s;
       pinch_drag_[hand] = true;
@@ -192,13 +206,17 @@ SoloVoodooDrop::Event SoloVoodooDrop::tick(uint32_t hand, EntityId clear_target,
     pinch_down_[0] = pinch_down_[1] = false;
     pinch_drag_[0] = pinch_drag_[1] = false;
     pinch_eligible_[0] = pinch_eligible_[1] = false;
+    sec_pinch_down_[0] = sec_pinch_down_[1] = false;
+    sec_pinch_drag_[0] = sec_pinch_drag_[1] = false;
+    sec_pinch_eligible_[0] = sec_pinch_eligible_[1] = false;
     state_ = State{};
     return was_armed ? Event::Dismissed : Event::None;
   }
 
   if (!gaze_ok) {
     // Other hand may still hold palm this frame; don't pinch-commit without gaze.
-    if (!pinch_pressed && !pinch_down_[hand]) {
+    if (!primary_pinch_pressed && !pinch_down_[hand] && !secondary_pinch_pressed &&
+        !sec_pinch_down_[hand]) {
       return Event::None;
     }
   }
@@ -210,7 +228,7 @@ SoloVoodooDrop::Event SoloVoodooDrop::tick(uint32_t hand, EntityId clear_target,
       state_.target = drop_id;
       state_.far_position = far_pos;
       state_.far_extents = far_ext;
-      if (pinch_pressed) {
+      if (primary_pinch_pressed) {
         pinch_down_[hand] = true;
         pinch_t0_[hand] = now_s;
         pinch_drag_[hand] = true;
@@ -226,9 +244,8 @@ SoloVoodooDrop::Event SoloVoodooDrop::tick(uint32_t hand, EntityId clear_target,
     }
   }
 
-  // Pinch: eligibility is latched at press while THIS hand's palm is on target.
-  // Closing the pinch often breaks the palm cone — release must still Drop.
-  if (pinch_pressed) {
+  // Primary pinch: eligibility latched at press while THIS hand's palm is on target.
+  if (primary_pinch_pressed) {
     if (!pinch_down_[hand]) {
       pinch_down_[hand] = true;
       pinch_t0_[hand] = now_s;
@@ -238,36 +255,53 @@ SoloVoodooDrop::Event SoloVoodooDrop::tick(uint32_t hand, EntityId clear_target,
     if ((now_s - pinch_t0_[hand]) > kPinchTapMaxS) {
       pinch_drag_[hand] = true;
     }
-    return Event::None;
-  }
-
-  if (pinch_down_[hand]) {
+  } else if (pinch_down_[hand]) {
     const bool was_drag = pinch_drag_[hand] || ((now_s - pinch_t0_[hand]) > kPinchTapMaxS);
     const bool eligible = pinch_eligible_[hand];
     pinch_down_[hand] = false;
     pinch_drag_[hand] = false;
     pinch_eligible_[hand] = false;
 
-    if (was_drag || !eligible) {
-      return Event::None;
+    if (!was_drag && eligible && state_.armed && gaze_ok && !drop_frame_latch_) {
+      dropped_target_ = state_.target;
+      drop_frame_latch_ = true;
+      lockout_until_ = now_s + kPostDropLockoutS;
+      const uint32_t commit_hand = hand;
+      state_ = State{};
+      state_.hand = commit_hand;
+      palm_ok_[0] = palm_ok_[1] = false;
+      pinch_down_[0] = pinch_down_[1] = false;
+      pinch_drag_[0] = pinch_drag_[1] = false;
+      pinch_eligible_[0] = pinch_eligible_[1] = false;
+      sec_pinch_down_[0] = sec_pinch_down_[1] = false;
+      sec_pinch_drag_[0] = sec_pinch_drag_[1] = false;
+      sec_pinch_eligible_[0] = sec_pinch_eligible_[1] = false;
+      return Event::Drop;
     }
-    if (!state_.armed || !gaze_ok) {
-      return Event::None;
+  }
+
+  // Secondary pinch while armed: select gaze object without opening the portal.
+  if (secondary_pinch_pressed) {
+    if (!sec_pinch_down_[hand]) {
+      sec_pinch_down_[hand] = true;
+      sec_pinch_t0_[hand] = now_s;
+      sec_pinch_drag_[hand] = false;
+      sec_pinch_eligible_[hand] = this_palm && state_.armed && gaze_ok;
     }
-    if (drop_frame_latch_) {
-      return Event::None;
+    if ((now_s - sec_pinch_t0_[hand]) > kPinchTapMaxS) {
+      sec_pinch_drag_[hand] = true;
     }
-    dropped_target_ = state_.target;
-    drop_frame_latch_ = true;
-    lockout_until_ = now_s + kPostDropLockoutS;
-    const uint32_t commit_hand = hand;
-    state_ = State{};
-    state_.hand = commit_hand;
-    palm_ok_[0] = palm_ok_[1] = false;
-    pinch_down_[0] = pinch_down_[1] = false;
-    pinch_drag_[0] = pinch_drag_[1] = false;
-    pinch_eligible_[0] = pinch_eligible_[1] = false;
-    return Event::Drop;
+  } else if (sec_pinch_down_[hand]) {
+    const bool was_drag = sec_pinch_drag_[hand] || ((now_s - sec_pinch_t0_[hand]) > kPinchTapMaxS);
+    const bool eligible = sec_pinch_eligible_[hand];
+    sec_pinch_down_[hand] = false;
+    sec_pinch_drag_[hand] = false;
+    sec_pinch_eligible_[hand] = false;
+
+    if (!was_drag && eligible && state_.armed && gaze_ok) {
+      last_select_target_ = solo_select_entity(clear_target, state_.target, workspace);
+      return Event::Select;
+    }
   }
 
   return Event::None;

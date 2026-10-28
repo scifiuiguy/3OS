@@ -3315,33 +3315,33 @@ int main() {
 
     // Occluded (host reports no clear target): never arms.
     ok = expect_eq("solo.occluded_no_arm",
-                   threeos_solo_drop_tick(0, 0, &palm_toward, 0, &gaze, &hand_at, 0.f),
+                   threeos_solo_drop_tick(0, 0, &palm_toward, 0, 0, &gaze, &hand_at, 0.f),
                    (uint32_t)THREEOS_SOLO_NONE) &&
          ok;
     // Palm facing away: gaze alone does not arm.
     ok = expect_eq("solo.palm_away_no_arm",
-                   threeos_solo_drop_tick(0, solo_id, &palm_away, 0, &gaze, &hand_at, 0.f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_away, 0, 0, &gaze, &hand_at, 0.f),
                    (uint32_t)THREEOS_SOLO_NONE) &&
          ok;
     // Palm-down / finger-forward while not facing the object must not arm.
     ok = expect_eq("solo.palm_down_no_arm",
-                   threeos_solo_drop_tick(0, solo_id, &palm_down, 0, &gaze, &hand_at, 0.f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_down, 0, 0, &gaze, &hand_at, 0.f),
                    (uint32_t)THREEOS_SOLO_NONE) &&
          ok;
     ok = expect_eq("solo.ortho_palm_no_arm",
-                   threeos_solo_drop_tick(0, solo_id, &palm_ortho, 0, &gaze, &hand_at, 0.f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_ortho, 0, 0, &gaze, &hand_at, 0.f),
                    (uint32_t)THREEOS_SOLO_NONE) &&
          ok;
     // Selected far objects may still arm (Use The Force alongside telekinesis).
     threeos_selection_set(solo_id);
     ok = expect_eq("solo.selected_still_arms",
-                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 0.f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 0.f),
                    (uint32_t)THREEOS_SOLO_ARMED) &&
          ok;
     threeos_solo_drop_cancel();
     threeos_selection_clear();
     ok = expect_eq("solo.arm",
-                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 0.f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 0.f),
                    (uint32_t)THREEOS_SOLO_ARMED) &&
          ok;
     ThreeOS_SoloDropState ss{};
@@ -3350,29 +3350,29 @@ int main() {
          ok;
     // Sole hand losing palm dismisses (gaze alone is not enough).
     ok = expect_eq("solo.dismiss_on_palm_loss",
-                   threeos_solo_drop_tick(0, solo_id, &palm_away, 0, &gaze, &hand_at, 0.f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_away, 0, 0, &gaze, &hand_at, 0.f),
                    (uint32_t)THREEOS_SOLO_DISMISSED) &&
          ok;
     // Losing the gaze criterion dismisses.
-    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 0.1f);
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 0.1f);
     const ThreeOS_Pose looking_away = identity_pose_at(solo_pos.x, solo_pos.y, solo_pos.z + 1.5f);
     ok = expect_eq("solo.dismiss_on_gaze_loss",
-                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &looking_away, &hand_at, 0.1f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &looking_away, &hand_at, 0.1f),
                    (uint32_t)THREEOS_SOLO_DISMISSED) &&
          ok;
 
     // Hold longer than tap window (0.22s) while armed → drag: no Drop, arm stays (gaze+palm).
     threeos_solo_drop_begin_frame();
-    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 1.f);
-    threeos_solo_drop_tick(0, solo_id, &palm_toward, 1, &gaze, &hand_at, 1.f);
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 1.f);
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 1, 0, &gaze, &hand_at, 1.f);
     ok = expect_eq("solo.hold_drag_no_dismiss",
-                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 1, &gaze, &hand_at, 1.25f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 1, 0, &gaze, &hand_at, 1.25f),
                    (uint32_t)THREEOS_SOLO_NONE) &&
          ok;
     threeos_solo_drop_get_state(&ss);
     ok = expect_eq("solo.still_armed_during_drag", ss.armed, 1u) && ok;
     ok = expect_eq("solo.drag_release_no_drop",
-                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 1.26f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 1.26f),
                    (uint32_t)THREEOS_SOLO_NONE) &&
          ok;
     threeos_solo_drop_get_state(&ss);
@@ -3380,38 +3380,60 @@ int main() {
     ok = expect_eq("solo.hold_no_portal", threeos_voodoo_portal_count(), 0u) && ok;
     threeos_solo_drop_cancel();
 
+    // Secondary pinch while armed selects without opening a portal.
+    threeos_solo_drop_begin_frame();
+    ok = expect_eq("solo.arm_for_secondary",
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 4.f),
+                   (uint32_t)THREEOS_SOLO_ARMED) &&
+         ok;
+    threeos_selection_clear();
+    threeos_solo_drop_begin_frame();
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 4.01f);
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 1, &gaze, &hand_at, 4.01f);
+    ok = expect_eq("solo.secondary_select",
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 4.05f),
+                   (uint32_t)THREEOS_SOLO_SELECTED) &&
+         ok;
+    ok = expect_eq("solo.secondary_no_portal", threeos_voodoo_portal_count(), 0u) && ok;
+    threeos_solo_drop_get_state(&ss);
+    ok = expect_eq("solo.still_armed_after_secondary", ss.armed, 1u) && ok;
+    uint64_t sel_sec = 0;
+    threeos_selection_get(&sel_sec);
+    ok = expect_eq("solo.secondary_selects", sel_sec == solo_id ? 1u : 0u, 1u) && ok;
+    threeos_solo_drop_cancel();
+
     // Either hand: first to arm, then second joins — second can still tap-drop.
     // Pinch often breaks palm cone; eligibility is latched at press.
     threeos_solo_drop_begin_frame();
     ok = expect_eq("solo.arm_h0",
-                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 2.f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 2.f),
                    (uint32_t)THREEOS_SOLO_ARMED) &&
          ok;
     threeos_solo_drop_begin_frame();
     ok = expect_eq("solo.arm_h1_also",
-                   threeos_solo_drop_tick(1, solo_id, &palm_toward, 0, &gaze, &hand_at, 2.01f),
+                   threeos_solo_drop_tick(1, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 2.01f),
                    (uint32_t)THREEOS_SOLO_NONE) &&
          ok;
     threeos_solo_drop_get_state(&ss);
     ok = expect_eq("solo.still_armed_both_palms", ss.armed, 1u) && ok;
     // Hand without palm at press cannot drop.
-    threeos_solo_drop_tick(0, solo_id, &palm_away, 0, &gaze, &hand_at, 2.02f);
+    threeos_solo_drop_tick(0, solo_id, &palm_away, 0, 0, &gaze, &hand_at, 2.02f);
     ok = expect_eq("solo.no_palm_no_drop",
-                   threeos_solo_drop_tick(0, solo_id, &palm_away, 1, &gaze, &hand_at, 2.02f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_away, 1, 0, &gaze, &hand_at, 2.02f),
                    (uint32_t)THREEOS_SOLO_NONE) &&
          ok;
     ok = expect_eq(
         "solo.no_palm_release_no_drop",
-        threeos_solo_drop_tick(0, solo_id, &palm_away, 0, &gaze, &hand_at, 2.05f),
+        threeos_solo_drop_tick(0, solo_id, &palm_away, 0, 0, &gaze, &hand_at, 2.05f),
         (uint32_t)THREEOS_SOLO_NONE) &&
         ok;
     // Second hand: press with palm, release with palm broken (typical pinch) → still Drop.
     threeos_solo_drop_begin_frame();
-    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 2.1f);
-    threeos_solo_drop_tick(1, solo_id, &palm_toward, 0, &gaze, &hand_at, 2.1f);
-    threeos_solo_drop_tick(1, solo_id, &palm_toward, 1, &gaze, &hand_at, 2.1f);
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 2.1f);
+    threeos_solo_drop_tick(1, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 2.1f);
+    threeos_solo_drop_tick(1, solo_id, &palm_toward, 1, 0, &gaze, &hand_at, 2.1f);
     ok = expect_eq("solo.drop_h1_palm_broke",
-                   threeos_solo_drop_tick(1, solo_id, &palm_away, 0, &gaze, &hand_at, 2.15f),
+                   threeos_solo_drop_tick(1, solo_id, &palm_away, 0, 0, &gaze, &hand_at, 2.15f),
                    (uint32_t)THREEOS_SOLO_DROPPED) &&
          ok;
     ok = expect_eq("solo.either_hand_portal", threeos_voodoo_portal_count(), 1u) && ok;
@@ -3425,11 +3447,11 @@ int main() {
 
     // Quick pinch release within tap window → drop.
     threeos_solo_drop_begin_frame();
-    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 3.f);
-    threeos_solo_drop_tick(0, solo_id, &palm_toward, 1, &gaze, &hand_at, 3.f);
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 3.f);
+    threeos_solo_drop_tick(0, solo_id, &palm_toward, 1, 0, &gaze, &hand_at, 3.f);
     ok = expect_eq("solo.pinch_alone_no_drop", threeos_voodoo_portal_count(), 0u) && ok;
     ok = expect_eq("solo.drop_event",
-                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, &gaze, &hand_at, 3.05f),
+                   threeos_solo_drop_tick(0, solo_id, &palm_toward, 0, 0, &gaze, &hand_at, 3.05f),
                    (uint32_t)THREEOS_SOLO_DROPPED) &&
          ok;
     ok = expect_eq("solo.portal_created", threeos_voodoo_portal_count(), 1u) && ok;

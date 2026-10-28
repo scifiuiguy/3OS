@@ -1880,7 +1880,8 @@ extern "C" THREEOS_API uint32_t threeos_solo_blocks_voodoo_snap(float now_second
 
 extern "C" THREEOS_API uint32_t threeos_solo_drop_tick(uint32_t hand, uint64_t clear_target_id,
                                                        const ThreeOS_Vec3* palm_normal,
-                                                       uint32_t pinch_pressed,
+                                                       uint32_t primary_pinch_pressed,
+                                                       uint32_t secondary_pinch_pressed,
                                                        const ThreeOS_Pose* head,
                                                        const ThreeOS_Vec3* hand_pos,
                                                        float now_seconds) {
@@ -1890,11 +1891,18 @@ extern "C" THREEOS_API uint32_t threeos_solo_drop_tick(uint32_t hand, uint64_t c
     return THREEOS_SOLO_NONE;
   }
   const threeos::Pose head_pose = from_c(*head);
-  const auto ev =
-      g_solo_drop.tick(hand, clear_target_id, from_c(*palm_normal), pinch_pressed != 0u, head_pose,
-                       true, from_c(*hand_pos), now_seconds, g_workspace, g_centroids, g_voodoo);
+  const auto ev = g_solo_drop.tick(hand, clear_target_id, from_c(*palm_normal),
+                                   primary_pinch_pressed != 0u, secondary_pinch_pressed != 0u,
+                                   head_pose, true, from_c(*hand_pos), now_seconds, g_workspace,
+                                   g_centroids, g_voodoo);
   g_solo_last_event = static_cast<uint32_t>(ev);
-  if (ev == threeos::SoloVoodooDrop::Event::Drop) {
+  if (ev == threeos::SoloVoodooDrop::Event::Select) {
+    const threeos::EntityId sel = g_solo_drop.last_select_target();
+    if (sel != 0 && g_workspace.find(sel) != nullptr) {
+      (void)g_workspace.set_selection(sel);
+    }
+    set_error("");
+  } else if (ev == threeos::SoloVoodooDrop::Event::Drop) {
     threeos::Pose hp{};
     hp.position = from_c(*hand_pos);
     const threeos::EntityId dropped = g_solo_drop.dropped_target();

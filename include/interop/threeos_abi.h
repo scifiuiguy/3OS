@@ -391,6 +391,7 @@ enum ThreeOS_SoloDropEvent : uint32_t {
   THREEOS_SOLO_ARMED = 1,
   THREEOS_SOLO_DISMISSED = 2,
   THREEOS_SOLO_DROPPED = 3,
+  THREEOS_SOLO_SELECTED = 4,
 };
 
 typedef struct ThreeOS_SoloDropState {
@@ -423,7 +424,9 @@ THREEOS_API uint32_t threeos_solo_drop_candidates(const ThreeOS_Pose* head, uint
  *   normalize(target − hand_pos). Call once per hand per frame after begin_frame.
  */
 THREEOS_API uint32_t threeos_solo_drop_tick(uint32_t hand, uint64_t clear_target_id,
-                                            const ThreeOS_Vec3* palm_normal, uint32_t pinch_pressed,
+                                            const ThreeOS_Vec3* palm_normal,
+                                            uint32_t primary_pinch_pressed,
+                                            uint32_t secondary_pinch_pressed,
                                             const ThreeOS_Pose* head, const ThreeOS_Vec3* hand_pos,
                                             float now_seconds);
 /** Reset dual-pinch latch; call once per frame before per-hand solo_drop_tick. */

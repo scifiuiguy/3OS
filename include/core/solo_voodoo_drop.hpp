@@ -32,6 +32,7 @@ class SoloVoodooDrop {
     Armed = 1,
     Dismissed = 2,
     Drop = 3,
+    Select = 4,
   };
 
   struct State {
@@ -48,22 +49,28 @@ class SoloVoodooDrop {
 
   /// palm_normal: world palmar face (host: palm joint local −Y).
   /// hand_pos: palm node. Kernel dots palm_normal vs normalize(target − hand_pos).
-  Event tick(uint32_t hand, EntityId clear_target, const Vec3& palm_normal, bool pinch_pressed,
-             const Pose& head, bool head_valid, const Vec3& hand_pos, float now_s,
-             const Workspace& workspace, const CentroidRegistry& centroids,
+  Event tick(uint32_t hand, EntityId clear_target, const Vec3& palm_normal, bool primary_pinch_pressed,
+             bool secondary_pinch_pressed, const Pose& head, bool head_valid, const Vec3& hand_pos,
+             float now_s, const Workspace& workspace, const CentroidRegistry& centroids,
              const VoodooVolumeEngine& voodoo);
 
   const State& state() const { return state_; }
   EntityId dropped_target() const { return dropped_target_; }
+  EntityId last_select_target() const { return last_select_target_; }
   void reset() {
     state_ = State{};
     dropped_target_ = 0;
+    last_select_target_ = 0;
     for (int i = 0; i < 2; ++i) {
       palm_ok_[i] = false;
       pinch_down_[i] = false;
       pinch_t0_[i] = 0.f;
       pinch_drag_[i] = false;
       pinch_eligible_[i] = false;
+      sec_pinch_down_[i] = false;
+      sec_pinch_t0_[i] = 0.f;
+      sec_pinch_drag_[i] = false;
+      sec_pinch_eligible_[i] = false;
     }
     drop_frame_latch_ = false;
     lockout_until_ = 0.f;
@@ -81,11 +88,16 @@ class SoloVoodooDrop {
  private:
   State state_{};
   EntityId dropped_target_ = 0;
+  EntityId last_select_target_ = 0;
   bool palm_ok_[2]{};
   bool pinch_down_[2]{};
   float pinch_t0_[2]{};
   bool pinch_drag_[2]{};      // held past tap window → release must not drop
   bool pinch_eligible_[2]{};  // palm was on target at press edge (pinch may break palm)
+  bool sec_pinch_down_[2]{};
+  float sec_pinch_t0_[2]{};
+  bool sec_pinch_drag_[2]{};
+  bool sec_pinch_eligible_[2]{};
   bool drop_frame_latch_ = false;
   float lockout_until_ = 0.f;
 };
