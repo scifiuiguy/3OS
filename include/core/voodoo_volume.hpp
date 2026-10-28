@@ -489,6 +489,8 @@ class VoodooVolumeEngine {
   static Vec3 stick_viz_origin(const Vec3& start_hand, const Pose& head, bool head_valid);
   static void fill_drag_arrow(VoodooDragArrow& arrow, const Vec3& origin, const Vec3& stick,
                               float mag, bool deadzone_armed, float deadzone_m);
+  static void fill_drag_arrow_cursor(VoodooDragArrow& arrow, const Vec3& anchor, const Vec3& cursor,
+                                     bool deadzone_armed, float deadzone_m);
   static Vec3 effective_portal_pos(const VoodooPortal& portal);
   void set_portal_orbit_target(VoodooPortal& portal, const Vec3& to, const Pose& head,
                                bool head_valid);

@@ -133,15 +133,8 @@ void KinematicsEngine::update_stick_debug(const Pose& hand_pose, const Pose& hea
       hand_pose.position.z - start_hand_.position.z,
   };
   const float mag = vec3_length(stick);
-  const Vec3 flat = flat_forward_xz(head_pose.orientation, head_valid);
-  // Host maps Unity↔kernel with an X flip only (Unity +Z ≈ kernel +Z). Kernel
-  // "OpenXR forward" is -Z, which points toward the body in that frame — so the
-  // viz offset must subtract flat_forward to push the ray away from the stomach.
-  const Vec3 origin{
-      start_hand_.position.x - flat.x * kStickVizForwardOffsetM,
-      start_hand_.position.y - flat.y * kStickVizForwardOffsetM + kStickVizUpOffsetM,
-      start_hand_.position.z - flat.z * kStickVizForwardOffsetM,
-  };
+  const Vec3 anchor = start_hand_.position;
+  const Vec3 cursor = hand_pose.position;
 
   stick_debug_.active = true;
   stick_debug_.deadzone_armed = deadzone_armed_;
@@ -149,8 +142,8 @@ void KinematicsEngine::update_stick_debug(const Pose& hand_pose, const Pose& hea
   stick_debug_.in_deadzone = deadzone_armed_ && mag < params_.deadzone_m;
   stick_debug_.magnitude = mag;
   stick_debug_.stick = stick;
-  stick_debug_.ray_origin = origin;
-  stick_debug_.ray_tip = Vec3{origin.x + stick.x, origin.y + stick.y, origin.z + stick.z};
+  stick_debug_.ray_origin = anchor;
+  stick_debug_.ray_tip = cursor;
 }
 
 float KinematicsEngine::compute_dt(double time_seconds) {

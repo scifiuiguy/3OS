@@ -194,6 +194,12 @@ void VoodooVolumeEngine::fill_drag_arrow(VoodooDragArrow& arrow, const Vec3& ori
   StickViz::fill(arrow, origin, stick, mag, deadzone_armed, deadzone_m);
 }
 
+void VoodooVolumeEngine::fill_drag_arrow_cursor(VoodooDragArrow& arrow, const Vec3& anchor,
+                                                const Vec3& cursor, bool deadzone_armed,
+                                                float deadzone_m) {
+  StickViz::fill_cursor(arrow, anchor, cursor, deadzone_armed, deadzone_m);
+}
+
 bool VoodooVolumeEngine::set_params(const VoodooFieldParams& p) {
   if (!(p.voxel_size_m > 1e-4f) || p.voxel_size_m > 1.f) {
     return false;

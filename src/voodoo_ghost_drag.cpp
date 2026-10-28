@@ -107,7 +107,7 @@ void log_drag_begin(const VoodooVolumeEngine& engine, const GhostDragState& gd, 
 void GhostDragController::update_arrow(uint32_t hand, const Pose& hand_pose,
                                                  const Pose& head, bool head_valid,
                                                  const Vec3& stick) {
-  (void)hand_pose;
+  (void)stick;
   auto& gd = engine_.ghost_drags_[hand];
   gd.near_stick_visible = false;
   if (gd.direct_follow) {
@@ -126,29 +126,36 @@ void GhostDragController::update_arrow(uint32_t hand, const Pose& hand_pose,
         portal->id == gd.portal_id;
   }
 
-  const float mag = std::sqrt(stick.x * stick.x + stick.y * stick.y + stick.z * stick.z);
-  const Vec3 hand_origin = VoodooVolumeEngine::stick_viz_origin(gd.start_hand.position, head, head_valid);
+  (void)head;
+  (void)head_valid;
+  const Vec3 anchor = gd.start_hand.position;
+  const Vec3 cursor = hand_pose.position;
   const VoodooPortal* portal = engine_.portal_const(gd.portal_id);
   const float scale =
       std::max(gd.scale > 1e-4f ? gd.scale : (portal != nullptr ? portal->lock_scale : 1.f), 1e-4f);
 
-  // Outside near BB: yellow only, seated at the hand (same offset as possess stick).
-  // Inside near BB: blue at hand + yellow twin mapped into far space.
+  // Anchor = cursor at drag begin; tip = current cursor (host applies ~1" tip clearance).
   if (gd.near_stick_visible) {
-    VoodooVolumeEngine::fill_drag_arrow(gd.arrow, hand_origin, stick, mag, gd.deadzone_armed, engine_.deadzone_m_);
-    Vec3 far_origin = hand_origin;
+    VoodooVolumeEngine::fill_drag_arrow_cursor(gd.arrow, anchor, cursor, gd.deadzone_armed,
+                                               engine_.deadzone_m_);
+    Vec3 far_anchor = anchor;
+    Vec3 far_cursor = cursor;
     if (portal != nullptr) {
-      Pose near_o{};
-      near_o.position = hand_origin;
-      near_o.orientation = portal->near_bb.pose.orientation;
-      far_origin = engine_.map_near_to_far_pose(*portal, near_o, scale).position;
+      Pose near_a{};
+      near_a.position = anchor;
+      near_a.orientation = portal->near_bb.pose.orientation;
+      Pose near_c{};
+      near_c.position = cursor;
+      near_c.orientation = portal->near_bb.pose.orientation;
+      far_anchor = engine_.map_near_to_far_pose(*portal, near_a, scale).position;
+      far_cursor = engine_.map_near_to_far_pose(*portal, near_c, scale).position;
     }
-    const Vec3 far_stick{stick.x / scale, stick.y / scale, stick.z / scale};
-    VoodooVolumeEngine::fill_drag_arrow(gd.far_arrow, far_origin, far_stick, mag / scale, gd.deadzone_armed,
-                    engine_.deadzone_m_);
+    VoodooVolumeEngine::fill_drag_arrow_cursor(gd.far_arrow, far_anchor, far_cursor, gd.deadzone_armed,
+                                               engine_.deadzone_m_);
   } else {
     gd.arrow = {};
-    VoodooVolumeEngine::fill_drag_arrow(gd.far_arrow, hand_origin, stick, mag, gd.deadzone_armed, engine_.deadzone_m_);
+    VoodooVolumeEngine::fill_drag_arrow_cursor(gd.far_arrow, anchor, cursor, gd.deadzone_armed,
+                                               engine_.deadzone_m_);
   }
 }
 

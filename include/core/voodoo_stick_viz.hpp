@@ -33,6 +33,10 @@ class StickViz {
 
   static void fill(VoodooDragArrow& arrow, const Vec3& o, const Vec3& stick, float mag,
                    bool deadzone_armed, float deadzone_m);
+
+  /// Telekinesis / ghost-drag: anchor at drag-start cursor, tip at current cursor (host shortens tip).
+  static void fill_cursor(VoodooDragArrow& arrow, const Vec3& anchor, const Vec3& cursor,
+                            bool deadzone_armed, float deadzone_m);
 };
 
 }  // namespace threeos

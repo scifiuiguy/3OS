@@ -15,4 +15,17 @@ void StickViz::fill(VoodooDragArrow& arrow, const Vec3& o, const Vec3& stick, fl
   arrow.ray_tip = Vec3{o.x + stick.x, o.y + stick.y, o.z + stick.z};
 }
 
+void StickViz::fill_cursor(VoodooDragArrow& arrow, const Vec3& anchor, const Vec3& cursor,
+                           bool deadzone_armed, float deadzone_m) {
+  const Vec3 stick{cursor.x - anchor.x, cursor.y - anchor.y, cursor.z - anchor.z};
+  const float mag = std::sqrt(stick.x * stick.x + stick.y * stick.y + stick.z * stick.z);
+  arrow.active = true;
+  arrow.deadzone_armed = deadzone_armed;
+  arrow.in_deadzone = deadzone_armed && mag < deadzone_m;
+  arrow.magnitude = mag;
+  arrow.stick = stick;
+  arrow.ray_origin = anchor;
+  arrow.ray_tip = cursor;
+}
+
 }  // namespace threeos
