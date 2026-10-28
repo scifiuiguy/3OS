@@ -1,0 +1,26 @@
+---
+description: User runs builds and device installs; agent does not invoke build scripts
+alwaysApply: true
+---
+
+# Builds & installs — user only
+
+The agent **does not run builds or install-to-device flows**. The user builds using the project scripts under `tools/`.
+
+## Do not run
+
+- `tools/build_final_demo.ps1` (Unity Final Demo APK)
+- `tools/build_android_kernel.ps1` (native `lib3os_kernel.so`)
+- `tools/quest_install_and_log` / `tools/capture_quest_logcat.ps1` (Quest install + logcat)
+- Gradle/Unity `-batchmode` build invocations for shipping APKs or player builds
+- `ninja`, `cmake --build`, or equivalent **when the goal is producing a build artifact for the user to test** (as opposed to a one-off compile check the user explicitly asked for)
+
+## Do instead
+
+- Edit source (`.cs`, C++, scripts, etc.) and tell the user **which script to run** and **what changed** (e.g. “run `.\tools\build_final_demo.ps1` after pulling kernel sync”).
+- If kernel C++ changed, note that `build_final_demo.ps1` may rebuild the kernel when stale, or they can run `build_android_kernel.ps1` first.
+- Analyze existing outputs under `F:\3OS\build\logs\` (e.g. `quest-logcat-*.log`) without triggering a new build unless the user asks.
+
+## Exception
+
+Only run a build command when the user **explicitly** asks you to run that script or build in this message.

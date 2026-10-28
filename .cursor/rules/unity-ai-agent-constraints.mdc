@@ -1,0 +1,24 @@
+---
+description: Unity YAML off-limits; scene/prefab changes via Unity CLI/MCP only
+alwaysApply: true
+---
+
+# Unity AI Agent Constraints & Workflow Rules
+
+## CRITICAL: FILE MODIFICATION RESTRICTIONS
+
+1. **NEVER** attempt to read, write, parse, or directly modify Unity YAML files. This includes files ending in:
+   - `.unity` (Scenes)
+   - `.prefab` (Prefabs)
+   - `.asset` (ScriptableObjects / Project settings)
+   - `.mat` (Materials)
+
+2. If you need to instantiate, modify, inspect, or move GameObjects, UI elements, or scenes, you **MUST** exclusively use the provided **Unity CLI MCP tools** (e.g. `execute_editor_command`, `update_gameobject`, or scene management tools).
+
+3. The only files you are permitted to edit directly via file system tools are raw source code (`.cs`), assembly definitions (`.asmdef`), and standard markdown/text documentation.
+
+## When Unity MCP is unavailable
+
+- Do **not** fall back to YAML grepping or hand-editing serialized assets.
+- Add or extend an **Editor script** (`.cs` under `Assets/Editor/`) and invoke it via the project’s Unity CLI pattern (e.g. `unity command invoke_menu` as in `tools/build_final_demo.ps1`, or `-batchmode -executeMethod`).
+- Ask the user to run the menu/CLI step if the agent cannot drive the Editor.

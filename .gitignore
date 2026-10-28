@@ -1,6 +1,9 @@
 # Local machine attributes for agent context (not shared)
 GLOBAL_ATTRIBUTES.md
 
+# Stale Unity package extract (use sibling 3OS_Unity repo)
+_unity_fetch/
+
 # Quest build QA notes (local only)
 QA/
 
