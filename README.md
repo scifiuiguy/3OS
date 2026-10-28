@@ -1936,18 +1936,24 @@ If the object is out of reach or the cursor is outside the object but still sele
 </summary>
 
 <blockquote>
-This is not the recommended way to drop voodoo volumes in most situations, since it is the only raycast function in all of 3OS, and raycast is heavily discouraged as an interaction model across 3OS. This gesture can also tax the shoulder if done too frequently for too long. However, it is a decent one-off shortcut for solo objects in the far field that aren't snappable. For snappable objects (i.e. objects that have a focus anchor - they're part of a matrix, cluster, or collection of any kind) use the Main Voodoo Drop feature above.
+This is not the recommended way to drop voodoo volumes in most situations, since it is the only raycast function in all of 3OS, and raycast is heavily discouraged as an interaction model across 3OS. This gesture can also tax the shoulder if done too frequently for too long. However, it is a decent one-off shortcut for solo objects in the far field that aren't snappable. For snappable objects (i.e. objects that have a focus anchor - they're part of a matrix, cluster, or collection of any kind) use the Main Voodoo Drop feature above, which can be called two-at-once for power users.
 
-If the object does not have a focus anchor, then the main voodoo drop will gravitate toward other nearby anchors, or if no anchors are nearby, it will fall back to fully manual control like the Free-Range Voodoo Drop, which can be slow, tedious, and error-prone when targeting objects further than ~15-20' away.
+If the object does not have a focus anchor, then the main voodoo drop will gravitate toward other nearby anchors, or if no anchors are nearby, it will fall back to fully manual control like the Free-Range Voodoo Drop, which can be a bit tedious and error-prone when targeting objects are further than ~15-20' away.
 
-If the object is solo, and there are no other objects occluding it, the user can use Gaze + "Use The Force" to select it. "Use The Force" is open palm toward the object with splayed fingers. This gesture will snap a voodoo volume onto the object immediately if it senses both gaze and "Use The Force" are targeting it simultaneously. From there, Primary Pinch will drop the voodoo officially. The user can simply cease the gesture without pinch to cancel the voodoo.
+If the object is solo, and there are no other objects occluding it, Solo Drop is the best choice. The user should use Gaze + "Use The Force" to arm Solo Drop (i.e. quick hover). "Use The Force" is open palm toward the object with splayed fingers. This gesture will snap a voodoo volume onto the object immediately if it senses both gaze and "Use The Force" are targeting it simultaneously. 
+
+From there, <b>Primary-Pinch</b> will drop the voodoo officially. The user can simply cease the gesture without pinch to disarm and cancel the voodoo.
+
+Alternatively, while armed, <b>Secondary-Pinch</b> will select the object without dropping the voodoo.
 
 When the gazed object still belongs to an accessible cluster (MindPalace / expanded Box) and has not been dragged far from that centroid, Solo Drop locks onto the centroid and sizes the far BB to all of its contents — same fit path as snap voodoo — so a dense folder field does not open a one-object volume. Focus anchors (e.g. the demo NPC head) open their custom near-side widget instead of an empty bounding box.
 </blockquote>
 
-
 </details>
 <br clear="all">
+
+
+
 
 <details>
 <summary style="font-size: 1.15em; display: list-item;">

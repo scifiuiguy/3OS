@@ -4,15 +4,102 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdarg>
+
+#if defined(__ANDROID__)
+#include <android/log.h>
+#endif
 
 namespace threeos {
 namespace {
+
+#if defined(__ANDROID__)
+void log_kin_clamp(const char* fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  __android_log_vprint(ANDROID_LOG_INFO, "3OS_KinClamp", fmt, ap);
+  va_end(ap);
+}
+#else
+void log_kin_clamp(const char* /*fmt*/, ...) {}
+#endif
 
 float dist3(const Vec3& a, const Vec3& b) {
   const float dx = a.x - b.x;
   const float dy = a.y - b.y;
   const float dz = a.z - b.z;
   return std::sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+struct MrEnclosureClampResult {
+  bool moved = false;
+  bool on_wall = false;
+  Vec3 wall_into_room{};
+};
+
+MrEnclosureClampResult clamp_to_mr_enclosure(VoodooVolumeEngine& engine, Vec3& pos, const Pose& head,
+                                             bool head_valid, const Vec3& ray_origin) {
+  MrEnclosureClampResult out;
+  if (!engine.room_bounds_active() && engine.enclosure_box_count() == 0) {
+    return out;
+  }
+  const Vec3 before = pos;
+  const float h = engine.mr_enclosure_proxy_half_m();
+  const Vec3 half{h, h, h};
+  Vec3 wall{};
+  out.on_wall =
+      engine.constrain_object_center(pos, half, head, head_valid, &wall, &ray_origin);
+  if (out.on_wall) {
+    out.wall_into_room = wall;
+  }
+  out.moved = std::fabs(before.x - pos.x) > 1e-5f || std::fabs(before.y - pos.y) > 1e-5f ||
+              std::fabs(before.z - pos.z) > 1e-5f;
+  return out;
+}
+
+void store_mr_wall_contact(GhostDragState& gd, const MrEnclosureClampResult& clamp) {
+  gd.have_mr_wall_normal = clamp.on_wall;
+  if (clamp.on_wall) {
+    gd.mr_wall_into_room = clamp.wall_into_room;
+  } else {
+    gd.mr_wall_into_room = {};
+  }
+}
+
+/// Remove motion into the wall (normal points into room). Tangential component is kept at full strength.
+Vec3 strip_inward_wall_delta(const Vec3& delta, const Vec3& wall_into_room) {
+  const float dn = delta.x * wall_into_room.x + delta.y * wall_into_room.y + delta.z * wall_into_room.z;
+  if (dn >= 0.f) {
+    return delta;
+  }
+  return Vec3{delta.x - dn * wall_into_room.x, delta.y - dn * wall_into_room.y,
+              delta.z - dn * wall_into_room.z};
+}
+
+void log_wall_contact_once(GhostDragState& gd, const MrEnclosureClampResult& clamp, uint32_t stick_path) {
+  static EntityId s_logged_entity = 0;
+  static uint32_t s_logged_hand = 99u;
+  if (!clamp.on_wall) {
+    return;
+  }
+  if (gd.entity_id == s_logged_entity && gd.hand == s_logged_hand) {
+    return;
+  }
+  s_logged_entity = gd.entity_id;
+  s_logged_hand = gd.hand;
+  log_kin_clamp("drag/wall_contact entity=%llu hand=%u stick_path=%u n=(%.2f,%.2f,%.2f)",
+                static_cast<unsigned long long>(gd.entity_id), gd.hand, stick_path,
+                clamp.wall_into_room.x, clamp.wall_into_room.y, clamp.wall_into_room.z);
+}
+
+void log_drag_begin(const VoodooVolumeEngine& engine, const GhostDragState& gd, bool portal_ghost) {
+  log_kin_clamp(
+      "drag/begin hand=%u entity=%llu kind=%u direct_follow=%d portal_ghost=%d wm_boxes=%u "
+      "room_aabb=%d proxy_r=%.3f",
+      gd.hand, static_cast<unsigned long long>(gd.entity_id),
+      static_cast<unsigned>(gd.kind), gd.direct_follow ? 1 : 0, portal_ghost ? 1 : 0,
+      engine.enclosure_box_count(), engine.room_bounds_active() ? 1 : 0,
+      engine.mr_enclosure_proxy_half_m());
 }
 
 }  // namespace
@@ -102,6 +189,11 @@ void GhostDragController::audition_enter_portal(GhostDragState& gd, VoodooPortal
   ghost->near_pose.position = near_pos;
   ghost->near_pose.orientation = portal.near_bb.pose.orientation;
   ghost->far_pose = engine_.map_near_to_far_pose(portal, ghost->near_pose, gd.scale);
+  {
+    const Vec3 origin = ghost->far_pose.position;
+    const auto clamp = clamp_to_mr_enclosure(engine_, ghost->far_pose.position, Pose{}, false, origin);
+    store_mr_wall_contact(gd, clamp);
+  }
   if (auto* we = workspace.find_mut(gd.entity_id)) {
     we->pose = ghost->far_pose;
   }
@@ -129,6 +221,11 @@ void GhostDragController::audition_apply_matrix_snap(GhostDragState& gd, const P
   if (gd.audition_inside || gd.entity_id == 0) {
     return;
   }
+  const auto clamp_free = [&](Vec3& pos) {
+    const Vec3 origin = pos;
+    const auto r = clamp_to_mr_enclosure(engine_, pos, Pose{}, false, origin);
+    store_mr_wall_contact(gd, r);
+  };
   auto* we = workspace.find_mut(gd.entity_id);
   if (we == nullptr || !we->in_field) {
     return;
@@ -146,12 +243,14 @@ void GhostDragController::audition_apply_matrix_snap(GhostDragState& gd, const P
       gd.snap_escape =
           Vec3{hand_pose.position.x + gd.grab_offset.x, hand_pose.position.y + gd.grab_offset.y,
                hand_pose.position.z + gd.grab_offset.z};
+      clamp_free(gd.snap_escape);
     }
     free.position = gd.snap_escape;
   } else if (gd.direct_follow) {
     free.position = Vec3{hand_pose.position.x + gd.grab_offset.x,
                          hand_pose.position.y + gd.grab_offset.y,
                          hand_pose.position.z + gd.grab_offset.z};
+    clamp_free(free.position);
   }
 
   // Lateral unsnap clears the 3″ hold buffer while free is often still inside the 0.2 m
@@ -162,6 +261,7 @@ void GhostDragController::audition_apply_matrix_snap(GhostDragState& gd, const P
         dist3(free.position, cool->pose.position) < Workspace::kSnapDistanceM) {
       workspace.clear_snap();
       we->pose.position = free.position;
+      clamp_free(we->pose.position);
       gd.have_snap_escape = false;
       return;
     }
@@ -182,6 +282,7 @@ void GhostDragController::audition_apply_matrix_snap(GhostDragState& gd, const P
         we->pose.position = Vec3{hand_pose.position.x + gd.grab_offset.x,
                                  hand_pose.position.y + gd.grab_offset.y,
                                  hand_pose.position.z + gd.grab_offset.z};
+        clamp_free(we->pose.position);
       }
     }
     gd.have_snap_escape = false;
@@ -235,12 +336,33 @@ bool GhostDragController::begin(uint32_t hand, EntityId entity_id, const Pose& h
   gd.clamped = false;
   gd.arrow = {};
   gd.audition_inside = false;
+  gd.have_mr_wall_normal = false;
+  gd.mr_wall_into_room = {};
+  gd.have_snap_escape = false;
+  gd.snap_escape = {};
+  gd.snap_cooldown_box = 0;
 
   if (has_ghost) {
-    // Committed portal ghost: must start inside home near BB.
+    // Committed portal ghost: near-BB grab uses ghost-scale drag. Outside the near BB,
+    // drag the far/real workspace object (direct or velocity telekinesis) — do not fail
+    // begin and fall back to possess stick on the host.
     if (!VoodooVolumeEngine::point_in_obb(hand_pose.position, portal->near_bb.pose, portal->near_bb.extents)) {
-      engine_.ghost_drags_[hand] = {};
-      return false;
+      gd.kind = GhostDragKind::Audition;
+      gd.audition_inside = false;
+      gd.portal_id = 0;
+      if (const WorkspaceEntry* e = workspace.find(entity_id)) {
+        gd.start_far = e->pose;
+        const float dx = e->pose.position.x - hand_pose.position.x;
+        const float dy = e->pose.position.y - hand_pose.position.y;
+        const float dz = e->pose.position.z - hand_pose.position.z;
+        const float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist <= VoodooVolumeEngine::kDirectGrabRadiusM) {
+          gd.direct_follow = true;
+          gd.grab_offset = Vec3{dx, dy, dz};
+        }
+      }
+      log_drag_begin(engine_, gd, true);
+      return true;
     }
     gd.kind = GhostDragKind::Committed;
     gd.portal_id = portal->id;
@@ -262,6 +384,7 @@ bool GhostDragController::begin(uint32_t hand, EntityId entity_id, const Pose& h
       gd.direct_follow = true;
       gd.grab_offset = Vec3{dx, dy, dz};
     }
+    log_drag_begin(engine_, gd, true);
     return true;
   }
 
@@ -288,6 +411,7 @@ bool GhostDragController::begin(uint32_t hand, EntityId entity_id, const Pose& h
       }
     }
   }
+  log_drag_begin(engine_, gd, false);
   return true;
 }
 
@@ -342,9 +466,21 @@ void GhostDragController::tick(uint32_t hand, const Pose& hand_pose, bool hand_v
 
     // Direct grab: no deadzone / velocity — object stays translation-synced to cursor.
     if (gd.direct_follow) {
-      const Vec3 synced{hand_pose.position.x + gd.grab_offset.x,
-                        hand_pose.position.y + gd.grab_offset.y,
-                        hand_pose.position.z + gd.grab_offset.z};
+      static EntityId s_no_enclosure_drag_entity = 0;
+      Vec3 synced{hand_pose.position.x + gd.grab_offset.x,
+                  hand_pose.position.y + gd.grab_offset.y,
+                  hand_pose.position.z + gd.grab_offset.z};
+      const uint32_t nbox = engine_.enclosure_box_count();
+      const bool room = engine_.room_bounds_active();
+      if (!room && nbox == 0) {
+        if (gd.entity_id != s_no_enclosure_drag_entity) {
+          s_no_enclosure_drag_entity = gd.entity_id;
+          log_kin_clamp("drag/no_enclosure entity=%llu direct_follow=1 (wm_boxes=0 room=0)",
+                        static_cast<unsigned long long>(gd.entity_id));
+        }
+      } else {
+        s_no_enclosure_drag_entity = 0;
+      }
       gd.velocity = {};
       if (gd.audition_inside) {
         VoodooPortal* portal = nullptr;
@@ -358,12 +494,29 @@ void GhostDragController::tick(uint32_t hand, const Pose& hand_pose, bool hand_v
         ghost->near_pose.orientation = portal->near_bb.pose.orientation;
         gd.scale = std::max(ghost->scale, 1e-4f);
         ghost->far_pose = engine_.map_near_to_far_pose(*portal, ghost->near_pose, gd.scale);
+        {
+          const Vec3 origin = ghost->far_pose.position;
+          const auto r =
+              clamp_to_mr_enclosure(engine_, ghost->far_pose.position, head, head_valid, origin);
+          store_mr_wall_contact(gd, r);
+        }
         if (auto* we = workspace.find_mut(gd.entity_id)) {
           we->pose = ghost->far_pose;
         }
         gd.clamped = false;
       } else if (auto* we = workspace.find_mut(gd.entity_id)) {
-        we->pose.position = synced;
+        const Vec3 origin = we->pose.position;
+        Vec3 delta{synced.x - origin.x, synced.y - origin.y, synced.z - origin.z};
+        if (gd.have_mr_wall_normal) {
+          delta = strip_inward_wall_delta(delta, gd.mr_wall_into_room);
+        }
+        Vec3 trial{origin.x + delta.x, origin.y + delta.y, origin.z + delta.z};
+        if (room || nbox > 0) {
+          const auto r = clamp_to_mr_enclosure(engine_, trial, head, head_valid, origin);
+          store_mr_wall_contact(gd, r);
+          log_wall_contact_once(gd, r, 0u);
+        }
+        we->pose.position = trial;
         audition_apply_matrix_snap(gd, hand_pose, workspace);
       }
       return;
@@ -389,6 +542,12 @@ void GhostDragController::tick(uint32_t hand, const Pose& hand_pose, bool hand_v
       ghost->near_pose.orientation = portal->near_bb.pose.orientation;
       gd.scale = std::max(ghost->scale, 1e-4f);
       ghost->far_pose = engine_.map_near_to_far_pose(*portal, ghost->near_pose, gd.scale);
+      {
+        const Vec3 origin = ghost->far_pose.position;
+        const auto r =
+            clamp_to_mr_enclosure(engine_, ghost->far_pose.position, head, head_valid, origin);
+        store_mr_wall_contact(gd, r);
+      }
       if (auto* we = workspace.find_mut(gd.entity_id)) {
         we->pose = ghost->far_pose;
       }
@@ -404,14 +563,27 @@ void GhostDragController::tick(uint32_t hand, const Pose& hand_pose, bool hand_v
         const bool snapped =
             workspace.snap().pending && workspace.snap().object_id == gd.entity_id;
         if (snapped && gd.have_snap_escape) {
-          // Advance escape only — display hold is applied inside matrix snap.
-          gd.snap_escape.x += gd.velocity.x * dt;
-          gd.snap_escape.y += gd.velocity.y * dt;
-          gd.snap_escape.z += gd.velocity.z * dt;
+          const Vec3 origin = gd.snap_escape;
+          Vec3 delta{gd.velocity.x * dt, gd.velocity.y * dt, gd.velocity.z * dt};
+          if (gd.have_mr_wall_normal) {
+            delta = strip_inward_wall_delta(delta, gd.mr_wall_into_room);
+          }
+          gd.snap_escape = Vec3{origin.x + delta.x, origin.y + delta.y, origin.z + delta.z};
+          const auto r =
+              clamp_to_mr_enclosure(engine_, gd.snap_escape, head, head_valid, origin);
+          store_mr_wall_contact(gd, r);
+          log_wall_contact_once(gd, r, 1u);
         } else {
-          we->pose.position.x += gd.velocity.x * dt;
-          we->pose.position.y += gd.velocity.y * dt;
-          we->pose.position.z += gd.velocity.z * dt;
+          const Vec3 origin = we->pose.position;
+          Vec3 delta{gd.velocity.x * dt, gd.velocity.y * dt, gd.velocity.z * dt};
+          if (gd.have_mr_wall_normal) {
+            delta = strip_inward_wall_delta(delta, gd.mr_wall_into_room);
+          }
+          we->pose.position = Vec3{origin.x + delta.x, origin.y + delta.y, origin.z + delta.z};
+          const auto r =
+              clamp_to_mr_enclosure(engine_, we->pose.position, head, head_valid, origin);
+          store_mr_wall_contact(gd, r);
+          log_wall_contact_once(gd, r, 1u);
         }
       }
       audition_apply_matrix_snap(gd, hand_pose, workspace);
@@ -445,6 +617,10 @@ void GhostDragController::tick(uint32_t hand, const Pose& hand_pose, bool hand_v
     near_drive.orientation = portal->near_bb.pose.orientation;
     ghost->far_pose = engine_.map_near_to_far_pose(*portal, near_drive, gd.scale);
     if (auto* we = workspace.find_mut(gd.entity_id)) {
+      const Vec3 origin = we->pose.position;
+      const auto r =
+          clamp_to_mr_enclosure(engine_, ghost->far_pose.position, head, head_valid, origin);
+      store_mr_wall_contact(gd, r);
       we->pose = ghost->far_pose;
     }
     engine_.refit_far_bb_to_content_ghosts(*portal, workspace, /*settle_bump=*/false);
@@ -466,9 +642,15 @@ void GhostDragController::tick(uint32_t hand, const Pose& hand_pose, bool hand_v
   gd.velocity = Vec3{gain_far * stick.x * eff, gain_far * stick.y * eff, gain_far * stick.z * eff};
   const float dt = std::max(0.f, dt_seconds);
   Pose far = ghost->far_pose;
-  far.position.x += gd.velocity.x * dt;
-  far.position.y += gd.velocity.y * dt;
-  far.position.z += gd.velocity.z * dt;
+  const Vec3 origin = far.position;
+  Vec3 delta{gd.velocity.x * dt, gd.velocity.y * dt, gd.velocity.z * dt};
+  if (gd.have_mr_wall_normal) {
+    delta = strip_inward_wall_delta(delta, gd.mr_wall_into_room);
+  }
+  far.position = Vec3{origin.x + delta.x, origin.y + delta.y, origin.z + delta.z};
+  const auto r = clamp_to_mr_enclosure(engine_, far.position, head, head_valid, origin);
+  store_mr_wall_contact(gd, r);
+  log_wall_contact_once(gd, r, 1u);
   ghost->far_pose = far;
 
   if (auto* we = workspace.find_mut(gd.entity_id)) {
@@ -525,6 +707,9 @@ void GhostDragController::end(uint32_t hand, bool release_inside_near_bb,
       }
     }
     // Already outside: workspace is the near-field real — nothing to clean up.
+    if (workspace.snap().pending && workspace.snap().object_id == gd.entity_id) {
+      workspace.clear_snap();
+    }
     gd = {};
     return;
   }

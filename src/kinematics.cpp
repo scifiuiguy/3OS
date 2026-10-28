@@ -39,12 +39,25 @@ void KinematicsEngine::possess(EntityId id, const Pose& object_pose) {
   state_.phase = KineticPhase::Possessed;
   state_.entity_id = id;
   state_.pose = object_pose;
+  possess_enclosure_origin_ = object_pose;
   state_.velocity = {};
+  direct_follow_ = false;
+  grab_offset_ = {};
   have_start_hand_ = false;
   have_prev_time_ = false;
   deadzone_armed_ = false;
   deadzone_left_once_ = false;
   stick_debug_ = {};
+}
+
+void KinematicsEngine::set_direct_follow(bool enabled, const Vec3& grab_offset) {
+  direct_follow_ = enabled;
+  grab_offset_ = grab_offset;
+  if (direct_follow_) {
+    state_.velocity = {};
+    deadzone_armed_ = false;
+    deadzone_left_once_ = false;
+  }
 }
 
 void KinematicsEngine::release() {
@@ -187,6 +200,15 @@ bool KinematicsEngine::tick_possessed(const Pose& hand_pose, const Pose& head_po
     deadzone_armed_ = false;
     deadzone_left_once_ = false;
     update_stick_debug(hand_pose, head_pose, head_valid);
+    return true;
+  }
+
+  if (direct_follow_) {
+    state_.velocity = {};
+    state_.pose.position = Vec3{hand_pose.position.x + grab_offset_.x,
+                                hand_pose.position.y + grab_offset_.y,
+                                hand_pose.position.z + grab_offset_.z};
+    stick_debug_ = {};
     return true;
   }
 

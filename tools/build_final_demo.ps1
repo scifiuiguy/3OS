@@ -17,43 +17,7 @@ $project = "$repo\3OS_Unity_Sample_Project"
 $unity = "$env:LOCALAPPDATA\Unity\bin\unity.exe"
 # Bump this when the active Quest gate milestone changes (matches IMPLEMENTATION_PLAN).
 $qaMilestone = "0.8.1"
-function New-QaNotesFile {
-    param(
-        [Parameter(Mandatory = $true)][string]$Milestone,
-        [Parameter(Mandatory = $true)][string]$BuildNumber,
-        [string]$ApkName = ""
-    )
-    $qaDir = Join-Path $repo "QA"
-    New-Item -ItemType Directory -Force $qaDir | Out-Null
-    $path = Join-Path $qaDir ("{0}_build{1}.md" -f $Milestone, $BuildNumber)
-    if (Test-Path $path) {
-        Write-Host "QA notes already exist: $path"
-        return $path
-    }
-    $apkLine = if ($ApkName) { $ApkName } else { "3OS_Final_Demo_$BuildNumber.apk" }
-    $body = @"
-# QA — Phase $Milestone / build $BuildNumber
-
-> Seeded by ``tools/build_final_demo.ps1`` after ``$apkLine``.
-> Drop device-test notes below; mark items fixed as they land.
-
-## Solo Drop
-
--
-
-## Multi-Select
-
--
-
-## Other
-
--
-
-"@
-    Set-Content -Path $path -Value $body -Encoding utf8
-    Write-Host "Created QA notes: $path"
-    return $path
-}
+. (Join-Path $tools "_qa_seed_lib.ps1")
 
 if (-not $AllowStaleKernel) {
     if ($ForceKernelRebuild) {
@@ -108,7 +72,7 @@ try {
         if (-not $buildNum) {
             Write-Host "WARNING: could not parse build number from $($apk.Name); skipping QA notes seed." -ForegroundColor Yellow
         } else {
-            New-QaNotesFile -Milestone $qaMilestone -BuildNumber $buildNum -ApkName $apk.Name | Out-Null
+            New-QaNotesFile -RepoRoot $repo -Milestone $qaMilestone -BuildNumber $buildNum -ApkName $apk.Name | Out-Null
         }
     }
 } catch {

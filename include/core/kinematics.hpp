@@ -96,8 +96,14 @@ class KinematicsEngine {
   const StickDebug& stick_debug() const { return stick_debug_; }
 
   void possess(EntityId id, const Pose& object_pose);
+  /// Cursor-in-glyph 1:1 telekinesis (README direct telekinesis); otherwise stick velocity.
+  void set_direct_follow(bool enabled, const Vec3& grab_offset);
+  bool direct_follow() const { return direct_follow_; }
   void release();
   void clear();
+
+  /// Object pose at possess — enclosure ray origin (same role as voodoo rest_far_).
+  const Pose& possess_enclosure_origin() const { return possess_enclosure_origin_; }
 
   /// Drive with hand pose at absolute time_seconds. Returns true if pose changed.
   /// Head pose (when valid) sets flat-forward for the stick debug ray.
@@ -110,6 +116,7 @@ class KinematicsEngine {
   /// Do not call on snap escape — escape keeps stick-built velocity.
   void reanchor_hand(const Pose& hand_pose);
   void zero_velocity() { state_.velocity = {}; }
+  void set_velocity(const Vec3& v) { state_.velocity = v; }
   bool have_start_hand() const { return have_start_hand_; }
 
  private:
@@ -135,6 +142,9 @@ class KinematicsEngine {
   double prev_time_ = 0.0;
   bool deadzone_armed_ = false;
   bool deadzone_left_once_ = false;
+  Pose possess_enclosure_origin_{};
+  bool direct_follow_ = false;
+  Vec3 grab_offset_{};
 };
 
 inline float vec3_length(const Vec3& v) {

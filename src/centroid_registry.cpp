@@ -5,6 +5,71 @@
 
 namespace threeos {
 
+namespace {
+
+bool aabb_mind_palace_roots(const Workspace& workspace, EntityId mind_palace_id, Vec3* out_min,
+                            Vec3* out_max) {
+  bool any = false;
+  Vec3 mn{};
+  Vec3 mx{};
+  for (const auto& e : workspace.entries()) {
+    if (!e.in_field || e.parent_box != 0 || e.mind_palace_id != mind_palace_id) {
+      continue;
+    }
+    const Vec3& p = e.pose.position;
+    if (!any) {
+      mn = mx = p;
+      any = true;
+    } else {
+      mn.x = std::min(mn.x, p.x);
+      mn.y = std::min(mn.y, p.y);
+      mn.z = std::min(mn.z, p.z);
+      mx.x = std::max(mx.x, p.x);
+      mx.y = std::max(mx.y, p.y);
+      mx.z = std::max(mx.z, p.z);
+    }
+  }
+  if (!any || out_min == nullptr || out_max == nullptr) {
+    return false;
+  }
+  constexpr float kPad = 0.05f;
+  *out_min = Vec3{mn.x - kPad, mn.y - kPad, mn.z - kPad};
+  *out_max = Vec3{mx.x + kPad, mx.y + kPad, mx.z + kPad};
+  return true;
+}
+
+bool aabb_box_children(const Workspace& workspace, EntityId box_id, Vec3* out_min, Vec3* out_max) {
+  bool any = false;
+  Vec3 mn{};
+  Vec3 mx{};
+  for (const auto& e : workspace.entries()) {
+    if (!e.in_field || e.parent_box != box_id) {
+      continue;
+    }
+    const Vec3& p = e.pose.position;
+    if (!any) {
+      mn = mx = p;
+      any = true;
+    } else {
+      mn.x = std::min(mn.x, p.x);
+      mn.y = std::min(mn.y, p.y);
+      mn.z = std::min(mn.z, p.z);
+      mx.x = std::max(mx.x, p.x);
+      mx.y = std::max(mx.y, p.y);
+      mx.z = std::max(mx.z, p.z);
+    }
+  }
+  if (!any || out_min == nullptr || out_max == nullptr) {
+    return false;
+  }
+  constexpr float kPad = 0.05f;
+  *out_min = Vec3{mn.x - kPad, mn.y - kPad, mn.z - kPad};
+  *out_max = Vec3{mx.x + kPad, mx.y + kPad, mx.z + kPad};
+  return true;
+}
+
+}  // namespace
+
 void CentroidRegistry::clear() {
   mind_palaces_.clear();
   temps_.clear();
@@ -254,6 +319,12 @@ void CentroidRegistry::rebuild(const Workspace& workspace) {
     c.position = Vec3{sum.x / static_cast<float>(n), sum.y / static_cast<float>(n),
                       sum.z / static_cast<float>(n)};
     c.name = mp.name;
+    Vec3 mn{};
+    Vec3 mx{};
+    if (aabb_mind_palace_roots(workspace, mp.id, &mn, &mx)) {
+      c.position =
+          Vec3{0.5f * (mn.x + mx.x), 0.5f * (mn.y + mx.y), 0.5f * (mn.z + mx.z)};
+    }
     centroids_.push_back(std::move(c));
   }
 
@@ -284,6 +355,12 @@ void CentroidRegistry::rebuild(const Workspace& workspace) {
     c.position = Vec3{sum.x / static_cast<float>(n), sum.y / static_cast<float>(n),
                       sum.z / static_cast<float>(n)};
     c.name = box.name;
+    Vec3 mn{};
+    Vec3 mx{};
+    if (aabb_box_children(workspace, box.id, &mn, &mx)) {
+      c.position =
+          Vec3{0.5f * (mn.x + mx.x), 0.5f * (mn.y + mx.y), 0.5f * (mn.z + mx.z)};
+    }
     centroids_.push_back(std::move(c));
   }
 }

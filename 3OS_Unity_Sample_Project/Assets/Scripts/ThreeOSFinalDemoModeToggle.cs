@@ -79,6 +79,11 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
         EnsureWipeShell();
     }
 
+    void Start()
+    {
+        StartCoroutine(SyncFocusAnchorSnapWhenReady());
+    }
+
     void EnsureOpenBook()
     {
         if (openBook == null)
@@ -217,6 +222,7 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
 
         stage.SetInPalace(toPalace);
         ApplyPalaceOverlaySettled(toPalace);
+        SyncFocusAnchorSnapForMode(toPalace);
         _wiping = false;
         _wipeCo = null;
         // Allow another thumbsClosed pulse without dropping open-book arm.
@@ -511,5 +517,30 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
     {
         if (src.HasProperty(prop) && dst.HasProperty(prop))
             dst.SetTexture(prop, src.GetTexture(prop));
+    }
+
+    IEnumerator SyncFocusAnchorSnapWhenReady()
+    {
+        for (var i = 0; i < 240; i++)
+        {
+            if (bridge == null)
+                bridge = FindFirstObjectByType<ThreeOSBridge>();
+            if (bridge != null && bridge.IsLoaded && stage != null)
+            {
+                SyncFocusAnchorSnapForMode(stage.InPalace);
+                yield break;
+            }
+
+            yield return null;
+        }
+    }
+
+    void SyncFocusAnchorSnapForMode(bool inPalace)
+    {
+        if (bridge == null)
+            bridge = FindFirstObjectByType<ThreeOSBridge>();
+        if (bridge == null || !bridge.IsLoaded)
+            return;
+        bridge.SetFocusAnchorSnapEnabled(!inPalace);
     }
 }

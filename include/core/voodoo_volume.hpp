@@ -156,6 +156,9 @@ struct GhostDragState {
   /// Host policy: blue velocity stick only while auditioning inside a near BB or
   /// committed with a live portal ghost (not after pull-out / far-only drag).
   bool near_stick_visible = false;
+  /// Last MR enclosure clamp (audition drag): wall normal into room for stick slide.
+  bool have_mr_wall_normal = false;
+  Vec3 mr_wall_into_room{};
 };
 
 struct VoodooSessionState {
@@ -203,6 +206,12 @@ class VoodooVolumeEngine {
 
   const VoodooFieldParams& params() const { return params_; }
   bool set_params(const VoodooFieldParams& p);
+
+  /// Snap-mode snap nodes for FocusAnchor (NPC). Off in Mind Palace VR; on in MR. Default true.
+  bool focus_anchor_snap_in_snap_mode() const { return focus_anchor_snap_in_snap_mode_; }
+  void set_focus_anchor_snap_in_snap_mode(bool enabled) {
+    focus_anchor_snap_in_snap_mode_ = enabled;
+  }
 
   const VoodooSessionState& session(uint32_t hand) const {
     return hand < 2u ? hands_[hand].session : hands_[0].session;
@@ -315,11 +324,25 @@ class VoodooVolumeEngine {
   static constexpr uint32_t kMaxEnclosureBoxes = 64;
   void set_enclosure_boxes(const EnclosureBox* boxes, uint32_t count);
   void clear_enclosure_boxes();
+  uint32_t enclosure_box_count() const {
+    return static_cast<uint32_t>(enclosure_boxes_.size());
+  }
+  bool room_bounds_active() const { return room_bounds_enabled_; }
+
+  /// Proxy half-extents (m) for MR WorldMesh / room clamp on ghost-drag telekinesis.
+  /// Kept in sync with kinematics object_radius when the host sets it on grab.
+  void set_mr_enclosure_proxy_half_m(float half_m);
+  float mr_enclosure_proxy_half_m() const { return mr_enclosure_proxy_half_m_; }
 
   /// Optional MR room AABB (OpenXR). When enabled, far BB center is hard-clamped inside
   /// (inset by half extents) so walls/floor/ceiling of the probed room are impenetrable.
   void set_room_bounds(const Vec3& min_xyz, const Vec3& max_xyz, bool enabled);
   void clear_room_bounds();
+
+  /// MR telekinesis / workspace objects: same enclosure clamp as far BB (WorldMesh OBBs + room AABB).
+  bool constrain_object_center(Vec3& center, const Vec3& half_extents, const Pose& head,
+                               bool head_valid, Vec3* out_wall_into_room = nullptr,
+                               const Vec3* ray_origin = nullptr) const;
 
   /// After a focus-anchor snap release: host should open agent Multi-Choice then clear.
   struct PendingAgentOpen {
@@ -547,6 +570,7 @@ class VoodooVolumeEngine {
   friend class VoodooCutPaste;
 
   VoodooFieldParams params_{};
+  bool focus_anchor_snap_in_snap_mode_ = true;
   HandRuntime hands_[2]{};
   GhostDragState ghost_drags_[2]{};
   PoseLerpQueue pose_lerps_{};
@@ -561,6 +585,7 @@ class VoodooVolumeEngine {
   bool room_bounds_enabled_ = false;
   Vec3 room_bounds_min_{};
   Vec3 room_bounds_max_{};
+  float mr_enclosure_proxy_half_m_ = 0.075f;
   VoodooOrbitPacker orbit_{*this};
   GhostDragController ghost_drag_{*this};
   VoodooCutPaste cut_{*this};

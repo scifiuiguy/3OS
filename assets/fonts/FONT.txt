@@ -1,0 +1,4 @@
+Optional override: copy Myriad Pro here or set MYRIAD_PRO_FONT.
+
+Default lookup includes Adobe Acrobat DC:
+  C:\Program Files\Adobe\Acrobat DC\Resource\Font\MyriadPro-Regular.otf

@@ -454,6 +454,11 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
     engine_.refresh_ghost_near_poses(engine_.portals_[pinned_index]);
     return true;
   }
+  const auto same_drop_target = [](const VoodooPortal& a, const VoodooPortal& b) {
+    const EntityId ta = a.singleton_target_id;
+    const EntityId tb = b.singleton_target_id;
+    return ta == 0 || tb == 0 || ta == tb;
+  };
   const float body_x = head_valid ? head.position.x : 0.f;
   const float body_z = head_valid ? head.position.z : 0.f;
   const Vec3 body{body_x, 0.f, body_z};
@@ -697,6 +702,9 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
       if (engine_.portals_[hit].group_id == active) {
         continue;
       }
+      if (!same_drop_target(engine_.portals_[s.idx], engine_.portals_[hit])) {
+        continue;
+      }
       merge_groups(engine_.portals_[hit].group_id, active);
       engine_.portals_[hit].group_id = active;
       merged = true;
@@ -720,6 +728,9 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
         if (hit == static_cast<size_t>(-1)) {
           continue;
         }
+        if (!same_drop_target(engine_.portals_[i], engine_.portals_[hit])) {
+          continue;
+        }
         if (engine_.portals_[i].group_id != active) {
           merge_groups(engine_.portals_[i].group_id, active);
           engine_.portals_[i].group_id = active;
@@ -731,7 +742,31 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
         merged = true;
       }
       if (!merged) {
-        // Overlap persists inside a single group — fail.
+        // Demo + Demo2 + Demo3 may touch with different singleton_target_id — local XZ nudge only.
+        const Vec3 pin_pos = effective_portal_pos(engine_.portals_[pinned_index]);
+        bool only_other_singletons = true;
+        for (size_t i = 0; i < engine_.portals_.size(); ++i) {
+          if (i == pinned_index || !engine_.portals_[i].near_bb.open) {
+            continue;
+          }
+          if (!portals_overlap_at(engine_.portals_[pinned_index], pin_pos, engine_.portals_[i],
+                                  effective_portal_pos(engine_.portals_[i]))) {
+            continue;
+          }
+          if (!same_drop_target(engine_.portals_[pinned_index], engine_.portals_[i])) {
+            continue;
+          }
+          only_other_singletons = false;
+          break;
+        }
+        if (only_other_singletons) {
+          for (auto& portal : engine_.portals_) {
+            if (portal.group_id == active) {
+              engine_.refresh_ghost_near_poses(portal);
+            }
+          }
+          return true;
+        }
         return false;
       }
     }

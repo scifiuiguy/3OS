@@ -15,12 +15,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdarg>
 #include <cstdio>
 #include <cstring>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
+
 
 #if defined(__ANDROID__)
 #include <android/log.h>
@@ -253,6 +255,92 @@ DriveHand resolve_drive_hand(const ThreeOS_InteropInputFrame* frame) {
   return drive;
 }
 
+namespace {
+float dot3(const threeos::Vec3& a, const threeos::Vec3& b) {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+#if defined(__ANDROID__)
+void log_kin_clamp(const char* fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  __android_log_vprint(ANDROID_LOG_INFO, "3OS_KinClamp", fmt, ap);
+  va_end(ap);
+}
+#else
+void log_kin_clamp(const char* /*fmt*/, ...) {}
+#endif
+
+}  // namespace
+
+bool clamp_kinematics_to_mr_enclosure(const ThreeOS_InteropInputFrame* frame) {
+  const auto ph = g_kinematics.state().phase;
+  if (ph != threeos::KineticPhase::Possessed && ph != threeos::KineticPhase::Coasting) {
+    return false;
+  }
+  if (g_kinematics.state().entity_id == 0) {
+    return false;
+  }
+  const bool head_valid = (frame->tracking_flags & THREEOS_TRACK_HEAD) != 0;
+  const float r = g_kinematics.params().object_radius;
+  const threeos::Vec3 half{r, r, r};
+  const uint32_t nbox = g_voodoo.enclosure_box_count();
+  const bool room = g_voodoo.room_bounds_active();
+
+  static threeos::EntityId s_logged_possess_entity = 0;
+  static uint32_t s_no_enclosure_log_tick = 0;
+  const threeos::EntityId eid = g_kinematics.state().entity_id;
+  if (eid != s_logged_possess_entity) {
+    s_logged_possess_entity = eid;
+    log_kin_clamp(
+        "possess/clamp entity=%llu phase=%u radius_m=%.3f wm_boxes=%u room_aabb=%d tick=%u",
+        static_cast<unsigned long long>(eid),
+        static_cast<unsigned>(g_kinematics.state().phase), r, nbox, room ? 1 : 0, g_tick_count);
+  }
+  if (nbox == 0 && !room) {
+    if (g_tick_count - s_no_enclosure_log_tick >= 72) {
+      s_no_enclosure_log_tick = g_tick_count;
+      log_kin_clamp("no MR enclosure data (wm_boxes=0 room=0) — clamp skipped entity=%llu",
+                    static_cast<unsigned long long>(eid));
+    }
+    return false;
+  }
+
+  threeos::Pose p = g_kinematics.state().pose;
+  const threeos::Vec3 before = p.position;
+  const threeos::Vec3& ray_origin = g_kinematics.possess_enclosure_origin().position;
+  threeos::Vec3 wall_into_room{};
+  const bool on_wall = g_voodoo.constrain_object_center(
+      p.position, half, from_c(frame->head), head_valid, &wall_into_room, &ray_origin);
+  if (p.position.x == before.x && p.position.y == before.y && p.position.z == before.z) {
+    return false;
+  }
+  log_kin_clamp(
+      "clamped entity=%llu on_wall=%d boxes=%u room=%d d=(%.3f,%.3f,%.3f) pos=(%.3f,%.3f,%.3f)",
+      static_cast<unsigned long long>(eid), on_wall ? 1 : 0, nbox, room ? 1 : 0,
+      p.position.x - before.x, p.position.y - before.y, p.position.z - before.z, p.position.x,
+      p.position.y, p.position.z);
+  g_kinematics.set_pose(p);
+  if (on_wall) {
+    const float nlen = std::sqrt(wall_into_room.x * wall_into_room.x +
+                                 wall_into_room.y * wall_into_room.y +
+                                 wall_into_room.z * wall_into_room.z);
+    if (nlen > 1e-6f) {
+      const threeos::Vec3 n{wall_into_room.x / nlen, wall_into_room.y / nlen,
+                            wall_into_room.z / nlen};
+      threeos::Vec3 v = g_kinematics.state().velocity;
+      const float vn = dot3(v, n);
+      if (vn < 0.f) {
+        v.x -= vn * n.x;
+        v.y -= vn * n.y;
+        v.z -= vn * n.z;
+        g_kinematics.set_velocity(v);
+      }
+    }
+  }
+  return true;
+}
+
 void tick_possess_snap_pipeline(const ThreeOS_InteropInputFrame* frame, const DriveHand& drive,
                                 ThreeOS_InteropTransformDelta* out_delta) {
   const bool head_valid = (frame->tracking_flags & THREEOS_TRACK_HEAD) != 0;
@@ -269,6 +357,9 @@ void tick_possess_snap_pipeline(const ThreeOS_InteropInputFrame* frame, const Dr
   }
   bool kin_moved = g_kinematics.tick(drive.pose, from_c(frame->head), head_valid,
                                      frame->time_seconds, drive.valid);
+  if (clamp_kinematics_to_mr_enclosure(frame)) {
+    kin_moved = true;
+  }
   const float floor_contact_y =
       g_kinematics.params().floor_y + g_kinematics.params().object_radius;
 
@@ -1060,6 +1151,44 @@ extern "C" THREEOS_API int32_t threeos_kinematics_set_params(float gain, float d
   p.friction = friction;
   p.floor_y = floor_y;
   g_kinematics.set_params(p);
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_kinematics_set_object_radius(float radius_m) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (!(radius_m > 1e-4f && radius_m < 5.f)) {
+    set_error("invalid object radius");
+    return -2;
+  }
+  auto p = g_kinematics.params();
+  p.object_radius = radius_m;
+  g_kinematics.set_params(p);
+  g_voodoo.set_mr_enclosure_proxy_half_m(radius_m);
+#if defined(__ANDROID__)
+  __android_log_print(ANDROID_LOG_INFO, "3OS_KinClamp", "set_object_radius_m=%.4f", radius_m);
+#endif
+  set_error("");
+  return 0;
+}
+
+extern "C" THREEOS_API int32_t threeos_kinematics_set_direct_follow(
+    int32_t enabled, const ThreeOS_Vec3* grab_offset) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  if (enabled != 0 && grab_offset == nullptr) {
+    set_error("null grab_offset");
+    return -2;
+  }
+  g_kinematics.set_direct_follow(enabled != 0,
+                                 enabled != 0 ? from_c(*grab_offset) : threeos::Vec3{});
   set_error("");
   return 0;
 }
@@ -1975,6 +2104,17 @@ extern "C" THREEOS_API int32_t threeos_voodoo_set_field_params(const ThreeOS_Voo
   return 0;
 }
 
+extern "C" THREEOS_API int32_t threeos_voodoo_set_focus_anchor_snap_enabled(int32_t enabled) {
+  std::lock_guard<std::mutex> lock(g_mu);
+  if (!g_initialized) {
+    set_error("not initialized");
+    return -1;
+  }
+  g_voodoo.set_focus_anchor_snap_in_snap_mode(enabled != 0);
+  set_error("");
+  return 0;
+}
+
 extern "C" THREEOS_API int32_t threeos_voodoo_set_enclosure_boxes(
     const ThreeOS_VoodooEnclosureBox* boxes, uint32_t count) {
   std::lock_guard<std::mutex> lock(g_mu);
@@ -1986,8 +2126,13 @@ extern "C" THREEOS_API int32_t threeos_voodoo_set_enclosure_boxes(
     set_error("null enclosure boxes");
     return -2;
   }
+  static int s_last_enclosure_count = -1;
   if (count == 0) {
     g_voodoo.clear_enclosure_boxes();
+    if (s_last_enclosure_count != 0) {
+      s_last_enclosure_count = 0;
+      log_kin_clamp("enclosure_boxes count=0 (cleared)");
+    }
     set_error("");
     return 0;
   }
@@ -2000,6 +2145,11 @@ extern "C" THREEOS_API int32_t threeos_voodoo_set_enclosure_boxes(
     tmp[i].kind = boxes[i].kind;
   }
   g_voodoo.set_enclosure_boxes(tmp, n);
+  if (static_cast<int>(n) != s_last_enclosure_count) {
+    s_last_enclosure_count = static_cast<int>(n);
+    log_kin_clamp("enclosure_boxes count=%u room_aabb=%d", n,
+                  g_voodoo.room_bounds_active() ? 1 : 0);
+  }
   set_error("");
   return 0;
 }
@@ -2014,6 +2164,7 @@ extern "C" THREEOS_API int32_t threeos_voodoo_set_room_bounds(const ThreeOS_Vec3
   }
   if (!enabled) {
     g_voodoo.clear_room_bounds();
+    log_kin_clamp("room_bounds disabled");
     set_error("");
     return 0;
   }
@@ -2021,7 +2172,13 @@ extern "C" THREEOS_API int32_t threeos_voodoo_set_room_bounds(const ThreeOS_Vec3
     set_error("null room bounds");
     return -2;
   }
-  g_voodoo.set_room_bounds(from_c(*min_xyz), from_c(*max_xyz), true);
+  const threeos::Vec3 bmin = from_c(*min_xyz);
+  const threeos::Vec3 bmax = from_c(*max_xyz);
+  g_voodoo.set_room_bounds(bmin, bmax, true);
+  log_kin_clamp(
+      "room_bounds enabled min=(%.2f,%.2f,%.2f) max=(%.2f,%.2f,%.2f) active=%d wm_boxes=%u",
+      bmin.x, bmin.y, bmin.z, bmax.x, bmax.y, bmax.z, g_voodoo.room_bounds_active() ? 1 : 0,
+      g_voodoo.enclosure_box_count());
   set_error("");
   return 0;
 }

@@ -295,6 +295,11 @@ THREEOS_API int32_t threeos_topology_voxel_to_world(ThreeOS_VoxelCoord voxel,
 
 THREEOS_API int32_t threeos_kinematics_set_params(float gain, float deadzone_m, float friction,
                                                   float floor_y);
+/** Proxy half-size (m) for MR WorldMesh enclosure clamp during telekinesis. Default ~0.075. */
+THREEOS_API int32_t threeos_kinematics_set_object_radius(float radius_m);
+/** 1 = cursor-in-glyph direct telekinesis (1:1 hand follow); grab_offset = object - hand (OpenXR m). */
+THREEOS_API int32_t threeos_kinematics_set_direct_follow(int32_t enabled,
+                                                         const ThreeOS_Vec3* grab_offset);
 THREEOS_API int32_t threeos_kinematics_possess(uint64_t entity_id, const ThreeOS_Pose* object_pose);
 /** Possess and latch drive hand in one call (0=left, 1=right). Preferred over possess+set_drive_hand. */
 THREEOS_API int32_t threeos_kinematics_possess_with_hand(uint64_t entity_id,
@@ -584,6 +589,8 @@ THREEOS_API uint32_t threeos_sizeof_voodoo_drag_arrow(void);
 
 THREEOS_API int32_t threeos_voodoo_get_field_params(ThreeOS_VoodooFieldParams* out_params);
 THREEOS_API int32_t threeos_voodoo_set_field_params(const ThreeOS_VoodooFieldParams* params);
+/** 1 = FocusAnchor snap nodes in Snap mode (MR). 0 = hide them (Mind Palace VR). Default 1. */
+THREEOS_API int32_t threeos_voodoo_set_focus_anchor_snap_enabled(int32_t enabled);
 /** hand: 0 left, 1 right — independent concurrent sessions. */
 THREEOS_API int32_t threeos_voodoo_get_session(uint32_t hand, ThreeOS_VoodooSession* out_session);
 THREEOS_API int32_t threeos_voodoo_get_drag_arrow(uint32_t hand, ThreeOS_VoodooDragArrow* out_arrow);

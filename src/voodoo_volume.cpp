@@ -477,6 +477,18 @@ void VoodooVolumeEngine::set_room_bounds(const Vec3& min_xyz, const Vec3& max_xy
 
 void VoodooVolumeEngine::clear_room_bounds() { room_bounds_enabled_ = false; }
 
+void VoodooVolumeEngine::set_mr_enclosure_proxy_half_m(float half_m) {
+  mr_enclosure_proxy_half_m_ = std::clamp(half_m, 0.01f, 2.f);
+}
+
+bool VoodooVolumeEngine::constrain_object_center(Vec3& center, const Vec3& half_extents,
+                                                 const Pose& head, bool head_valid,
+                                                 Vec3* out_wall_into_room,
+                                                 const Vec3* ray_origin) const {
+  return constrain_far_center(center, half_extents, head, head_valid, out_wall_into_room,
+                              ray_origin);
+}
+
 bool VoodooVolumeEngine::constrain_far_center(Vec3& center, const Vec3& extents, const Pose& head,
                                               bool head_valid, Vec3* out_wall_into_room,
                                               const Vec3* ray_origin) const {
@@ -618,7 +630,8 @@ bool VoodooVolumeEngine::constrain_far_center(Vec3& center, const Vec3& extents,
     }
   }
 
-  // Wall face = ray hit normal (into room), horizontalized when mostly a wall.
+  // Contact normal (into room). Horizontalize for walls so slide keeps full vertical motion;
+  // floor/ceiling keep the full normal so tangential XZ slide works in ghost drag.
   const float nlen = std::sqrt(best_n.x * best_n.x + best_n.y * best_n.y + best_n.z * best_n.z);
   if (nlen < 1e-6f) {
     return false;
@@ -627,12 +640,11 @@ bool VoodooVolumeEngine::constrain_far_center(Vec3& center, const Vec3& extents,
   const float horiz = std::sqrt(n.x * n.x + n.z * n.z);
   if (horiz >= 0.35f) {
     n = Vec3{n.x / horiz, 0.f, n.z / horiz};
-    if (out_wall_into_room != nullptr) {
-      *out_wall_into_room = n;
-    }
-    return true;
   }
-  return false;
+  if (out_wall_into_room != nullptr) {
+    *out_wall_into_room = n;
+  }
+  return true;
 }
 
 VoodooVolumeEngine::PendingAgentOpen VoodooVolumeEngine::consume_pending_agent_open() {
@@ -1346,17 +1358,22 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
   }
   const size_t pinned = portals_.size() - 1;
   orbit_.yield_orbit_for_incoming_park(pinned, head, head_valid);
-  if (portals_.size() >= 2 && !bump_resolve(head, head_valid, pinned)) {
-    bump_siblings_min_clear(pinned);
+  if (portals_.size() >= 2) {
     if (!bump_resolve(head, head_valid, pinned)) {
-    // Orbit full or unresolved overlap — roll back this park (never leave stacked near BBs).
-    const EntityId temp = portals_.back().temporary_centroid_id;
-    portals_.pop_back();
-    if (temp != 0) {
-      centroids.clear_temporary(temp);
-    }
-    clear_hand_session(hand);
-    return;
+      bump_siblings_min_clear(pinned);
+      if (!bump_resolve(head, head_valid, pinned)) {
+        // Orbit full or unresolved overlap — roll back this park (never leave stacked near BBs).
+        const EntityId temp = portals_.back().temporary_centroid_id;
+        portals_.pop_back();
+        if (temp != 0) {
+          centroids.clear_temporary(temp);
+        }
+        clear_hand_session(hand);
+        return;
+      }
+    } else {
+      // Independent snap targets (Demo / Demo2 / Demo3): tight XZ nudge, not full-orbit merge.
+      bump_siblings_min_clear(pinned);
     }
   }
   // Final ghost + temp-centroid sync after bump (pinned portals skip tick lerp).
@@ -1527,6 +1544,10 @@ void VoodooVolumeEngine::rebuild_snap_nodes(uint32_t hand, const CentroidRegistr
 
   for (const auto& c : centroids.centroids()) {
     if (c.kind == CentroidKind::Temporary) {
+      continue;
+    }
+    if (hr.session.mode == VoodooMode::Snap && c.kind == CentroidKind::FocusAnchor &&
+        !focus_anchor_snap_in_snap_mode_) {
       continue;
     }
     if (hr.session.mode == VoodooMode::FreeRange && c.kind != CentroidKind::FocusAnchor) {
