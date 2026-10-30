@@ -64,32 +64,83 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
     {
         // Cold open is MR; Task 7.7 toggle owns later transitions.
         SetPalaceSkyboxActive(_inPalace);
-        AlignPlayerToSpawn();
         EnsureModeToggle();
         EnsureBlenderSpawn();
         EnsureChairCullFix();
+        EnsureStandingSeatedLayout();
+        EnsureXROriginFacing();
+        EnsureXROriginPlacement();
     }
 
     void Start()
     {
         // Bridge may spawn after Stage Awake (harness boot order).
-        AlignPlayerToSpawn();
         EnsureModeToggle();
         EnsureBlenderSpawn();
         EnsureChairCullFix();
+        EnsureStandingSeatedLayout();
+        EnsureXROriginFacing();
+        EnsureXROriginPlacement();
     }
 
     /// <summary>
-    /// Face spawn forward (+ optional yaw offset) without moving scene props / NPC / palace anchors.
+    /// Place XR Origin at Chair_Seated_Start (+ yaw offset). Player never spawns at Chair_Standing_Start.
     /// </summary>
-    void AlignPlayerToSpawn()
+    void AlignPlayerToSpawn() => AlignPlayerToSeatedStart();
+
+    /// <summary>Chair_Seated_Start XZ only; yaw via <see cref="ThreeOSFinalDemoXROriginFacing"/>.</summary>
+    public void AlignPlayerToSeatedStart() => AlignPlayerPositionToSeatedStart();
+
+    /// <summary>
+    /// Move XR Origin (rig root) so camera XZ matches Chair_Seated_Start. OVR may override — see XROriginPlacement LateUpdate.
+    /// </summary>
+    public void AlignPlayerPositionToSeatedStart()
     {
-        if (xrOrigin == null || playerSpawn == null)
+        if (ThreeOSFinalDemoXROriginPlacement.TryPlaceXROriginForCameraAtMarker(
+                "Chair_Seated_Start", out _, out _, out _))
             return;
-        var yaw = Quaternion.Euler(0f, playerSpawn.eulerAngles.y + playerSpawnYawOffsetDeg, 0f);
-        xrOrigin.SetPositionAndRotation(
-            new Vector3(playerSpawn.position.x, xrOrigin.position.y, playerSpawn.position.z),
-            yaw);
+
+        EnsurePlacementRefs();
+        var positionMarker = GameObject.Find("Chair_Seated_Start")?.transform;
+        if (xrOrigin != null && positionMarker != null)
+            AlignPlayerPositionToMarker(positionMarker);
+    }
+
+    /// <summary>Flat forward from Player_Spawn_Point (transform.forward, no rig yaw offset).</summary>
+    public Vector3 GetAuthoredViewForward()
+    {
+        EnsurePlacementRefs();
+        var marker = playerSpawn != null ? playerSpawn : GameObject.Find("Chair_Seated_Start")?.transform;
+        if (marker == null)
+            return Vector3.forward;
+        var forward = marker.forward;
+        forward.y = 0f;
+        return forward.sqrMagnitude > 1e-6f ? forward.normalized : Vector3.forward;
+    }
+
+    void EnsurePlacementRefs()
+    {
+        if (xrOrigin == null)
+        {
+            var go = GameObject.Find("XR Origin (VR)");
+            if (go != null)
+                xrOrigin = go.transform;
+        }
+
+        if (playerSpawn == null)
+        {
+            var go = GameObject.Find("Player_Spawn_Point");
+            if (go != null)
+                playerSpawn = go.transform;
+        }
+    }
+
+    public void AlignPlayerPositionToMarker(Transform positionMarker)
+    {
+        EnsurePlacementRefs();
+        if (xrOrigin == null || positionMarker == null)
+            return;
+        xrOrigin.position = new Vector3(positionMarker.position.x, xrOrigin.position.y, positionMarker.position.z);
     }
 
     void EnsureModeToggle()
@@ -120,6 +171,30 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
             return;
         var go = new GameObject("FinalDemoChairCullFix");
         go.AddComponent<ThreeOSFinalDemoChairCullFix>();
+    }
+
+    void EnsureStandingSeatedLayout()
+    {
+        if (FindFirstObjectByType<ThreeOSFinalDemoStandingSeatedLayout>() != null)
+            return;
+        var go = new GameObject("FinalDemoStandingSeatedLayout");
+        go.AddComponent<ThreeOSFinalDemoStandingSeatedLayout>();
+    }
+
+    void EnsureXROriginFacing()
+    {
+        if (FindFirstObjectByType<ThreeOSFinalDemoXROriginFacing>() != null)
+            return;
+        var go = new GameObject("FinalDemoXROriginFacing");
+        go.AddComponent<ThreeOSFinalDemoXROriginFacing>();
+    }
+
+    void EnsureXROriginPlacement()
+    {
+        if (FindFirstObjectByType<ThreeOSFinalDemoXROriginPlacement>() != null)
+            return;
+        var go = new GameObject("FinalDemoXROriginPlacement");
+        go.AddComponent<ThreeOSFinalDemoXROriginPlacement>();
     }
 
     void EnsureBlenderSpawn()

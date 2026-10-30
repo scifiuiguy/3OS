@@ -21,6 +21,8 @@ public sealed class ThreeOSFinalDemoAgentResetGesture : MonoBehaviour
     [SerializeField] float dismissSuppressSec = 1.0f;
 
     [SerializeField] ThreeOSInputRouter inputRouter;
+    // Not serialized — avoid scene layout breakage (GitHub gesture build 398).
+    ThreeOSFinalDemoStage _stage;
 
     readonly List<XRHandSubsystem> _subsystems = new List<XRHandSubsystem>();
     XRHandSubsystem _subsystem;
@@ -36,10 +38,20 @@ public sealed class ThreeOSFinalDemoAgentResetGesture : MonoBehaviour
     {
         if (inputRouter == null)
             inputRouter = FindFirstObjectByType<ThreeOSInputRouter>();
+        if (_stage == null)
+            _stage = FindFirstObjectByType<ThreeOSFinalDemoStage>();
     }
 
     void Update()
     {
+        if (IsMindPalaceActive())
+        {
+            _prevActive = false;
+            _leftPinching = false;
+            _rightPinching = false;
+            return;
+        }
+
         if (!EnsureSubsystem())
             return;
 
@@ -82,6 +94,13 @@ public sealed class ThreeOSFinalDemoAgentResetGesture : MonoBehaviour
         }
 
         _prevActive = active;
+    }
+
+    bool IsMindPalaceActive()
+    {
+        if (_stage == null)
+            _stage = FindFirstObjectByType<ThreeOSFinalDemoStage>();
+        return _stage != null && _stage.InPalace;
     }
 
     bool EnsureSubsystem()

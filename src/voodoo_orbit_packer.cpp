@@ -22,6 +22,22 @@ float dist3(const Vec3& a, const Vec3& b) {
 
 float length2_xz(const Vec3& v) { return std::sqrt(v.x * v.x + v.z * v.z); }
 
+EntityId portal_snap_key(const VoodooPortal& p) {
+  if (p.singleton_target_id != 0) {
+    return p.singleton_target_id;
+  }
+  if (p.far_bb.linked_centroid_id != 0) {
+    return p.far_bb.linked_centroid_id;
+  }
+  return p.persistent_centroid_id;
+}
+
+bool same_snap_target(const VoodooPortal& a, const VoodooPortal& b) {
+  const EntityId ka = portal_snap_key(a);
+  const EntityId kb = portal_snap_key(b);
+  return ka != 0 && kb != 0 && ka == kb;
+}
+
 }  // namespace
 
 Vec3 VoodooOrbitPacker::effective_portal_pos(const VoodooPortal& portal) {
@@ -454,11 +470,6 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
     engine_.refresh_ghost_near_poses(engine_.portals_[pinned_index]);
     return true;
   }
-  const auto same_drop_target = [](const VoodooPortal& a, const VoodooPortal& b) {
-    const EntityId ta = a.singleton_target_id;
-    const EntityId tb = b.singleton_target_id;
-    return ta == 0 || tb == 0 || ta == tb;
-  };
   const float body_x = head_valid ? head.position.x : 0.f;
   const float body_z = head_valid ? head.position.z : 0.f;
   const Vec3 body{body_x, 0.f, body_z};
@@ -493,6 +504,34 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
       engine_.portals_[i].group_id = snap[i].group_id;
     }
   };
+
+  const VoodooPortal& pinned_portal = engine_.portals_[pinned_index];
+  const Vec3 pinned_pos = effective_portal_pos(pinned_portal);
+  bool overlaps_foreign = false;
+  bool overlaps_same_snap = false;
+  for (size_t i = 0; i < engine_.portals_.size(); ++i) {
+    if (i == pinned_index || !engine_.portals_[i].near_bb.open) {
+      continue;
+    }
+    const Vec3 opos = effective_portal_pos(engine_.portals_[i]);
+    VoodooBoundingBox ba = pinned_portal.near_bb;
+    ba.pose.position = pinned_pos;
+    VoodooBoundingBox bb = engine_.portals_[i].near_bb;
+    bb.pose.position = opos;
+    if (!near_bbs_overlap_xz(ba, bb, VoodooVolumeEngine::kNearClearGapM)) {
+      continue;
+    }
+    if (same_snap_target(pinned_portal, engine_.portals_[i])) {
+      overlaps_same_snap = true;
+    } else {
+      overlaps_foreign = true;
+    }
+  }
+  // Demo / Demo2 / Demo3 — touching but distinct snap keys: keep hand seats, no orbit merge.
+  if (overlaps_foreign && !overlaps_same_snap) {
+    engine_.refresh_ghost_near_poses(engine_.portals_[pinned_index]);
+    return true;
+  }
 
   uint64_t active = engine_.portals_[pinned_index].group_id;
   if (active == 0) {
@@ -702,7 +741,7 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
       if (engine_.portals_[hit].group_id == active) {
         continue;
       }
-      if (!same_drop_target(engine_.portals_[s.idx], engine_.portals_[hit])) {
+      if (!same_snap_target(engine_.portals_[s.idx], engine_.portals_[hit])) {
         continue;
       }
       merge_groups(engine_.portals_[hit].group_id, active);
@@ -728,7 +767,7 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
         if (hit == static_cast<size_t>(-1)) {
           continue;
         }
-        if (!same_drop_target(engine_.portals_[i], engine_.portals_[hit])) {
+        if (!same_snap_target(engine_.portals_[i], engine_.portals_[hit])) {
           continue;
         }
         if (engine_.portals_[i].group_id != active) {
@@ -753,7 +792,7 @@ bool VoodooOrbitPacker::bump_resolve(const Pose& head, bool head_valid, size_t p
                                   effective_portal_pos(engine_.portals_[i]))) {
             continue;
           }
-          if (!same_drop_target(engine_.portals_[pinned_index], engine_.portals_[i])) {
+          if (!same_snap_target(engine_.portals_[pinned_index], engine_.portals_[i])) {
             continue;
           }
           only_other_singletons = false;
@@ -1029,6 +1068,10 @@ void VoodooOrbitPacker::bump_siblings_min_clear(size_t pinned_index) {
     if (!other.near_bb.open) {
       continue;
     }
+    // Demo / Demo2 / Demo3 — independent snap targets; never radial-shove existing near fields.
+    if (!same_snap_target(bumper, other)) {
+      continue;
+    }
     // Prefer settled / target pose so a mid-lerp sibling is not re-measured from a chord.
     const Vec3 oc =
         (other.bump_t < 1.f) ? other.bump_to : other.near_bb.pose.position;
@@ -1063,6 +1106,78 @@ void VoodooOrbitPacker::bump_siblings_min_clear(size_t pinned_index) {
     other.near_bb.pose.orientation =
         VoodooVolumeEngine::yaw_billboard_toward(to, engine_.last_head_, engine_.last_head_valid_);
     engine_.refresh_ghost_near_poses(other);
+  }
+}
+
+void VoodooOrbitPacker::nudge_pinned_clear_foreign_singletons(size_t pinned_index, const Pose& head,
+                                                              bool head_valid) {
+  if (pinned_index >= engine_.portals_.size()) {
+    return;
+  }
+  auto& pinned = engine_.portals_[pinned_index];
+  if (!pinned.near_bb.open) {
+    return;
+  }
+  const EntityId pin_tgt = portal_snap_key(pinned);
+  if (pin_tgt == 0) {
+    return;
+  }
+
+  const Vec3 pc = effective_portal_pos(pinned);
+  const float r_pin = portal_near_footprint_radius(pinned.near_bb);
+  VoodooBoundingBox pin_probe = pinned.near_bb;
+  pin_probe.pose.position = pc;
+
+  // Demo3 between Demo + Demo2: keep the new near BB at the hand seat; spread neighbors in XZ.
+  bool moved_any = false;
+  for (size_t i = 0; i < engine_.portals_.size(); ++i) {
+    if (i == pinned_index || !engine_.portals_[i].near_bb.open) {
+      continue;
+    }
+    auto& other = engine_.portals_[i];
+    if (same_snap_target(pinned, other)) {
+      continue;
+    }
+    const Vec3 oc =
+        (other.bump_t < 1.f) ? other.bump_to : other.near_bb.pose.position;
+    VoodooBoundingBox ob = other.near_bb;
+    ob.pose.position = oc;
+    if (!near_bbs_overlap_xz(pin_probe, ob, VoodooVolumeEngine::kNearClearGapM)) {
+      continue;
+    }
+    const float r_o = portal_near_footprint_radius(other.near_bb);
+    const float need = r_pin + r_o + VoodooVolumeEngine::kNearClearGapM;
+    float dx = oc.x - pc.x;
+    float dz = oc.z - pc.z;
+    float dist = std::sqrt(dx * dx + dz * dz);
+    if (dist < 1e-4f) {
+      const Vec3 fwd = VoodooVolumeEngine::flat_forward(head, head_valid);
+      dx = fwd.z;
+      dz = -fwd.x;
+      dist = std::sqrt(dx * dx + dz * dz);
+      if (dist < 1e-4f) {
+        dx = 1.f;
+        dz = 0.f;
+        dist = 1.f;
+      }
+    }
+    const float scale = need / dist;
+    const Vec3 to{pc.x + dx * scale, oc.y, pc.z + dz * scale};
+    other.near_bb.pose.position = to;
+    other.bump_from = to;
+    other.bump_to = to;
+    other.bump_t = 1.f;
+    other.near_bb.pose.orientation =
+        VoodooVolumeEngine::yaw_billboard_toward(to, head, head_valid);
+    engine_.refresh_ghost_near_poses(other);
+    moved_any = true;
+  }
+
+  if (moved_any) {
+    pinned.bump_from = pc;
+    pinned.bump_to = pc;
+    pinned.bump_t = 1.f;
+    engine_.refresh_ghost_near_poses(pinned);
   }
 }
 

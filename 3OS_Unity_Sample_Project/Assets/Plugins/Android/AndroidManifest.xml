@@ -39,9 +39,10 @@
     </activity>
     <meta-data android:name="unityplayer.SkipPermissionsDialog" android:value="false" />
     <meta-data android:name="com.oculus.supportedDevices" android:value="quest|quest2|questpro|quest3|quest3s" tools:replace="android:value" />
-    <!-- System splash: assets/vr_splash.png from StreamingAssets/vr_splash.png (stereo, double-wide) -->
+    <!-- System splash: 2048×1024 side-by-side stereo (left half = left eye). See tools/make_splash_glyph.py -->
     <meta-data android:name="com.oculus.ossplash" android:value="true" />
     <meta-data android:name="com.oculus.ossplash.type" android:value="stereo" />
+    <meta-data android:name="com.oculus.ossplash.colorspace" android:value="P3" />
     <meta-data android:name="com.oculus.ossplash.background" android:value="black" />
   </application>
 </manifest>

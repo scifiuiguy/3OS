@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
@@ -102,6 +103,9 @@ public static class ThreeOSAndroidBuild
         EditorUserBuildSettings.buildAppBundle = false;
         EditorUserBuildSettings.androidBuildSubtarget = MobileTextureSubtarget.ASTC;
 
+        ThreeOSFinalDemoVrSplashSetup.ClearMetaSystemSplashScreen();
+        ThreeOSFinalDemoVrSplashSetup.SyncStereoTextureFromStreamingAssets();
+
         Directory.CreateDirectory(OutputDir);
         // Must never go below an already-installed versionCode (Quest reports downgrade
         // as "package appears to be invalid"). Scan all prior APKs, not only this basename.
@@ -124,6 +128,8 @@ public static class ThreeOSAndroidBuild
         if (report.summary.result == BuildResult.Succeeded)
         {
             Debug.Log($"[3OS] APK build succeeded: {Path.GetFullPath(outputApk)} ({report.summary.totalSize} bytes)");
+            if (string.Equals(apkBaseName, FinalDemoApkBaseName, System.StringComparison.Ordinal))
+                VerifyFinalDemoQuestOsSplashInApk(outputApk);
             // Final Demo write-through tests need a clean Documents baseline each sideload.
             if (string.Equals(apkBaseName, FinalDemoApkBaseName, System.StringComparison.Ordinal))
                 TryResetQuestDemoDocuments();
@@ -133,6 +139,45 @@ public static class ThreeOSAndroidBuild
         {
             Debug.LogError($"[3OS] APK build failed: {report.summary.result}");
             if (exitEditor) EditorApplication.Exit(1);
+        }
+    }
+
+    static void VerifyFinalDemoQuestOsSplashInApk(string outputApk)
+    {
+        var source = Path.Combine(Application.dataPath, "StreamingAssets", "vr_splash.png");
+        if (!File.Exists(source))
+        {
+            Debug.LogWarning("[3OS] Quest OS splash check skipped — missing StreamingAssets/vr_splash.png.");
+            return;
+        }
+
+        var expectedLen = new FileInfo(source).Length;
+        try
+        {
+            using var zip = ZipFile.OpenRead(outputApk);
+            var entry = zip.GetEntry("assets/vr_splash.png");
+            if (entry == null)
+            {
+                Debug.LogError("[3OS] Quest OS splash MISSING in APK (assets/vr_splash.png). Splash will be blank on device.");
+                return;
+            }
+
+            if (entry.Length != expectedLen)
+            {
+                Debug.LogWarning(
+                    $"[3OS] Quest OS splash size note: APK assets/vr_splash.png is {entry.Length} bytes, StreamingAssets on disk is {expectedLen} bytes.");
+            }
+
+            Debug.Log($"[3OS] Quest OS splash packaged ({entry.Length} bytes in assets/vr_splash.png).");
+
+            var sprite = zip.GetEntry("assets/vr_splash_sprite.png");
+            if (sprite != null)
+                Debug.LogWarning(
+                    $"[3OS] APK still contains assets/vr_splash_sprite.png ({sprite.Length} bytes); Quest ignores it but remove duplicate StreamingAssets if unused.");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[3OS] Quest OS splash APK check failed: {ex.Message}");
         }
     }
 

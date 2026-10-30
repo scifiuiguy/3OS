@@ -3,15 +3,17 @@ using UnityEngine;
 using UnityEngine.XR.Hands;
 
 /// <summary>
-/// Phase 0.7 Task 7.2 — right palm-up + right secondary (middle) pinch toggles the GitHub plane.
-/// Raw XR Hand joint tips only (same approach as the hands-test detector).
+/// Both palms sideways + both ternary (thumb–ring) pinches toggles GitHub plane visibility.
 /// </summary>
 public sealed class ThreeOSFinalDemoGitHubGesture : MonoBehaviour
 {
     [SerializeField] ThreeOSFinalDemoGitHubPlane plane;
+    // Not serialized — inserting a field before pinch* broke scene layout vs player (build 398).
+    ThreeOSFinalDemoStage _stage;
     [SerializeField] float pinchEnterMeters = 0.04f;
     [SerializeField] float pinchExitMeters = 0.055f;
-    [SerializeField] float palmUpDot = 0.25f;
+    [Tooltip("Max |palmarNormal·up| — palms must be sideways, not palm-up/down.")]
+    [SerializeField] float palmSidewaysUpAbsMax = 0.38f;
     [SerializeField] float edgeCooldownSec = 0.45f;
     [SerializeField] float startupMuteSec = 1.75f;
     [SerializeField] float trackingEngagePadSec = 0.4f;
@@ -20,23 +22,32 @@ public sealed class ThreeOSFinalDemoGitHubGesture : MonoBehaviour
     XRHandSubsystem _subsystem;
     float _cooldownUntil;
     float _startupMuteUntil;
-    float _rightEngageUntil = -1f;
+    float _engagePadUntil = -1f;
     bool _prevActive;
-    bool _rightPinching;
+    bool _leftTernaryPinching;
+    bool _rightTernaryPinching;
+    bool _leftWasTracked;
     bool _rightWasTracked;
     bool _forcedStartVisible;
 
-    public void Configure(ThreeOSFinalDemoGitHubPlane githubPlane)
+    public void Configure(ThreeOSFinalDemoGitHubPlane githubPlane) => plane = githubPlane;
+
+    void Awake()
     {
-        plane = githubPlane;
+        if (plane == null)
+            plane = FindFirstObjectByType<ThreeOSFinalDemoGitHubPlane>(FindObjectsInactive.Include);
+        if (_stage == null)
+            _stage = FindFirstObjectByType<ThreeOSFinalDemoStage>();
     }
 
     void OnEnable()
     {
         _startupMuteUntil = Time.unscaledTime + startupMuteSec;
         _prevActive = false;
-        _rightPinching = false;
+        _leftTernaryPinching = false;
+        _rightTernaryPinching = false;
         _forcedStartVisible = false;
+        plane?.SetRendererVisible(true);
     }
 
     void Update()
@@ -44,40 +55,53 @@ public sealed class ThreeOSFinalDemoGitHubGesture : MonoBehaviour
         if (plane == null)
             return;
 
-        // Boot: keep the plane ON until the mute window ends (gesture often false-fires).
-        if (!_forcedStartVisible && Time.unscaledTime < _startupMuteUntil)
+        if (IsMindPalaceActive() || plane.MindPalaceSuppressed)
         {
-            if (!plane.gameObject.activeSelf)
-                plane.SetVisible(true);
+            _prevActive = false;
+            _leftTernaryPinching = false;
+            _rightTernaryPinching = false;
+            return;
         }
+
+        if (!_forcedStartVisible && Time.unscaledTime < _startupMuteUntil)
+            plane.SetRendererVisible(true);
         else if (!_forcedStartVisible)
         {
             _forcedStartVisible = true;
-            if (!plane.gameObject.activeSelf)
-                plane.SetVisible(true);
+            plane.SetRendererVisible(true);
         }
 
         if (!EnsureSubsystem())
             return;
 
         _subsystem.TryUpdateHands(XRHandSubsystem.UpdateType.Dynamic);
-        var hand = _subsystem.rightHand;
-        var tracked = hand.isTracked;
-        if (tracked && !_rightWasTracked)
-            _rightEngageUntil = Time.unscaledTime + trackingEngagePadSec;
-        if (!tracked)
-            _rightEngageUntil = -1f;
-        _rightWasTracked = tracked;
+        var leftTracked = _subsystem.leftHand.isTracked;
+        var rightTracked = _subsystem.rightHand.isTracked;
+        if ((leftTracked && !_leftWasTracked) || (rightTracked && !_rightWasTracked))
+            _engagePadUntil = Time.unscaledTime + trackingEngagePadSec;
+        if (!leftTracked && !rightTracked)
+            _engagePadUntil = -1f;
+        _leftWasTracked = leftTracked;
+        _rightWasTracked = rightTracked;
 
         if (Time.unscaledTime < _startupMuteUntil ||
-            (_rightEngageUntil > 0f && Time.unscaledTime < _rightEngageUntil))
+            (_engagePadUntil > 0f && Time.unscaledTime < _engagePadUntil))
         {
             _prevActive = false;
-            _rightPinching = false;
+            _leftTernaryPinching = false;
+            _rightTernaryPinching = false;
             return;
         }
 
-        var active = IsRightPalmUpSecondaryPinch();
+        if (IsLeftPrimaryPinchHeld())
+        {
+            _prevActive = false;
+            _leftTernaryPinching = false;
+            _rightTernaryPinching = false;
+            return;
+        }
+
+        var active = IsDualPalmsSidewaysTernaryPinch();
         if (Time.unscaledTime < _cooldownUntil)
         {
             _prevActive = active;
@@ -86,11 +110,18 @@ public sealed class ThreeOSFinalDemoGitHubGesture : MonoBehaviour
 
         if (active && !_prevActive)
         {
-            plane.ToggleVisible();
+            plane.ToggleRendererVisible();
             _cooldownUntil = Time.unscaledTime + edgeCooldownSec;
         }
 
         _prevActive = active;
+    }
+
+    bool IsMindPalaceActive()
+    {
+        if (_stage == null)
+            _stage = FindFirstObjectByType<ThreeOSFinalDemoStage>();
+        return _stage != null && _stage.InPalace;
     }
 
     bool EnsureSubsystem()
@@ -111,9 +142,26 @@ public sealed class ThreeOSFinalDemoGitHubGesture : MonoBehaviour
         return _subsystem != null;
     }
 
-    bool IsRightPalmUpSecondaryPinch()
+    bool IsLeftPrimaryPinchHeld()
     {
-        var hand = _subsystem.rightHand;
+        var hand = _subsystem.leftHand;
+        if (!hand.isTracked)
+            return false;
+        if (!TryGetPose(hand, XRHandJointID.ThumbTip, out var thumb)
+            || !TryGetPose(hand, XRHandJointID.IndexTip, out var index))
+            return false;
+        return Vector3.Distance(thumb.position, index.position) <= pinchEnterMeters;
+    }
+
+    bool IsDualPalmsSidewaysTernaryPinch()
+    {
+        var leftOk = IsHandSidewaysTernaryPinch(_subsystem.leftHand, true);
+        var rightOk = IsHandSidewaysTernaryPinch(_subsystem.rightHand, false);
+        return leftOk && rightOk;
+    }
+
+    bool IsHandSidewaysTernaryPinch(XRHand hand, bool left)
+    {
         if (!hand.isTracked)
             return false;
 
@@ -121,19 +169,20 @@ public sealed class ThreeOSFinalDemoGitHubGesture : MonoBehaviour
             && !TryGetPose(hand, XRHandJointID.Wrist, out palm))
             return false;
 
-        if (!IsPalmFacingUp(palm.rotation))
+        if (!IsPalmSideways(palm.rotation))
             return false;
 
         if (!TryGetPose(hand, XRHandJointID.ThumbTip, out var thumb)
-            || !TryGetPose(hand, XRHandJointID.MiddleTip, out var middle))
+            || !TryGetPose(hand, XRHandJointID.RingTip, out var ring))
             return false;
 
-        var dist = Vector3.Distance(thumb.position, middle.position);
-        if (_rightPinching)
-            _rightPinching = dist <= pinchExitMeters;
+        var dist = Vector3.Distance(thumb.position, ring.position);
+        ref var pinching = ref left ? ref _leftTernaryPinching : ref _rightTernaryPinching;
+        if (pinching)
+            pinching = dist <= pinchExitMeters;
         else
-            _rightPinching = dist <= pinchEnterMeters;
-        return _rightPinching;
+            pinching = dist <= pinchEnterMeters;
+        return pinching;
     }
 
     static bool TryGetPose(XRHand hand, XRHandJointID id, out Pose pose)
@@ -141,11 +190,18 @@ public sealed class ThreeOSFinalDemoGitHubGesture : MonoBehaviour
         return hand.GetJoint(id).TryGetPose(out pose);
     }
 
-    bool IsPalmFacingUp(Quaternion palmRot)
+    static Vector3 PalmarNormal(Quaternion palmRot)
     {
-        var a = Vector3.Dot(palmRot * Vector3.forward, Vector3.up);
-        var b = Vector3.Dot(palmRot * -Vector3.up, Vector3.up);
-        var c = Vector3.Dot(palmRot * Vector3.up, Vector3.up);
-        return Mathf.Max(a, b, c) >= palmUpDot;
+        // Match OpenBook / Meta: dorsal ≈ +Y → palmar ≈ −Y in palm joint space.
+        var n = palmRot * -Vector3.up;
+        if (n.sqrMagnitude < 1e-8f)
+            return Vector3.forward;
+        return n.normalized;
+    }
+
+    bool IsPalmSideways(Quaternion palmRot)
+    {
+        var n = PalmarNormal(palmRot);
+        return Mathf.Abs(Vector3.Dot(n, Vector3.up)) <= palmSidewaysUpAbsMax;
     }
 }

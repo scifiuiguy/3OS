@@ -208,6 +208,7 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
 
         // 7.8 — contents / collider hooks (VR→MR dismiss runs in parallel with wipe).
         WipeStarted?.Invoke(toPalace);
+        ApplyGitHubPlaneForMode(toPalace);
 
         var dur = Mathf.Max(0.05f, wipeDurationSec);
         var t = 0f;
@@ -222,6 +223,7 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
 
         stage.SetInPalace(toPalace);
         ApplyPalaceOverlaySettled(toPalace);
+        ApplyGitHubPlaneForMode(toPalace);
         SyncFocusAnchorSnapForMode(toPalace);
         _wiping = false;
         _wipeCo = null;
@@ -542,5 +544,15 @@ public sealed class ThreeOSFinalDemoModeToggle : MonoBehaviour
         if (bridge == null || !bridge.IsLoaded)
             return;
         bridge.SetFocusAnchorSnapEnabled(!inPalace);
+    }
+
+    void ApplyGitHubPlaneForMode(bool inPalace)
+    {
+        if (stage == null)
+            return;
+        var gh = stage.GithubPlane;
+        if (gh == null)
+            gh = FindFirstObjectByType<ThreeOSFinalDemoGitHubPlane>(FindObjectsInactive.Include);
+        gh?.SetMindPalaceSuppressed(inPalace);
     }
 }

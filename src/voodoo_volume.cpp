@@ -1209,7 +1209,7 @@ void VoodooVolumeEngine::rebuild_ghosts(VoodooPortal& portal, const CentroidRegi
         const bool match = (c->kind == CentroidKind::MindPalace)
                                ? (e.parent_box == 0 && e.mind_palace_id == c->id)
                                : (e.parent_box == c->id);
-        if (match) {
+        if (match && !(c->kind == CentroidKind::MindPalace && is_demo_directory_seed_object(e))) {
           push_ghost(e, false);
         }
       }
@@ -1252,6 +1252,11 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
   if (singleton_target == 0) {
     singleton_target = hr.session.far_bb.linked_centroid_id;
   }
+  // Loose snap (BB over cluster, node not latched): still attribute orbit group separately.
+  if (singleton_target == 0 && hr.session.mode == VoodooMode::Snap &&
+      hr.resolved_snap_centroid_id_ != 0) {
+    singleton_target = hr.resolved_snap_centroid_id_;
+  }
   if (singleton_target != 0) {
     (void)dismiss_portals_for_target(singleton_target, centroids);
   }
@@ -1285,8 +1290,21 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
       continue;
     }
     // Different snap targets (Demo vs Demo2): do not merge — independent orbit seats.
-    if (singleton_target != 0 && portals_[i].singleton_target_id != 0 &&
-        singleton_target != portals_[i].singleton_target_id) {
+    EntityId new_key = singleton_target;
+    if (new_key == 0) {
+      new_key = hr.session.far_bb.linked_centroid_id;
+    }
+    EntityId other_key = portals_[i].singleton_target_id;
+    if (other_key == 0) {
+      other_key = portals_[i].far_bb.linked_centroid_id;
+    }
+    if (other_key == 0) {
+      other_key = portals_[i].persistent_centroid_id;
+    }
+    if (new_key == 0) {
+      continue;
+    }
+    if (other_key != 0 && new_key != other_key) {
       continue;
     }
     const uint64_t gid = portals_[i].group_id;
@@ -1365,8 +1383,10 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
   const size_t pinned = portals_.size() - 1;
   orbit_.yield_orbit_for_incoming_park(pinned, head, head_valid);
   if (portals_.size() >= 2) {
+    nudge_pinned_clear_foreign_singletons(pinned, head, head_valid);
     if (!bump_resolve(head, head_valid, pinned)) {
       bump_siblings_min_clear(pinned);
+      nudge_pinned_clear_foreign_singletons(pinned, head, head_valid);
       if (!bump_resolve(head, head_valid, pinned)) {
         // Orbit full or unresolved overlap — roll back this park (never leave stacked near BBs).
         const EntityId temp = portals_.back().temporary_centroid_id;
@@ -1378,7 +1398,6 @@ void VoodooVolumeEngine::park(uint32_t hand, const Pose& hand_pose, bool hand_va
         return;
       }
     } else {
-      // Independent snap targets (Demo / Demo2 / Demo3): tight XZ nudge, not full-orbit merge.
       bump_siblings_min_clear(pinned);
     }
   }
@@ -2561,6 +2580,12 @@ void VoodooVolumeEngine::bump_near_field_clutter(const VoodooPortal& portal, Wor
 }
 void VoodooVolumeEngine::bump_siblings_min_clear(size_t pinned_index) {
   orbit_.bump_siblings_min_clear(pinned_index);
+}
+
+void VoodooVolumeEngine::nudge_pinned_clear_foreign_singletons(size_t pinned_index,
+                                                                 const Pose& head,
+                                                                 bool head_valid) {
+  orbit_.nudge_pinned_clear_foreign_singletons(pinned_index, head, head_valid);
 }
 
 void VoodooVolumeEngine::update_ghost_drag_arrow(uint32_t hand, const Pose& hand_pose,

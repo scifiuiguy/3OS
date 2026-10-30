@@ -138,6 +138,10 @@ public sealed class ThreeOSFinalDemoPalaceContents : MonoBehaviour
 
         FindFirstObjectByType<ThreeOSFinalDemoPerfPlayer>()?.EnsureFloorStaysHiddenIfDismissed();
 
+        // Wipe start disables MR mesh; reassert after settle (probe/storage may have restored bounds).
+        if (voodoo != null)
+            voodoo.SetWorldMeshCollisionActive(false);
+
         ThreeOSStorageController.BillboardAllFarFieldLabels = true;
         if (_scaleCo != null)
             StopCoroutine(_scaleCo);

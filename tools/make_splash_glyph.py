@@ -95,8 +95,14 @@ dx, dy, _ = obj.dimensions
 
 world = bpy.data.worlds.new("w")
 world.use_nodes = True
-world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.6, 0.7, 0.9, 1)
-world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.8
+# Quest OSSplash: keep logo alpha; manifest com.oculus.ossplash.background=black composites the field.
+world.node_tree.nodes["Background"].inputs["Color"].default_value = (
+    0.12156863,
+    0.12156863,
+    0.1254902,
+    1.0,
+)
+world.node_tree.nodes["Background"].inputs["Strength"].default_value = 1.0
 scene.world = world
 
 sun = bpy.data.objects.new("sun", bpy.data.lights.new("sun", "SUN"))
@@ -119,6 +125,7 @@ scene.camera = cam
 scene.render.engine = "BLENDER_EEVEE"
 scene.render.resolution_x = half_w
 scene.render.resolution_y = half_h
+# Must be true or “transparent” pixels keep world RGB (~190) and Quest OSSplash shows an empty plate.
 scene.render.film_transparent = True
 scene.render.image_settings.file_format = "PNG"
 scene.render.image_settings.color_mode = "RGBA"

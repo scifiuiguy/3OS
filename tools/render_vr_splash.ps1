@@ -18,4 +18,6 @@ if ($FontPath) { $args += $FontPath }
 if ($SwapStereo) { $args += "swap" }
 & $blender -b -P (Join-Path $repo "tools\make_splash_glyph.py") -- @args
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+python (Join-Path $repo "tools\sanitize_vr_splash_png.py") $outPng
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Write-Host "Wrote $outPng"

@@ -24,6 +24,8 @@ class VoodooOrbitPacker {
   /// Older near BBs in the bumper's group yield on the orbit before bump_resolve.
   void yield_orbit_for_incoming_park(size_t bumper_index, const Pose& head, bool head_valid);
   void bump_siblings_min_clear(size_t pinned_index);
+  /// Move pinned near BB on the orbit when it overlaps a different snap-target sibling.
+  void nudge_pinned_clear_foreign_singletons(size_t pinned_index, const Pose& head, bool head_valid);
   void bump_near_field_clutter(const VoodooPortal& portal, Workspace& workspace, const Pose& head,
                                bool head_valid, bool animate);
   bool orbit_near_bbs_clear_of_paste(const Vec3& paste_c, float paste_r);

@@ -57,8 +57,9 @@ public static class ThreeOSFinalDemo72Setup
                 UnityEngine.Object.DestroyImmediate(existing);
 
             var planeGo = new GameObject("GitHubPagePlane");
-            var plane = planeGo.AddComponent<ThreeOSFinalDemoGitHubPlane>();
-            plane.Configure(origin.transform, eyeT, tex);
+            planeGo.AddComponent<ThreeOSFinalDemoGitHubPlane>();
+            ThreeOSFinalDemoGitHubPlaneEditorUtil.PoseInEditor(planeGo, origin.transform, eyeT, tex);
+            var plane = planeGo.GetComponent<ThreeOSFinalDemoGitHubPlane>();
 
             var gestureGo = GameObject.Find("GitHubPageGesture");
             if (gestureGo == null)

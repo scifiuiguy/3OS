@@ -301,6 +301,9 @@ bool Workspace::layout_mind_palace_field(EntityId mind_palace_id, const Pose& ce
     if (!e.in_field || e.parent_box != 0 || e.mind_palace_id != mind_palace_id) {
       continue;
     }
+    if (is_demo_directory_seed_object(e)) {
+      continue;
+    }
     items.push_back(&e);
   }
   const int n = static_cast<int>(items.size());

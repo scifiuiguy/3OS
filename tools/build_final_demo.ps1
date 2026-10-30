@@ -49,6 +49,17 @@ $exitCode = 0
 try {
     $before = Get-ChildItem "$project\Builds\Android\3OS_Final_Demo_*.apk" -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime | Select-Object -Last 1
+    # Ensure Editor scripts (gradle splash hook) are compiled before the build job starts.
+    & $unity command recompile 2>&1 | Out-Null
+    $deadline = (Get-Date).AddMinutes(3)
+    do {
+        Start-Sleep -Seconds 2
+        $st = (& $unity command recompile_status 2>&1 | Out-String).Trim()
+    } while ($st -match 'compiling|triggered' -and (Get-Date) -lt $deadline)
+
+    # Unset Meta OpenXR system splash (also runs inside BuildFinalDemoApk).
+    & $unity command invoke_menu --path "3OS/Final Demo/Clear Meta VR Splash (StreamingAssets only)" 2>&1 | Out-Null
+
     $sw = [Diagnostics.Stopwatch]::StartNew()
     $out = & $unity command invoke_menu --path "3OS/Build/Final Demo APK" --detach --json 2>&1 | Out-String
     $m = [regex]::Match($out, '"(?:jobId|job_id|id)"\s*:\s*"([^"]+)"')

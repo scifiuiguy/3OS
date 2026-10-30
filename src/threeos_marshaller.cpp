@@ -2340,10 +2340,12 @@ extern "C" THREEOS_API int32_t threeos_storage_layout_mind_palace(uint64_t mind_
     set_error("null center");
     return -2;
   }
-  if (!g_workspace.layout_mind_palace_field(mind_palace_id, from_c(*center))) {
+  const threeos::Pose layout_center = from_c(*center);
+  if (!g_workspace.layout_mind_palace_field(mind_palace_id, layout_center)) {
     set_error("layout_mind_palace empty or unknown");
     return -3;
   }
+  (void)g_centroids.set_mind_palace_anchor(mind_palace_id, layout_center);
   g_workspace.resolve_glyphs();
   g_centroids.rebuild(g_workspace);
   set_error("");

@@ -36,6 +36,21 @@ struct WorkspaceEntry {
   bool expanded = false;
 };
 
+/// Soft-seeded demo folder placeholders — not real Mind Palace field members.
+inline bool is_demo_directory_seed_object(const WorkspaceEntry& e) {
+  if (e.kind != StorageKind::Object || e.parent_box != 0) {
+    return false;
+  }
+  if (e.name.size() == 1 && e.name[0] == '.') {
+    return true;
+  }
+  if (e.name.size() > 1 && e.name[0] == '.' && e.name.find('/') == std::string::npos &&
+      e.name.find('\\') == std::string::npos) {
+    return true;
+  }
+  return e.name == "marker.txt" || e.name == "Marker.txt" || e.name == "MARKER.TXT";
+}
+
 struct SnapState {
   bool pending = false;
   EntityId object_id = 0;

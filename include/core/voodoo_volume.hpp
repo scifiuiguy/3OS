@@ -528,6 +528,7 @@ class VoodooVolumeEngine {
   /// Resize hygiene: push overlapping siblings just far enough in XZ to clear the
   /// pinned bumper's footprint. No ellipse snap / orbit walk (avoids mid-drag runaway).
   void bump_siblings_min_clear(size_t pinned_index);
+  void nudge_pinned_clear_foreign_singletons(size_t pinned_index, const Pose& head, bool head_valid);
   Pose orbit_near_to_hand(const Pose& seed, const Pose& head, bool head_valid,
                           const Pose& hand_pose, bool hand_valid, uint32_t hand) const;
   float near_footprint_radius_m() const;

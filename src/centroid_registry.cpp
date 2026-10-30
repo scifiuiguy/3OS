@@ -1,5 +1,7 @@
 #include "core/centroid_registry.hpp"
 
+#include "storage/workspace.hpp"
+
 #include <algorithm>
 #include <string>
 
@@ -14,6 +16,9 @@ bool aabb_mind_palace_roots(const Workspace& workspace, EntityId mind_palace_id,
   Vec3 mx{};
   for (const auto& e : workspace.entries()) {
     if (!e.in_field || e.parent_box != 0 || e.mind_palace_id != mind_palace_id) {
+      continue;
+    }
+    if (is_demo_directory_seed_object(e)) {
       continue;
     }
     const Vec3& p = e.pose.position;
@@ -232,6 +237,9 @@ bool CentroidRegistry::members_aabb(const Workspace& workspace, EntityId centroi
     if (!match) {
       continue;
     }
+    if (c->kind == CentroidKind::MindPalace && is_demo_directory_seed_object(e)) {
+      continue;
+    }
     const Vec3& p = e.pose.position;
     if (!any) {
       mn = mx = p;
@@ -301,6 +309,9 @@ void CentroidRegistry::rebuild(const Workspace& workspace) {
     uint32_t n = 0;
     for (const auto& e : entries) {
       if (!e.in_field || e.parent_box != 0 || e.mind_palace_id != mp.id) {
+        continue;
+      }
+      if (is_demo_directory_seed_object(e)) {
         continue;
       }
       sum.x += e.pose.position.x;

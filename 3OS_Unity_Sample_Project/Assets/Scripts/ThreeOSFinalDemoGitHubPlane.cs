@@ -1,162 +1,89 @@
 using UnityEngine;
+using UnityEngine.Events;
 
 /// <summary>
-/// Phase 0.7 Task 7.2 — world-fixed GitHub page plane.
-/// Spawn: 1.5 ft ahead of XR Origin, 1 ft below eye height, 24" wide; one-shot billboard to eyes.
-/// Visibility toggled by <see cref="ThreeOSFinalDemoGitHubGesture"/> (default ON).
+/// World-locked GitHub page quad. Transform/material come from the scene; runtime only drives visibility.
 /// </summary>
+[DisallowMultipleComponent]
 public sealed class ThreeOSFinalDemoGitHubPlane : MonoBehaviour
 {
-    const float WidthMeters = 24f * 0.0254f;   // 24"
-    const float AheadMeters = 1.5f * 0.3048f;  // 1.5 ft
-    const float BelowEyeMeters = 1f * 0.3048f; // 1 ft
+    [SerializeField] MeshRenderer meshRenderer;
+    [SerializeField] bool visibleOnStart = true;
+    [SerializeField] UnityEvent<bool> onVisibilityChanged;
 
-    [SerializeField] Transform xrOrigin;
-    [SerializeField] Transform eyeCamera;
-    [SerializeField] Texture2D pageTexture;
-    [SerializeField] bool startVisible = true;
+    bool _mindPalaceSuppressed;
+    bool _visibleBeforePalace;
 
-    MeshRenderer _renderer;
-    bool _posed;
-
-    public void Configure(Transform origin, Transform eye, Texture2D tex)
-    {
-        xrOrigin = origin;
-        eyeCamera = eye;
-        pageTexture = tex;
-        EnsureMeshAndMaterial();
-        ApplyTexture();
-        PoseOnce();
-        SetVisible(startVisible);
-    }
+    /// <summary>Palace skybox hides the quad but an enabled renderer still depth-occludes far-field glyphs.</summary>
+    public bool MindPalaceSuppressed => _mindPalaceSuppressed;
 
     void Awake()
     {
-        EnsureMeshAndMaterial();
-        ApplyTexture();
+        if (meshRenderer == null)
+            meshRenderer = GetComponent<MeshRenderer>();
     }
 
     void Start()
     {
-        if (!_posed)
-            PoseOnce();
-        // Always honor startVisible at cold open (gesture may have raced while inactive).
-        SetVisible(startVisible);
+        SetRendererVisible(visibleOnStart);
+        LogRenderState("Start");
     }
 
-    void OnEnable()
+    public void SetRendererVisible(bool visible)
     {
-        // If re-enabled after a false toggle, keep pose valid.
-        if (!_posed)
-            PoseOnce();
-    }
-
-    public void SetVisible(bool visible)
-    {
-        if (gameObject.activeSelf == visible)
+        if (_mindPalaceSuppressed)
             return;
-        gameObject.SetActive(visible);
+        ApplyRendererVisible(visible);
     }
 
-    public void ToggleVisible() => SetVisible(!gameObject.activeSelf);
-
-    public void PoseOnce()
+    void ApplyRendererVisible(bool visible)
     {
-        if (xrOrigin == null)
-            xrOrigin = GameObject.Find("XR Origin (VR)")?.transform;
-        if (eyeCamera == null)
+        if (meshRenderer == null)
+            meshRenderer = GetComponent<MeshRenderer>();
+        if (meshRenderer == null)
         {
-            var cam = Camera.main;
-            eyeCamera = cam != null ? cam.transform : null;
+            Debug.LogError("[3OS] GitHubPagePlane: MeshRenderer missing.");
+            return;
         }
 
-        if (xrOrigin == null)
-            return;
-
-        var forward = xrOrigin.forward;
-        forward.y = 0f;
-        if (forward.sqrMagnitude < 1e-6f)
-            forward = Vector3.forward;
-        forward.Normalize();
-
-        var eyeY = eyeCamera != null ? eyeCamera.position.y : xrOrigin.position.y + 1.6f;
-        var pos = xrOrigin.position + forward * AheadMeters;
-        pos.y = eyeY - BelowEyeMeters;
-        transform.position = pos;
-
-        // One-shot billboard toward eyes (not continuous).
-        var eyePos = eyeCamera != null ? eyeCamera.position : pos - forward;
-        var toEye = eyePos - pos;
-        if (toEye.sqrMagnitude > 1e-6f)
-            transform.rotation = Quaternion.LookRotation(toEye.normalized, Vector3.up);
-
-        ScaleToTextureAspect();
-        _posed = true;
+        meshRenderer.enabled = visible;
+        onVisibilityChanged?.Invoke(visible);
     }
 
-    void EnsureMeshAndMaterial()
+    /// <summary>Called on MR↔Palace wipe — no GitHub toggle/occlusion in Mind Palace.</summary>
+    public void SetMindPalaceSuppressed(bool suppressed)
     {
-        // Unity missing-components are "fake null" — don't use ??.
+        if (suppressed == _mindPalaceSuppressed)
+            return;
+        _mindPalaceSuppressed = suppressed;
+        if (suppressed)
+        {
+            _visibleBeforePalace = meshRenderer != null && meshRenderer.enabled;
+            ApplyRendererVisible(false);
+            gameObject.SetActive(false);
+            Debug.Log("[3OS] GitHubPagePlane suppressed for Mind Palace");
+            return;
+        }
+
+        gameObject.SetActive(true);
+        ApplyRendererVisible(_visibleBeforePalace);
+        Debug.Log($"[3OS] GitHubPagePlane restored after Palace (visible={_visibleBeforePalace})");
+    }
+
+    public void ToggleRendererVisible()
+    {
+        SetRendererVisible(!IsRendererVisible);
+    }
+
+    public bool IsRendererVisible => meshRenderer != null && meshRenderer.enabled;
+
+    void LogRenderState(string context)
+    {
         var mf = GetComponent<MeshFilter>();
-        if (mf == null)
-            mf = gameObject.AddComponent<MeshFilter>();
-        _renderer = GetComponent<MeshRenderer>();
-        if (_renderer == null)
-            _renderer = gameObject.AddComponent<MeshRenderer>();
-        if (mf.sharedMesh == null)
-            mf.sharedMesh = BuildQuadMesh();
-
-        if (_renderer.sharedMaterial == null)
-        {
-            var shader = Shader.Find("Unlit/Texture")
-                         ?? Shader.Find("Universal Render Pipeline/Unlit")
-                         ?? Shader.Find("Sprites/Default")
-                         ?? Shader.Find("Standard");
-            _renderer.sharedMaterial = new Material(shader);
-        }
-    }
-
-    void ApplyTexture()
-    {
-        EnsureMeshAndMaterial();
-        if (pageTexture == null)
-            return;
-        var mat = _renderer.material;
-        mat.mainTexture = pageTexture;
-        if (mat.HasProperty("_BaseMap"))
-            mat.SetTexture("_BaseMap", pageTexture);
-        ScaleToTextureAspect();
-    }
-
-    void ScaleToTextureAspect()
-    {
-        var aspect = pageTexture != null
-            ? pageTexture.height / (float)Mathf.Max(1, pageTexture.width)
-            : 976f / 1549f;
-        transform.localScale = new Vector3(WidthMeters, WidthMeters * aspect, 1f);
-    }
-
-    static Mesh BuildQuadMesh()
-    {
-        // Unit quad in XY, facing +Z (toward viewer when LookRotation points +Z at eyes).
-        var mesh = new Mesh { name = "GitHubPageQuad" };
-        mesh.vertices = new[]
-        {
-            new Vector3(-0.5f, -0.5f, 0f),
-            new Vector3(0.5f, -0.5f, 0f),
-            new Vector3(-0.5f, 0.5f, 0f),
-            new Vector3(0.5f, 0.5f, 0f)
-        };
-        mesh.uv = new[]
-        {
-            new Vector2(0f, 0f),
-            new Vector2(1f, 0f),
-            new Vector2(0f, 1f),
-            new Vector2(1f, 1f)
-        };
-        mesh.triangles = new[] { 0, 2, 1, 2, 3, 1 };
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-        return mesh;
+        var mat = meshRenderer != null ? meshRenderer.sharedMaterial : null;
+        Debug.Log(
+            $"[3OS] GitHubPagePlane {context}: worldPos={transform.position} " +
+            $"rendererEnabled={IsRendererVisible} hasMesh={mf != null && mf.sharedMesh != null} " +
+            $"shader={(mat != null ? mat.shader.name : "null")}");
     }
 }
