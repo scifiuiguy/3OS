@@ -23,6 +23,7 @@ public static class ThreeOSAndroidBuild
     private const string ApkBaseName = "3OS_Sample_Phase05_XR";
     private const string AndroidHandsApkBaseName = "3OS_AndroidHands_ControllerTest";
     private const string FinalDemoApkBaseName = "3OS_Final_Demo";
+    private const string DefaultAndroidApplicationId = "com.scifiuiguy.threeos.sample";
     private const string MicEqTestApkBaseName = "3OS_MicEq_Test";
 
     public static void BuildQuestApk()
@@ -95,7 +96,10 @@ public static class ThreeOSAndroidBuild
 
         PlayerSettings.companyName = "scifiuiguy";
         PlayerSettings.productName = productName;
-        PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.scifiuiguy.threeos.sample");
+        var androidAppId = string.Equals(apkBaseName, FinalDemoApkBaseName, System.StringComparison.Ordinal)
+            ? ReadFinalDemoAndroidApplicationId()
+            : DefaultAndroidApplicationId;
+        PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, androidAppId);
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel29;
         PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)34;
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
@@ -123,7 +127,7 @@ public static class ThreeOSAndroidBuild
             options = BuildOptions.CompressWithLz4
         };
 
-        Debug.Log($"[3OS] Building Android APK → {Path.GetFullPath(outputApk)} (build #{buildIndex:D2})");
+        Debug.Log($"[3OS] Building Android APK → {Path.GetFullPath(outputApk)} (build #{buildIndex:D2}, applicationId={androidAppId})");
         var report = BuildPipeline.BuildPlayer(options);
         if (report.summary.result == BuildResult.Succeeded)
         {
@@ -140,6 +144,20 @@ public static class ThreeOSAndroidBuild
             Debug.LogError($"[3OS] APK build failed: {report.summary.result}");
             if (exitEditor) EditorApplication.Exit(1);
         }
+    }
+
+    static string ReadFinalDemoAndroidApplicationId()
+    {
+        var path = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "tools",
+            "final_demo_android_package.txt"));
+        if (!File.Exists(path))
+        {
+            Debug.LogWarning($"[3OS] Missing {path}; using {DefaultAndroidApplicationId} for Final Demo.");
+            return DefaultAndroidApplicationId;
+        }
+
+        var id = File.ReadAllText(path).Trim();
+        return string.IsNullOrEmpty(id) ? DefaultAndroidApplicationId : id;
     }
 
     static void VerifyFinalDemoQuestOsSplashInApk(string outputApk)

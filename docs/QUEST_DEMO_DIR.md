@@ -19,7 +19,7 @@ At **Start**, `ThreeOSStorageController` **scans** the demo directory and instan
 | Role | Path |
 | --- | --- |
 | Documents (MTP staging, list priority) | `/storage/emulated/0/Documents/3OS_Demo` (+ `3OS_Demo2`) |
-| Persistent (writable mirror) | `Android/data/com.scifiuiguy.threeos.sample/files/3OS_Demo` (+ `3OS_Demo2`) |
+| Persistent (writable mirror) | `Android/data/<applicationId>/files/3OS_Demo` (+ `3OS_Demo2`) — Final Demo `applicationId` is in `tools/final_demo_android_package.txt` |
 
 Start **mirrors additively** both ways (never deletes). Dual MindPalace fixture loads `3OS_Demo` (−15°) and `3OS_Demo2` (+15°).
 
@@ -29,7 +29,7 @@ On insert, HUD shows `moved → 3OS_Demo/Test1/simple.glb` under the active writ
 
 If you browse `Documents/3OS_Demo` over MTP, insert **renames** `simple.glb` → `Test1/simple.glb` on that volume (cut, not copy).
 
-MTP-staged files sometimes cannot be deleted without **All files access**. On first failed cleanup the app opens that system toggle for `com.scifiuiguy.threeos.sample` — enable it, then retry the insert (or delete the leftover root `simple.glb` once).
+MTP-staged files sometimes cannot be deleted without **All files access**. On first failed cleanup the app opens that system toggle for the Final Demo package (see `tools/final_demo_android_package.txt`) — enable it, then retry the insert (or delete the leftover root `simple.glb` once).
 
 ## Fallback seed
 

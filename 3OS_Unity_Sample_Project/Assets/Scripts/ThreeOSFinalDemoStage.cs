@@ -62,6 +62,8 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
 
     void Awake()
     {
+        if (FindFirstObjectByType<SplashController>() == null)
+            ThreeOSFinalDemoBootCover.Ensure();
         // Cold open is MR; Task 7.7 toggle owns later transitions.
         SetPalaceSkyboxActive(_inPalace);
         EnsureModeToggle();
@@ -70,6 +72,8 @@ public sealed class ThreeOSFinalDemoStage : MonoBehaviour
         EnsureStandingSeatedLayout();
         EnsureXROriginFacing();
         EnsureXROriginPlacement();
+        // XZ before splash reorient (yaw: SplashController → XROriginFacing).
+        AlignPlayerToSeatedStart();
     }
 
     void Start()

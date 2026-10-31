@@ -492,6 +492,7 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
         var storage = FindFirstObjectByType<ThreeOSStorageController>();
         if (storage != null)
         {
+            yield return storage.WaitForPasteIdleBeforeResetRoutine();
             // 2) MR-persisted DemonA.blend glyph (grab into MR does not rewrite disk paths)
             storage.ClearMrPersistedSelectionVisual();
             storage.CancelPasteProgressUi();
@@ -555,6 +556,10 @@ public sealed class ThreeOSFinalDemoActIDirector : MonoBehaviour
             Debug.Log(
                 $"[3OS][7.4] snapshot restore finished ok={restoreOk} waited={waited:F1}s " +
                 $"d1={docs1} d2={docs2}");
+            if (!restoreOk)
+                Debug.LogError(
+                    "[3OS][7.4] snapshot restore reported failures — Demo1/2 may be incomplete; " +
+                    "check logcat for snapshot restore / seed lines");
         }
         else
         {

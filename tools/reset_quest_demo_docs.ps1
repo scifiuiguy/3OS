@@ -4,11 +4,16 @@
 param(
   [string]$SnapshotJson = "F:\3OS\3OS_Unity_Sample_Project\Assets\StreamingAssets\3OS\final_demo_fs_snapshot.json",
   [string]$SeedDir = "F:\3OS\3OS_Unity_Sample_Project\Assets\StreamingAssets\3OS\seed",
-  [string]$Package = "com.scifiuiguy.threeos.sample",
+  [string]$Package = "",
   [string]$DocsRoot = "/sdcard/Documents"
 )
 
 $ErrorActionPreference = "Stop"
+if ([string]::IsNullOrWhiteSpace($Package)) {
+  $repo = Split-Path $PSScriptRoot -Parent
+  . (Join-Path $PSScriptRoot "_qa_seed_lib.ps1")
+  $Package = Get-FinalDemoAndroidPackage -RepoRoot $repo
+}
 
 $adb = $null
 foreach ($c in @(

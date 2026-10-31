@@ -7,8 +7,9 @@ using UnityEngine;
 using UnityEngine.Networking;
 
 /// <summary>
-/// Offline-serialized Demo1/2 starting layout for Act I reset undo.
-/// Loaded once from StreamingAssets — never scanned from disk during the demo.
+/// Offline Act I baselines: Demo1/2 tree from <see cref="Snapshot.demo1"/> /
+/// <see cref="Snapshot.demo2"/>; Demo3 paste box from a separate baseline (empty
+/// DemonProject + markers). Loaded from StreamingAssets — not inferred from session cut/paste.
 /// </summary>
 public static class ThreeOSFinalDemoFsSnapshot
 {
@@ -28,6 +29,12 @@ public static class ThreeOSFinalDemoFsSnapshot
 
     static Snapshot _cached;
     static bool _loadAttempted;
+    static byte[] _seedSimpleGlb;
+    static byte[] _seedDemonA;
+    static bool _seedLoadAttempted;
+
+    const string SeedSimpleRel = "3OS/seed/simple.glb";
+    const string SeedDemonRel = "3OS/seed/DemonA.blend";
 
     public static Snapshot Cached => _cached;
 
@@ -85,7 +92,44 @@ public static class ThreeOSFinalDemoFsSnapshot
                 $"[3OS] FS snapshot loaded demo1={_cached.demo1?.Length ?? 0} demo2={_cached.demo2?.Length ?? 0}");
         }
 
+        if (!_seedLoadAttempted)
+        {
+            _seedLoadAttempted = true;
+            yield return LoadSeedBytesRoutine(SeedSimpleRel, b => _seedSimpleGlb = b);
+            yield return LoadSeedBytesRoutine(SeedDemonRel, b => _seedDemonA = b);
+        }
+
         yield break;
+    }
+
+    static IEnumerator LoadSeedBytesRoutine(string streamingRel, Action<byte[]> assign)
+    {
+        var url = Path.Combine(Application.streamingAssetsPath, streamingRel.Replace('\\', '/'));
+#if UNITY_ANDROID && !UNITY_EDITOR
+        using (var req = UnityWebRequest.Get(url))
+        {
+            yield return req.SendWebRequest();
+            if (req.result == UnityWebRequest.Result.Success &&
+                req.downloadHandler?.data != null && req.downloadHandler.data.Length > 0)
+                assign(req.downloadHandler.data);
+            else
+                Debug.LogWarning($"[3OS] FS seed load failed: {req.error} url={url}");
+        }
+#else
+        try
+        {
+            if (File.Exists(url))
+                assign(File.ReadAllBytes(url));
+            else
+                Debug.LogWarning($"[3OS] FS seed missing: {url}");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[3OS] FS seed read failed: {ex.Message}");
+        }
+
+        yield break;
+#endif
     }
 
     static Snapshot EmbeddedDefault() => new Snapshot
@@ -111,10 +155,9 @@ public static class ThreeOSFinalDemoFsSnapshot
     };
 
     /// <summary>
-    /// Act I reset: put Demo1/2 back to the offline snapshot and clear DemonProject of
-    /// pasted snapshot tops. Prefer shell mv/rm — Java delete leaves Documents duplicates.
-    /// When a name exists in both DemonProject and a demo home, REPLACE the home copy from
-    /// DemonProject (skipping left incomplete/wrong Demo trees after a timed-out restore).
+    /// Act I reset: replay offline baselines — wipe Documents Demo1/2/3 and materialize from
+    /// StreamingAssets snapshot (same contract as <c>tools/reset_quest_demo_docs.ps1</c>).
+    /// Does not move files from DemonProject or undo in-session cut/paste.
     /// </summary>
     public static bool RestoreDemoRootsFromSnapshot(Snapshot snap, string docsDemo1, string docsDemo2,
         string docsDemo3)
@@ -127,132 +170,230 @@ public static class ThreeOSFinalDemoFsSnapshot
 
         var demo1Tops = TopLevelNames(snap.demo1);
         var demo2Tops = TopLevelNames(snap.demo2);
-        var demo1Set = new HashSet<string>(demo1Tops, StringComparer.OrdinalIgnoreCase);
-        var demo2Set = new HashSet<string>(demo2Tops, StringComparer.OrdinalIgnoreCase);
-        var owned = new HashSet<string>(demo1Set, StringComparer.OrdinalIgnoreCase);
-        foreach (var n in demo2Set)
-            owned.Add(n);
 
         var batchOk = true;
-        var moved = 0;
         var scrubbed = 0;
-        var replaced = 0;
+        var seeded = 0;
         ThreeOSAndroidStorage.RunWithJni(() =>
         {
-            // 1) Primary: everything still parked under DemonProject → correct home.
-            //    Always replace home when DemonProject still has the name (prior restores
-            //    left incomplete Demo trees then skipped because LooksPresent(dst)).
-            if (LooksPresent(demonRoot))
+            // 1) Wipe current Documents trees (session state is discarded).
+            WipeRootContents(docsDemo1, ref scrubbed, ref batchOk);
+            WipeRootContents(docsDemo2, ref scrubbed, ref batchOk);
+            WipeRootContents(docsDemo3, ref scrubbed, ref batchOk);
+
+            // 2) Demo1 / Demo2 — offline snapshot only.
+            if (snap.demo1 != null)
             {
-                var names = ListTopNames(demonRoot);
-                foreach (var name in names)
+                foreach (var raw in snap.demo1)
                 {
-                    if (string.Equals(name, ".keep", StringComparison.OrdinalIgnoreCase) ||
-                        name.StartsWith(".", StringComparison.Ordinal))
-                        continue;
-
-                    var src = Path.Combine(demonRoot, name);
-                    var home = ResolveHome(name, docsDemo1, docsDemo2, demo1Set, demo2Set);
-                    if (string.IsNullOrEmpty(home))
-                    {
-                        if (owned.Contains(name))
-                        {
-                            // Both homes already have a copy (e.g. simple.glb) — drop Demon leftover.
-                            if (ScrubPath(src))
-                                scrubbed++;
-                            else
-                                batchOk = false;
-                        }
-
-                        continue;
-                    }
-
-                    var dst = Path.Combine(home, name);
-                    if (LooksPresent(dst))
-                    {
-                        // Replace incomplete/wrong home with DemonProject paste source.
-                        if (!ScrubPath(dst))
-                        {
-                            Debug.LogWarning($"[3OS] snapshot replace: could not clear dst {dst}");
-                            batchOk = false;
-                            continue;
-                        }
-
-                        replaced++;
-                    }
-
-                    if (RestoreEntry(src, dst))
-                    {
-                        moved++;
-                        if (!LooksPresent(src))
-                            scrubbed++;
-                        else if (ScrubPath(src))
-                            scrubbed++;
-                        else
-                            batchOk = false;
-                    }
+                    if (MaterializeSnapshotRel(docsDemo1, raw))
+                        seeded++;
                     else
-                    {
                         batchOk = false;
-                    }
                 }
             }
 
-            // 2) Safety: any snapshot top still missing from home — search alt roots.
-            foreach (var name in demo1Tops)
+            if (snap.demo2 != null)
             {
-                var dst = Path.Combine(docsDemo1 ?? string.Empty, name);
-                if (LooksPresent(dst))
-                    continue;
-                if (RestoreOneFromCandidates(name, docsDemo1, demonRoot, docsDemo2, docsDemo3))
-                    moved++;
-                else
-                    batchOk = false;
-            }
-
-            foreach (var name in demo2Tops)
-            {
-                var dst = Path.Combine(docsDemo2 ?? string.Empty, name);
-                if (LooksPresent(dst))
-                    continue;
-                if (RestoreOneFromCandidates(name, docsDemo2, demonRoot, docsDemo1, docsDemo3))
-                    moved++;
-                else
-                    batchOk = false;
-            }
-
-            // 3) Wipe DemonProject tops (keep .keep / dotfiles). Owned or not — leftover
-            // paste duplicates block the next cut (ShellMv EPERM onto existing dest) and
-            // leave Demo sources behind after copy+delete.
-            if (LooksPresent(demonRoot))
-            {
-                foreach (var name in ListTopNames(demonRoot))
+                foreach (var raw in snap.demo2)
                 {
-                    if (string.Equals(name, ".keep", StringComparison.OrdinalIgnoreCase) ||
-                        name.StartsWith(".", StringComparison.Ordinal))
-                        continue;
-                    var leftover = Path.Combine(demonRoot, name);
-                    if (!LooksPresent(leftover))
-                        continue;
-                    if (ScrubPath(leftover))
-                        scrubbed++;
+                    if (MaterializeSnapshotRel(docsDemo2, raw))
+                        seeded++;
                     else
-                    {
-                        Debug.LogWarning($"[3OS] snapshot DemonProject scrub failed {leftover}");
                         batchOk = false;
-                    }
                 }
             }
 
-            // 4) Drop extras that do not belong in Demo1/2 snapshot tops.
-            ScrubUnownedTops(docsDemo1, demo1Set, ref scrubbed, ref batchOk);
-            ScrubUnownedTops(docsDemo2, demo2Set, ref scrubbed, ref batchOk);
+            // 3) Demo3 — separate baseline (empty paste box + Mind Palace marker).
+            if (!RestoreDemo3Baseline(docsDemo3, demonRoot))
+                batchOk = false;
         });
 
         Debug.Log(
-            $"[3OS] snapshot restore done ok={batchOk} landed={moved} replaced={replaced} " +
-            $"scrubbed={scrubbed} d1Tops={demo1Tops.Count} d2Tops={demo2Tops.Count} demon={demonRoot}");
+            $"[3OS] snapshot baseline replay ok={batchOk} seeded={seeded} scrubbed={scrubbed} " +
+            $"d1Tops={demo1Tops.Count} d2Tops={demo2Tops.Count} d3={docsDemo3} demon={demonRoot}");
         return batchOk;
+    }
+
+    /// <summary>Empty DemonProject + <c>.3os_mind_palace</c> on Demo3 root (host reset script parity).</summary>
+    static bool RestoreDemo3Baseline(string docsDemo3, string demonRoot)
+    {
+        if (string.IsNullOrEmpty(docsDemo3))
+            return false;
+
+        EnsureDirectory(docsDemo3);
+        EnsureDirectory(demonRoot);
+
+        var ok = true;
+        var keepPath = Path.Combine(demonRoot, ".keep");
+        if (!WriteAllBytes(keepPath, System.Text.Encoding.UTF8.GetBytes("keep")))
+        {
+            Debug.LogWarning($"[3OS] snapshot Demo3 baseline: .keep failed {keepPath}");
+            ok = false;
+        }
+
+        var mpPath = Path.Combine(docsDemo3, ".3os_mind_palace");
+        if (!WriteAllBytes(mpPath, System.Text.Encoding.UTF8.GetBytes("mindpalace")))
+        {
+            Debug.LogWarning($"[3OS] snapshot Demo3 baseline: mind palace marker failed {mpPath}");
+            ok = false;
+        }
+
+        return ok;
+    }
+
+    static void WipeRootContents(string root, ref int scrubbed, ref bool batchOk)
+    {
+        if (string.IsNullOrEmpty(root))
+            return;
+        if (!LooksPresent(root))
+        {
+            EnsureDirectory(root);
+            return;
+        }
+
+        foreach (var name in ListTopNames(root))
+        {
+            var path = Path.Combine(root, name);
+            if (ScrubPath(path))
+                scrubbed++;
+            else
+            {
+                Debug.LogWarning($"[3OS] snapshot wipe failed {path}");
+                batchOk = false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ensure one snapshot relative path exists under a demo home (StreamingAssets seed or empty stub).
+    /// </summary>
+    static bool MaterializeSnapshotRel(string homeRoot, string rawRel)
+    {
+        if (string.IsNullOrEmpty(homeRoot))
+            return false;
+        var rel = (rawRel ?? string.Empty).Replace('\\', '/').Trim().Trim('/');
+        if (string.IsNullOrEmpty(rel))
+            return true;
+
+        var dest = Path.Combine(homeRoot, rel);
+        if (LooksPresent(dest))
+            return true;
+
+        try
+        {
+            var parent = Path.GetDirectoryName(dest);
+            if (!string.IsNullOrEmpty(parent))
+                EnsureDirectory(parent);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[3OS] snapshot seed mkdir parent {dest}: {ex.Message}");
+        }
+
+        var leaf = Path.GetFileName(rel);
+        var isFile = rel.IndexOf('.') >= 0;
+        if (!isFile)
+        {
+            EnsureDirectory(dest);
+            return LooksPresent(dest);
+        }
+
+        byte[] payload = null;
+        if (string.Equals(leaf, "simple.glb", StringComparison.OrdinalIgnoreCase))
+            payload = _seedSimpleGlb;
+        else if (string.Equals(leaf, "DemonA.blend", StringComparison.OrdinalIgnoreCase))
+            payload = _seedDemonA;
+
+        if (payload != null && payload.Length > 0)
+        {
+            if (WriteAllBytes(dest, payload))
+            {
+                Debug.Log($"[3OS] snapshot seed wrote {dest} ({payload.Length} bytes)");
+                return true;
+            }
+
+            return false;
+        }
+
+        // Folder marker files (Test*.txt etc.) — empty stub matches host reset_quest_demo_docs.ps1.
+        if (WriteAllBytes(dest, Array.Empty<byte>()))
+            return true;
+
+        Debug.LogWarning($"[3OS] snapshot seed failed {dest}");
+        return false;
+    }
+
+    static void EnsureDirectory(string path)
+    {
+        if (string.IsNullOrEmpty(path) || LooksPresent(path))
+            return;
+        try
+        {
+            Directory.CreateDirectory(path);
+        }
+        catch { /* Java mkdirs below */ }
+
+        if (LooksPresent(path))
+            return;
+#if UNITY_ANDROID && !UNITY_EDITOR
+        try
+        {
+            using var f = new AndroidJavaObject("java.io.File", path);
+            f.Call<bool>("mkdirs");
+        }
+        catch { /* best-effort */ }
+#endif
+    }
+
+    static bool WriteAllBytes(string path, byte[] data)
+    {
+        if (string.IsNullOrEmpty(path))
+            return false;
+        data ??= Array.Empty<byte>();
+        try
+        {
+            var parent = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(parent))
+                EnsureDirectory(parent);
+        }
+        catch { /* best-effort */ }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        try
+        {
+            using var f = new AndroidJavaObject("java.io.File", path);
+            using var parent = f.Call<AndroidJavaObject>("getParentFile");
+            parent?.Call<bool>("mkdirs");
+            using var fos = new AndroidJavaObject("java.io.FileOutputStream", f);
+            if (data.Length == 0)
+            {
+                fos.Call("close");
+                return LooksPresent(path);
+            }
+
+            var sbytes = new sbyte[data.Length];
+            for (var i = 0; i < data.Length; i++)
+                sbytes[i] = unchecked((sbyte)data[i]);
+            fos.Call("write", sbytes);
+            fos.Call("close");
+            return LooksPresent(path);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[3OS] snapshot seed java write {path}: {ex.Message}");
+        }
+#endif
+        try
+        {
+            File.WriteAllBytes(path, data);
+            return LooksPresent(path);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[3OS] snapshot seed write {path}: {ex.Message}");
+            return false;
+        }
     }
 
     static void ScrubUnownedTops(string root, HashSet<string> owned, ref int scrubbed, ref bool batchOk)
@@ -442,6 +583,12 @@ public static class ThreeOSFinalDemoFsSnapshot
 
         if (treatedAsDir)
         {
+            if (ThreeOSAndroidStorage.ShellCpTree(src, dst) && LooksPresent(dst))
+            {
+                Debug.Log($"[3OS] snapshot copy-only OK {src} → {dst}");
+                return true;
+            }
+
             if (ThreeOSAndroidStorage.JavaCopyDirectory(src, dst) && LooksPresent(dst))
             {
                 Debug.Log($"[3OS] snapshot copy-only OK {src} → {dst}");
@@ -450,6 +597,12 @@ public static class ThreeOSFinalDemoFsSnapshot
         }
         else
         {
+            if (ThreeOSAndroidStorage.ShellCpTree(src, dst) && LooksPresent(dst))
+            {
+                Debug.Log($"[3OS] snapshot copy-only OK {src} → {dst}");
+                return true;
+            }
+
             try
             {
                 using var paths = new AndroidJavaClass("java.nio.file.Paths");
@@ -562,6 +715,8 @@ public static class ThreeOSFinalDemoFsSnapshot
             return true;
         if (ThreeOSAndroidStorage.JavaRename(src, dst) && LooksPresent(dst))
             return true;
+        if (ThreeOSAndroidStorage.ShellCpTree(src, dst) && LooksPresent(dst))
+            return true;
 #endif
 
         // Managed move.
@@ -609,6 +764,8 @@ public static class ThreeOSFinalDemoFsSnapshot
 
             if (treatedAsDir)
             {
+                if (ThreeOSAndroidStorage.ShellCpTree(src, dst) && LooksPresent(dst))
+                    return true;
                 if (ThreeOSAndroidStorage.JavaCopyDirectory(src, dst) && LooksPresent(dst))
                     return true;
             }

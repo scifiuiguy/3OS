@@ -1,11 +1,16 @@
 # Capture Quest logcat around a 3OS launch. Requires adb on PATH or ANDROID_HOME.
 param(
   [string]$OutDir = "F:\3OS\3OS_Unity_Sample_Project\Builds\Android\logs",
-  [string]$Package = "com.scifiuiguy.threeos.sample",
+  [string]$Package = "",
   [int]$Seconds = 45
 )
 
 $ErrorActionPreference = "Stop"
+if ([string]::IsNullOrWhiteSpace($Package)) {
+  $repo = "F:\3OS"
+  . (Join-Path $repo "tools\_qa_seed_lib.ps1")
+  $Package = Get-FinalDemoAndroidPackage -RepoRoot $repo
+}
 $adb = $null
 foreach ($c in @(
   (Get-Command adb -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source),
