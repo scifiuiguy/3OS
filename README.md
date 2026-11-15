@@ -21,7 +21,10 @@ Was it proven to be bunk? Are 3D interfaces destined to be slower than desktop P
 
 Welcome to **3OS**! It's an enterprise-grade volumetric XR operating system interface built from the ground up to push the boundaries of spatial multitasking and ergonomics at the office. Since you're probably reviewing lots of apps, I tried to consolidate the <i>NOVEL</i> that is this README into a quick set of bullet points to help you out:
 
-### 🌟 Core Architectural Highlights for Meta Start
+<blockquote>
+<details>
+<summary><b>🌟 Core Architectural Highlights for Meta Start</b></summary>
+<hr style="border: 1px solid gray;">
 
 <blockquote>
 <details>
@@ -53,13 +56,13 @@ In later studies, I gravitated primarily toward <b><i>perf-op papers involving F
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">The Solution In A Nutshell</span></span>
 </summary>
 
-Current OS design habits kill our ability to prove XR is faster than desktop PCs.
+Current OS design habits kill our ability to prove XR is faster than desktop PCs. Every XR OS in 2026 is built on the false assumption that raycast/WIMP is the accepted ideal root interaction model.
 
-Raycast models and floating 2D windows waste most of XR’s adjacency/multitasking space and encourage slow, single-handed interaction. 3OS offers a <b><i>volumetric isotropic OS model</i></b> instead. Isotropic techniques are <b><i>THE</i></b> solution to the many speed bottlenecks preventing 3D UI adoption in enterprise by integrating snap-twitch voxel-based actions, not surface-based actions.
+Raycast models and floating 2D windows waste XR’s adjacency/multitasking potential and encourage slow, single-handed interaction. 3OS offers a <b><i>nested isotropic selection model</i></b> instead. Nested isotropic selection enables instantaneous access to every volume in a field rather than only the nearest surface, unlocking object clustering for high adjacency and parallel voodoo volumes for proprioceptive bimanual multitasking. Isotropic techniques are <b><i>THE</i></b> solution to the many bottlenecks preventing 3D UI adoption in enterprise by promoting snap-twitch voxel-based actions over surface-based actions.
 
-<b><i>isotropic interaction:</i></b> The cursor or driven object moves either 1-to-1 or 1-to-N driven by 3D hand motion on all axes uniformly, as opposed to raycast (perspective projection) where X/Y hand motion yields scaling cursor motion as Z scales. 
+<b><i>isotropic interaction:</i></b> The cursor or driven object moves either 1-to-1 or 1-to-N driven by 3D hand motion on all axes uniformly, as opposed to raycast (perspective projection) where X/Y hand motion yields scaling cursor motion as Z scales.
 
-Most HCI research counterintuitively measures isotropic models in flawed ways (or not at all), which has led to <b><i>false assumptions that raycasting is easier/better/faster</i></b> for nearly every UI in XR 1.0. Fixing this will be a <b><i>defining characteristic of XR 2.0</i></b> (the new 2030s XR hype cycle).
+Most HCI research measures isotropic models in flawed ways (or not at all), which has led to <b><i>false assumptions that raycasting is easier/better/faster</i></b> for nearly every UI in XR 1.0. Fixing this will be a <b><i>defining characteristic of XR 2.0</i></b>.
 
 </details>
 </blockquote>
@@ -86,10 +89,49 @@ Built explicitly for the modern near-future work environment, 3OS integrates <b>
 </details>
 </blockquote>
 
-### 🗺️ Anatomy of the Demo
-* **Demo Video First:** I encourage you to watch the 3-minute tutorial before launching the Pre-Alpha Demo, which contains a near-future mockup of an enterprise dev room running 3OS Server that supports 2-12 team members.
-* **Most Demo Features Are Mockups:** Agentic avatar integration and app multitasking are narrative scaffolding so far, because 3OS is less than two months old.
-* **Operational Features:** UI and controls described in the Control Basics section below are mostly operational and in sync with the Quest Documents directory for the demo. These features are still very much in pre-alpha condition with lots of refinement coming. They will be much more snappy when processing is offloaded to an EPYC 9004 to free up the Snapdragon XR2 to focus solely on rendering and input.
+</details>
+</blockquote>
+
+<blockquote>
+<details>
+<summary><b>🗺️ Anatomy of the Demo</b></summary>
+<hr style="border: 1px solid gray;">
+
+<blockquote>
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<b>Demo Video First</b>
+</summary>
+
+I encourage you to watch the 3-minute tutorial before launching the Pre-Alpha Demo, which contains a near-future mockup of an enterprise dev room running 3OS Server that supports 2-12 team members.
+
+</details>
+</blockquote>
+
+<blockquote>
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<b>Most Demo Features Are Mockups</b>
+</summary>
+
+Agentic avatar integration and app multitasking are narrative scaffolding so far, because 3OS is less than two months old.
+
+</details>
+</blockquote>
+
+<blockquote>
+<details>
+<summary style="font-size: 1.15em; display: list-item;">
+<b>Operational Features</b>
+</summary>
+
+UI and controls described in the Control Basics section below are mostly operational and in sync with the Quest Documents directory for the demo. These features are still very much in pre-alpha condition with lots of refinement coming. They will be much more snappy when processing is offloaded to an EPYC 9004 to free up the Snapdragon XR2 to focus solely on rendering and input.
+
+</details>
+</blockquote>
+
+</details>
+</blockquote>
 
 I hope you enjoy the demo!
 
@@ -287,7 +329,7 @@ We use icons for many things, but not programming. YET. Why write a class name w
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Why VPLs must go 3D</span></span>
 </summary>
 
-Anyone familiar with Unreal Blueprints will know there's something magical about the way it visualizes execution flow. The connectors glow as data flows through them. However, it's really not useful yet, because you must zoom all the way in to read the text on the nodes, and zooming that far in will make you miss potential issues elsewhere in the application when the execution flow breaks at the wrong time. 
+Anyone familiar with Unreal Blueprints will know there's something magical about the way it visualizes execution flow. The connectors glow as data flows through them. However, it's really not useful yet, because you must zoom in all the way to read the text on the nodes, and zooming in that far will make you miss potential issues elsewhere in the application when the execution flow breaks at the wrong time. 
 
 The nodes are all rectangles in all current VPLs. This is their downfall. You can't tell any node apart at a distance. None use iconography yet. If they did, then we could see the entire app lighting up like a Christmas tree all at once, or like clusters of synapses, and we'd realize we WANT to zoom out all the time, making it obvious that 3D clusters will give yet another order of magnitude of zoom-out capability. This would be a better debugger than anything we've ever had in an IDE. THIS is the new layer of the stack, a real-time VISUALIZER of agentic changes to the code.
 
@@ -398,7 +440,7 @@ These companies understand that touchscreens (and by association XR HMDS) are mo
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">Mobile Went Smaller... XR Goes Infinitely Bigger</span></span>
 </summary>
 
-It follows that if you <i>increase</i> the number of interactive fragments (or voxels) instead of decreasing it, shortened total adjacency and multitasking capability should explode exponentially beyond the capability of the best desktop interfaces. Enterprise workers understand the simple virtue of multi-screen setups, but their value barely scratches the throughput surface of multiple screens times multiple layers of depth in XR, IF we can unlock those layers. It's intuitive and obvious that XR <i>will</i> be faster than desktop when we get the interface right.
+It follows that if you <i>increase</i> the number of interactive fragments (or voxels) instead of decreasing it, shortened total adjacency and extended multitasking capability should explode exponentially beyond the capability of the best desktop interfaces. Enterprise workers understand the simple virtue of multi-screen setups, but their value barely scratches the throughput surface of multiple screens times multiple layers of depth in XR, IF we can unlock those layers. It's intuitive and obvious that XR <i>will</i> be faster than desktop when we get the interface right.
 
 </details>
 
@@ -522,15 +564,17 @@ The crutch of WIMP denies us the utility of the depth vector (i.e. WIMP makes 3D
 <span style="display: inline-flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; width: calc(100% - 1.25em); vertical-align: top;"><span style="font-weight: 600;">3) Perspective Projection vs. Isotropic Proprioception:</span></span>
 </summary>
 
-We see in perspective, but perspective can warp our mind's eye of Euclidean space. Our short arms define the near field where perspective causes no noticeable size warping compared to the far field, thus our mind's eye for hand coordination is formed isotropically. We think of 3D space the way it actually is... true width, depth, and height have an equal relationship, not a scalar one. We know the object moving away is not actually shrinking, but our eyes tell us it is. With raycasting, our hands wrongly try to tell us the same. That's why raycast is slow. We should not expect our hands to easily convert to this warped version of space where farther objects require hand motion to progressively shrink with depth, and diagonal moves can never happen in straight lines. 
+We see in perspective, but perspective can warp our mind's eye of Euclidean space. Our short arms define the near field where perspective causes no noticeable size warping compared to the far field, thus our mind's eye for hand coordination is formed isotropically. Anyone might argue that Grossman et al. (Prior Art #5) proved 3D hand motion is <b><i>ANISOTROPIC</i></b>, but this is <b><i>THE</i></b> mistake that led our best researchers down the wrong rabbit hole. The fact that the local depth axis is harder to use than the other two should never have led us to the conclusion, "therefore we should never use it." The correct conclusion is, "therefore we must take careful stock of its limitations as the lowest common denominator."
 
-Imagine the equivalent in 2D. It's mind-boggling to consider if our predecessors had built 2D GUIs this way. Picture it: the only way to move an icon on your 2D desktop is to anchor it to the corner of the screen and orbit it around that corner, allowing it only to move in curves. As ridiculous as that sounds, that's raycasting. To access the far field with the same efficacy as the near field, a volumetric isotropic interaction model is the only way.
+Innately, we perceive 3D space the way it actually is... true width, depth, and height have an equal relationship, not a scalar one. We know the object moving away is not actually shrinking, but our eyes tell us it is. With raycasting, our hands wrongly try to tell us the same. That's why raycast is slow. We should not expect our hands to easily convert to this warped version of space where farther objects require hand motion to progressively shrink with depth, and diagonal moves can never happen in straight lines. 
+
+Imagine the equivalent in 2D. It's mind-boggling to consider if our predecessors had built 2D GUIs this way. Picture this: the only way to move an icon on your 2D desktop is to anchor your cursor to the bottom center of the screen and orbit it around that point, allowing it only to move in curves like a speedometer. As ridiculous as that sounds, that's exactly what raycasting is in 3D. To access the far field with the same efficacy as the near field, a volumetric isotropic interaction model is the better way.
 
 </details>
 
 ### Long story short - 
 
-An XR OS interface that works at rapid speed for enterprise MUST use <b>an isotropic model with voxel-based content</b>, NOT a raycast model with WIMP-based content. It must be volume-based, not surface-based. Raycast has no chance of achieving speeds competitive to 2D desktops. Volumetric isotropic models can beat desktop speeds if they're built to take full advantage of bimanual power-user techniques. Solve this problem, and enterprise adoption of XR can begin as soon as we have sunglasses-form-factor HMDs capable of MR and ergo-safe hand tracking (e.g. the hand tracking FOV of Quest is sufficient).
+An XR OS interface that works at rapid speed for enterprise MUST use <b>an isotropic model with voxel-based content</b>, NOT a raycast model with WIMP-based content. It must be volume-based, not surface-based. Raycast has no chance of achieving speeds competitive to 2D desktops. Volumetric isotropic models can beat desktop speeds if they're built to take full advantage of bimanual power-user techniques. Solve this problem, and enterprise adoption of XR can begin as soon as we have sunglasses-form-factor HMDs capable of world-meshed MR and ergo-safe hand tracking FOV.
 
 </details>
 </blockquote>
@@ -1422,6 +1466,7 @@ As part of the 3rd party SDK, 3OS will offer a Transformation UI framework that 
 * ### Tumbling (remote quaternion-based rotation)
 * ### Scale
 * ### Basic Bimanual Controls for axis constraint and motion quantization
+* ### Basic Camera Transformation (Orbit + LookAt and/or Axis Snap)
 
 For example, the user could spin the object with one hand and optionally constrain the spin to a specific axis with the other.
 
@@ -1926,6 +1971,8 @@ If the object is out of reach or the cursor is outside the object but still sele
 
 <blockquote>
 <b>Palm-down + secondary-pinch-hold</b> begins voodoo volume selection without any focus anchor targets. This allows a user to target an empty region of the far field that may be nearby focus anchors which were pulling at the voodoo with unwanted snap gravity. Other than the lack of snap targets, the Free-Range Voodoo Drop is identical to the Main Voodoo Drop.
+
+Since objects in the far field become exponentially harder to target in depth as stereoscopy breaks down, the final version of Free-Range will allow an ulnar twist from palm-down toward palm-sideways, which will be a scale knob for the far field voodoo volume. This will allow the user better control to capture the farthest far field objects whose depth is less clear. This scale knob feature is not yet available in the Pre-Alpha Demo. 
 </blockquote>
 
 
@@ -1963,7 +2010,7 @@ When the gazed object still belongs to an accessible cluster (MindPalace / expan
 </summary>
 
 <blockquote>
-If the user decides in the midst of dropping a voodoo volume that they want to cancel it, they can turn their palm upward and let go of the drag. The voodoo will dismiss early.
+If the user decides in the midst of dropping a voodoo volume that they want to cancel it, they can turn their palm upward and let go of the drag. The voodoo will dismiss early. This feature is not yet avaialble in the Pre-Alpha Demo.
 </blockquote>
 
 
