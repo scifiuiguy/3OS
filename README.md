@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![OpenXR](https://img.shields.io/badge/API-OpenXR-orange.svg)](https://www.khronos.org/openxr/)
 
-<a href="https://www.youtube.com/watch?v=E6JgwQiUIIc" target="_blank" rel="noopener noreferrer"><img src="3OS_Unity_Sample_Project/Assets/Images/youtube-icon.webp" alt="YouTube" width="48" height="48" style="vertical-align: middle; margin-right: 0.35em;" /> Watch the 3-Minute Demo Video Here</a>
+<a href="https://www.youtube.com/watch?v=E6JgwQiUIIc" target="_blank" rel="noopener noreferrer"><img src="youtube-icon.webp" alt="YouTube" width="48" height="48" style="vertical-align: middle; margin-right: 0.35em;" /> Watch the 3-Minute Demo Video Here</a>
 
 Johnny Mnemonic showed a 3D VR replacement for 2D desktop computers in 1995:
 <a href="https://www.youtube.com/watch?v=SoxGazX_kkw" target="_blank" rel="noopener noreferrer">
