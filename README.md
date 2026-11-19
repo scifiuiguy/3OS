@@ -2096,14 +2096,21 @@ ctest --test-dir build -C Release --output-on-failure
 For Artists:
 
 ```text
-1) Go to https://github.com/scifiuiguy/3OS in a web browser.
-2) Click the green Code dropdown and choose Download ZIP.
-3) Extract the 3OS codebase anywhere locally.
-4) Find the Quest build at 3OS/builds/threeos-pre-alpha-demo.apk.
-5) Follow the instructions below to sideload the APK.
+1) Go to https://github.com/scifiuiguy/3OS/releases in a web browser.
+2) Open the latest Pre-Alpha Demo release (for example tag v0.8.1).
+3) Under Assets, download threeos-pre-alpha-demo.apk (or the attached 3OS_Final_Demo_###.apk with the same file).
+4) Follow the Pre-Alpha Demo Sideloading Instructions below.
 ```
 
 ### Pre-Alpha Demo Sideloading Instructions:
+
+**Download the APK from GitHub (do this first)**
+
+1. Open [https://github.com/scifiuiguy/3OS/releases](https://github.com/scifiuiguy/3OS/releases) in a web browser (signed in or not — releases are public).
+2. In the list on the left, choose the latest **Pre-Alpha Demo** release. The title or tag is usually **`v0.8.1`** (or newer).
+3. Scroll to **Assets** at the bottom of that release page.
+4. Click **`threeos-pre-alpha-demo.apk`** to download. If the release only lists **`3OS_Final_Demo_###.apk`**, download that file instead — it is the same Quest build; you can rename it to `threeos-pre-alpha-demo.apk` after download if you like.
+5. Note the folder where the browser saved the file (often **Downloads**). You will copy that `.apk` onto the headset in step 6 below.
 
 * To use the Pre-Alpha Demo with built-in sample files and folders, load it as is onto Quest 2 or 3:
   * Plug your Quest into a PC via USB.
